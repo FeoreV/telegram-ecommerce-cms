@@ -1,0 +1,178 @@
+# This file is a convenience symlink to the development docker-compose configuration
+# For production or other configurations, see: config/docker/
+
+# Actual configuration files:
+# - config/docker/docker-compose.dev.yml (Development - MySQL)
+# - config/docker/docker-compose.mysql-prod.yml (Production - MySQL)
+# - config/docker/docker-compose.postgres-prod.yml (Production - PostgreSQL)
+# - config/docker/docker-compose.secure-infrastructure.yml (Security hardened)
+# - config/docker/docker-compose.mtls.yml (Mutual TLS)
+# - config/docker/docker-compose.medusa.yml (Medusa CMS)
+
+# To use this file, run:
+# docker-compose up -d
+
+# Or directly specify the configuration you need:
+# docker-compose -f config/docker/docker-compose.postgres-prod.yml up -d
+
+services:
+  # MySQL Database
+  database:
+    image: mysql:8.0
+    container_name: telegram_ecommerce_db
+    environment:
+      MYSQL_DATABASE: telegram_ecommerce
+      MYSQL_USER: telegram_user
+      MYSQL_PASSWORD: telegram_pass
+      MYSQL_ROOT_PASSWORD: root_pass
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3307:3306"
+    networks:
+      - telegram_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:alpine
+    container_name: telegram_ecommerce_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - telegram_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Backend Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: telegram_ecommerce_backend
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DATABASE_PROVIDER: sqlite
+      DATABASE_URL: file:./dev.db
+      REDIS_URL: redis://redis:6379
+      FRONTEND_URL: http://frontend:3000
+      JWT_SECRET: dev-jwt-secret-change-in-production
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - ./backend/uploads:/app/uploads
+      - ./backend/storage:/app/storage
+      - ./backend/prisma:/app/prisma
+    ports:
+      - "3001:3001"
+    networks:
+      - telegram_network
+    command: npm run dev
+
+  # Bot Service
+  bot:
+    build:
+      context: ./bot
+      dockerfile: Dockerfile
+    container_name: telegram_ecommerce_bot
+    depends_on:
+      - backend
+    environment:
+      NODE_ENV: development
+      API_URL: http://backend:3001
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - ./bot:/app
+      - /app/node_modules
+    networks:
+      - telegram_network
+    command: npm start
+
+  # Frontend Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: telegram_ecommerce_frontend
+    depends_on:
+      - backend
+    environment:
+      NODE_ENV: production
+      VITE_API_URL: http://localhost:3001
+    ports:
+      - "3000:80"
+    networks:
+      - telegram_network
+
+  # Prometheus - Metrics Collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: telegram_ecommerce_prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - telegram_network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Grafana - Visualization Dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: telegram_ecommerce_grafana
+    restart: unless-stopped
+    ports:
+      - "3030:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3030
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_SECURITY_COOKIE_SAMESITE=none
+    volumes:
+      - ./config/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./config/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    networks:
+      - telegram_network
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  mysql_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  telegram_network:
+    driver: bridge

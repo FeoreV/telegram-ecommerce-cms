@@ -1,0 +1,421 @@
+/* QRAuthDialog - BEM Style */
+
+.qrAuthDialog {
+  min-width: 400px;
+  background-color: var(--color-bg, #ffffff);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--color-border, #dee2e6);
+}
+
+.qrAuthDialog__header {
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border, #dee2e6);
+  background: linear-gradient(135deg, #229ED9 0%, #0088cc 100%);
+  color: white;
+  text-align: center;
+}
+
+.qrAuthDialog__title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+}
+
+.qrAuthDialog__titleIcon {
+  background-color: rgba(255, 255, 255, 0.2);
+  padding: 8px;
+  border-radius: var(--border-radius-md);
+  font-size: 24px;
+}
+
+.qrAuthDialog__subtitle {
+  font-size: 14px;
+  opacity: 0.9;
+  line-height: 1.4;
+}
+
+.qrAuthDialog__content {
+  padding: var(--spacing-xl);
+  text-align: center;
+}
+
+/* QR Code Section */
+.qrAuthDialog__qrSection {
+  margin-bottom: var(--spacing-xl);
+}
+
+.qrAuthDialog__qrContainer {
+  width: 200px;
+  height: 200px;
+  margin: 0 auto var(--spacing-lg);
+  background-color: var(--color-bg, #ffffff);
+  border: 4px solid var(--color-primary, #0088cc);
+  border-radius: var(--border-radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-md);
+}
+
+.qrAuthDialog__qrCode {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--border-radius-sm);
+}
+
+.qrAuthDialog__qrLoading {
+  width: 160px;
+  height: 160px;
+  background-color: var(--color-bg-secondary, #f8f9fa);
+  border-radius: var(--border-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary, #666666);
+  animation: pulse 2s infinite;
+}
+
+.qrAuthDialog__qrError {
+  width: 160px;
+  height: 160px;
+  background-color: rgba(244, 67, 54, 0.1);
+  border-radius: var(--border-radius-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-error, #f44336);
+  gap: var(--spacing-sm);
+}
+
+.qrAuthDialog__qrErrorIcon {
+  font-size: 32px;
+}
+
+.qrAuthDialog__qrErrorText {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Instructions */
+.qrAuthDialog__instructions {
+  margin-bottom: var(--spacing-lg);
+}
+
+.qrAuthDialog__instructionsTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text, #333333);
+  margin-bottom: var(--spacing-md);
+}
+
+.qrAuthDialog__instructionsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+}
+
+.qrAuthDialog__instruction {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-md);
+  background-color: var(--color-bg-secondary, #f8f9fa);
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--color-border, #dee2e6);
+}
+
+.qrAuthDialog__instructionNumber {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--border-radius-full);
+  background-color: var(--color-primary, #0088cc);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.qrAuthDialog__instructionText {
+  font-size: 14px;
+  color: var(--color-text, #333333);
+  line-height: 1.4;
+  flex: 1;
+}
+
+/* Status Section */
+.qrAuthDialog__status {
+  margin-bottom: var(--spacing-lg);
+}
+
+.qrAuthDialog__statusIndicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background-color: var(--color-bg-secondary, #f8f9fa);
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--color-border, #dee2e6);
+}
+
+.qrAuthDialog__statusIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--border-radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: white;
+}
+
+.qrAuthDialog__statusIcon--waiting {
+  background-color: var(--color-warning, #ff9800);
+  animation: pulse 2s infinite;
+}
+
+.qrAuthDialog__statusIcon--success {
+  background-color: var(--color-success, #4caf50);
+}
+
+.qrAuthDialog__statusIcon--error {
+  background-color: var(--color-error, #f44336);
+}
+
+.qrAuthDialog__statusText {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text, #333333);
+}
+
+/* Timer */
+.qrAuthDialog__timer {
+  font-size: 14px;
+  color: var(--color-text-secondary, #666666);
+  margin-bottom: var(--spacing-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+}
+
+.qrAuthDialog__timerIcon {
+  font-size: 16px;
+}
+
+.qrAuthDialog__timerText {
+  font-family: monospace;
+  font-weight: 600;
+}
+
+.qrAuthDialog__timerText--expiring {
+  color: var(--color-error, #f44336);
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0.5;
+  }
+}
+
+/* Actions */
+.qrAuthDialog__actions {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+  padding: var(--spacing-lg);
+  border-top: 1px solid var(--color-border, #dee2e6);
+  background-color: var(--color-bg-secondary, #f8f9fa);
+}
+
+.qrAuthDialog__refreshButton {
+  background-color: var(--color-primary, #0088cc);
+  color: white;
+  padding: 10px 20px;
+  border-radius: var(--border-radius-md);
+  font-weight: 600;
+  text-transform: none;
+  transition: var(--transition-normal);
+  border: none;
+  cursor: pointer;
+}
+
+.qrAuthDialog__refreshButton:hover {
+  background-color: #0077b3;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.qrAuthDialog__refreshButton:disabled {
+  background-color: var(--color-text-secondary, #666666);
+  transform: none;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.qrAuthDialog__closeButton {
+  background-color: transparent;
+  color: var(--color-text-secondary, #666666);
+  padding: 10px 20px;
+  border-radius: var(--border-radius-md);
+  font-weight: 600;
+  text-transform: none;
+  border: 2px solid var(--color-border, #dee2e6);
+  transition: var(--transition-normal);
+  cursor: pointer;
+}
+
+.qrAuthDialog__closeButton:hover {
+  background-color: var(--color-text-secondary, #666666);
+  color: white;
+  border-color: var(--color-text-secondary, #666666);
+}
+
+/* Help Section */
+.qrAuthDialog__help {
+  padding: var(--spacing-md);
+  background-color: rgba(33, 150, 243, 0.1);
+  border: 1px solid rgba(33, 150, 243, 0.2);
+  border-radius: var(--border-radius-md);
+  color: var(--color-info, #2196f3);
+  margin-top: var(--spacing-lg);
+}
+
+.qrAuthDialog__helpTitle {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: var(--spacing-sm);
+}
+
+.qrAuthDialog__helpText {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.qrAuthDialog__helpLink {
+  color: var(--color-info, #2196f3);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.qrAuthDialog__helpLink:hover {
+  text-decoration: underline;
+}
+
+/* Security Badge */
+.qrAuthDialog__security {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-lg);
+  font-size: 12px;
+  color: var(--color-text-secondary, #666666);
+}
+
+.qrAuthDialog__securityIcon {
+  font-size: 14px;
+  color: var(--color-success, #4caf50);
+}
+
+/* Dark Theme Support */
+.theme--dark .qrAuthDialog {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .qrAuthDialog__instructionsTitle {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .qrAuthDialog__instruction {
+  background-color: var(--color-bg, #1a1a1a);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .qrAuthDialog__instructionText {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .qrAuthDialog__statusIndicator {
+  background-color: var(--color-bg, #1a1a1a);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .qrAuthDialog__statusText {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .qrAuthDialog__qrLoading {
+  background-color: var(--color-bg, #1a1a1a);
+  color: var(--color-text-secondary, #cccccc);
+}
+
+.theme--dark .qrAuthDialog__actions {
+  background-color: var(--color-bg, #1a1a1a);
+  border-top-color: var(--color-border, #404040);
+}
+
+.theme--dark .qrAuthDialog__closeButton {
+  color: var(--color-text, #ffffff);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .qrAuthDialog__closeButton:hover {
+  background-color: var(--color-text, #ffffff);
+  color: var(--color-bg, #1a1a1a);
+  border-color: var(--color-text, #ffffff);
+}
+
+.theme--dark .qrAuthDialog__help {
+  background-color: rgba(33, 150, 243, 0.2);
+  border-color: rgba(33, 150, 243, 0.3);
+  color: #64b5f6;
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .qrAuthDialog {
+    min-width: auto;
+    margin: var(--spacing-md);
+  }
+  
+  .qrAuthDialog__content {
+    padding: var(--spacing-lg);
+  }
+  
+  .qrAuthDialog__qrContainer {
+    width: 160px;
+    height: 160px;
+  }
+  
+  .qrAuthDialog__qrLoading,
+  .qrAuthDialog__qrError {
+    width: 130px;
+    height: 130px;
+  }
+  
+  .qrAuthDialog__actions {
+    flex-direction: column;
+  }
+  
+  .qrAuthDialog__refreshButton,
+  .qrAuthDialog__closeButton {
+    width: 100%;
+  }
+}

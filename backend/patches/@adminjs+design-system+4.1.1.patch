@@ -1,0 +1,14 @@
+diff --git a/node_modules/@adminjs/design-system/package.json b/node_modules/@adminjs/design-system/package.json
+index 4b9f7f1..a3f5b2e 100644
+--- a/node_modules/@adminjs/design-system/package.json
++++ b/node_modules/@adminjs/design-system/package.json
+@@ -12,6 +12,7 @@
+     "./styled-components": {
+       "import": "./build/utils/styled.js",
+       "types": "./types/src/utils/styled.d.ts",
+       "require": "./build/utils/styled.js"
+     }
+   },
+   "repository": "git@github.com:SoftwareBrothers/adminjs-design-system.git",
+   "author": "Wojciech Krysiak",
+

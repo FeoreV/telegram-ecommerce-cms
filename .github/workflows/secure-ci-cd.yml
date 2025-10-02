@@ -1,0 +1,516 @@
+name: Secure CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  NODE_VERSION: '18'
+
+# Use OIDC for secure authentication
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  security-events: write
+  attestations: write
+
+jobs:
+  # Security scanning and validation
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@v2
+      with:
+        egress-policy: audit
+        allowed-endpoints: >
+          api.github.com:443
+          github.com:443
+          registry.npmjs.org:443
+          nodejs.org:443
+          
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for security analysis
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: 'backend/package-lock.json'
+        
+    - name: Install dependencies
+      working-directory: ./backend
+      run: |
+        npm ci --only=production
+        npm audit --audit-level=high --production
+        
+    - name: Run security linting
+      working-directory: ./backend
+      run: |
+        npm run lint:security
+        
+    - name: Secret scanning
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: main
+        head: HEAD
+        
+    - name: Static Application Security Testing (SAST)
+      uses: github/codeql-action/init@v3
+      with:
+        languages: typescript, javascript
+        queries: security-extended
+        
+    - name: CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      
+    - name: Dependency vulnerability scan
+      uses: anchore/scan-action@v3
+      with:
+        path: "./backend"
+        fail-build: true
+        severity-cutoff: high
+        
+    - name: Upload SARIF results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: results.sarif
+
+  # Generate SBOM
+  sbom-generation:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+    needs: security-scan
+    timeout-minutes: 15
+    
+    steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@v2
+      with:
+        egress-policy: audit
+        
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: 'backend/package-lock.json'
+        
+    - name: Install dependencies
+      working-directory: ./backend
+      run: npm ci
+      
+    - name: Generate SBOM
+      working-directory: ./backend
+      run: |
+        npm run generate:sbom
+        
+    - name: Install Syft
+      run: |
+        curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+        
+    - name: Generate SBOM with Syft
+      run: |
+        syft ./backend -o cyclonedx-json=sbom-syft.json
+        syft ./backend -o spdx-json=sbom-spdx.json
+        
+    - name: Upload SBOM artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: sbom-files
+        path: |
+          sbom-*.json
+          backend/sbom.json
+        retention-days: 30
+
+  # Build and test
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    needs: [security-scan, sbom-generation]
+    timeout-minutes: 45
+    
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-ref: ${{ steps.build.outputs.ref }}
+      
+    steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@v2
+      with:
+        egress-policy: audit
+        
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Configure OIDC for AWS
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        role-session-name: BotRT-CI-Session
+        aws-region: us-east-1
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: 'backend/package-lock.json'
+        
+    - name: Install dependencies
+      working-directory: ./backend
+      run: |
+        npm ci
+        npm run postinstall:security
+        
+    - name: Run security tests
+      working-directory: ./backend
+      run: |
+        npm run test:security
+        npm run test:integration:security
+        
+    - name: Build application
+      working-directory: ./backend
+      run: |
+        npm run build:secure
+        
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Install Cosign
+      uses: sigstore/cosign-installer@v3
+      with:
+        cosign-release: 'v2.2.0'
+        
+    - name: Login to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=sha,prefix={{branch}}-
+          
+    - name: Build and push container image
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: ./backend
+        file: ./backend/Dockerfile.secure
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        attestations: type=provenance,mode=max
+        sbom: true
+        
+    - name: Generate provenance attestation
+      uses: actions/attest-build-provenance@v1
+      with:
+        subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        subject-digest: ${{ steps.build.outputs.digest }}
+        
+    - name: Download SBOM
+      uses: actions/download-artifact@v4
+      with:
+        name: sbom-files
+        
+    - name: Attest SBOM
+      uses: actions/attest-sbom@v1
+      with:
+        subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        subject-digest: ${{ steps.build.outputs.digest }}
+        sbom-path: 'sbom-syft.json'
+        
+    - name: Sign container image with Cosign
+      env:
+        COSIGN_EXPERIMENTAL: 1
+      run: |
+        cosign sign --yes ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+        
+    - name: Verify signature
+      env:
+        COSIGN_EXPERIMENTAL: 1
+      run: |
+        cosign verify ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }} \
+          --certificate-identity-regexp 'https://github\.com/${{ github.repository_owner }}/${{ github.event.repository.name }}' \
+          --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'
+
+  # Container security scanning
+  container-scan:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 20
+    
+    steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@v2
+      with:
+        egress-policy: audit
+        
+    - name: Install Trivy
+      run: |
+        sudo apt-get update
+        sudo apt-get install wget apt-transport-https gnupg lsb-release
+        wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+        echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+        sudo apt-get update
+        sudo apt-get install trivy
+        
+    - name: Run Trivy vulnerability scanner
+      run: |
+        trivy image \
+          --format sarif \
+          --output trivy-results.sarif \
+          --severity HIGH,CRITICAL \
+          --exit-code 1 \
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.image-digest }}
+          
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+        
+    - name: Run Trivy configuration scan
+      run: |
+        trivy config \
+          --format sarif \
+          --output trivy-config-results.sarif \
+          --exit-code 1 \
+          .
+          
+    - name: Upload configuration scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-config-results.sarif'
+
+  # Staging deployment (with additional security checks)
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build, container-scan]
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    timeout-minutes: 30
+    
+    steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@v2
+      with:
+        egress-policy: audit
+        
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Configure OIDC for AWS
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_STAGING_ROLE_ARN }}
+        role-session-name: BotRT-Staging-Deploy
+        aws-region: us-east-1
+        
+    - name: Verify image signature before deployment
+      env:
+        COSIGN_EXPERIMENTAL: 1
+      run: |
+        cosign verify ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.image-digest }} \
+          --certificate-identity-regexp 'https://github\.com/${{ github.repository_owner }}/${{ github.event.repository.name }}' \
+          --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'
+          
+    - name: Deploy to staging with security policies
+      run: |
+        # Deploy with OPA/Gatekeeper policies enforced
+        kubectl apply -f k8s/staging/security-policies.yaml
+        kubectl apply -f k8s/staging/deployment.yaml
+        kubectl set image deployment/botrt-backend \
+          backend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.image-digest }}
+          
+    - name: Run post-deployment security tests
+      run: |
+        # DAST scanning
+        npm run test:dast:staging
+        
+        # Runtime security verification
+        kubectl exec -it deployment/botrt-backend -- npm run verify:runtime-security
+
+  # Production deployment (only from main branch with manual approval)
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build, container-scan]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    timeout-minutes: 45
+    
+    steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@v2
+      with:
+        egress-policy: audit
+        
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Configure OIDC for Production AWS
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_PRODUCTION_ROLE_ARN }}
+        role-session-name: BotRT-Production-Deploy
+        aws-region: us-east-1
+        
+    - name: Final security verification
+      env:
+        COSIGN_EXPERIMENTAL: 1
+      run: |
+        # Verify all attestations
+        cosign verify-attestation \
+          --type slsaprovenance \
+          --certificate-identity-regexp 'https://github\.com/${{ github.repository_owner }}/${{ github.event.repository.name }}' \
+          --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.image-digest }}
+          
+        cosign verify-attestation \
+          --type cyclonedxsbom \
+          --certificate-identity-regexp 'https://github\.com/${{ github.repository_owner }}/${{ github.event.repository.name }}' \
+          --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.image-digest }}
+          
+    - name: Deploy to production with zero-downtime
+      run: |
+        # Apply strict production security policies
+        kubectl apply -f k8s/production/security-policies.yaml
+        kubectl apply -f k8s/production/network-policies.yaml
+        
+        # Rolling deployment with health checks
+        kubectl apply -f k8s/production/deployment.yaml
+        kubectl set image deployment/botrt-backend \
+          backend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.image-digest }}
+          
+        # Wait for rollout and verify
+        kubectl rollout status deployment/botrt-backend --timeout=600s
+        kubectl rollout restart deployment/botrt-backend
+        
+    - name: Post-deployment security validation
+      run: |
+        # Production health checks
+        curl -f https://api.botrt.com/health/security
+        
+        # Runtime security verification
+        kubectl exec -it deployment/botrt-backend -- npm run verify:production-security
+        
+        # Log security deployment event
+        curl -X POST "https://api.botrt.com/api/audit/deployment" \
+          -H "Authorization: Bearer ${{ secrets.AUDIT_TOKEN }}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "event": "production_deployment",
+            "image": "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.image-digest }}",
+            "commit": "${{ github.sha }}",
+            "actor": "${{ github.actor }}",
+            "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"
+          }'
+
+  # Dependency updates with security approval
+  dependency-updates:
+    name: Automated Dependency Updates
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    timeout-minutes: 30
+    
+    steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@v2
+      with:
+        egress-policy: audit
+        
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.DEPENDENCY_UPDATE_TOKEN }}
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        
+    - name: Install npm-check-updates
+      run: npm install -g npm-check-updates
+      
+    - name: Check for security updates
+      working-directory: ./backend
+      run: |
+        npm audit --audit-level=high --json > audit-before.json
+        ncu -u --target minor --filter '/security|patch|fix/'
+        npm audit --audit-level=high --json > audit-after.json
+        
+    - name: Create security update PR
+      if: ${{ hashFiles('backend/package.json') != hashFiles('backend/package.json') }}
+      uses: peter-evans/create-pull-request@v5
+      with:
+        token: ${{ secrets.DEPENDENCY_UPDATE_TOKEN }}
+        commit-message: 'security: update dependencies with security fixes'
+        title: 'Security: Automated dependency updates'
+        body: |
+          This PR contains automated security updates for dependencies.
+          
+          **Security Audit Before:**
+          ```json
+          $(cat backend/audit-before.json | jq '.metadata.vulnerabilities')
+          ```
+          
+          **Security Audit After:**
+          ```json
+          $(cat backend/audit-after.json | jq '.metadata.vulnerabilities')
+          ```
+          
+          Please review the changes and approve if security improvements are verified.
+        branch: security/dependency-updates
+        labels: |
+          security
+          dependencies
+          automated
+        reviewers: |
+          security-team
+        assignees: |
+          security-lead
+
+# Schedule for regular security scans
+on:
+  schedule:
+    # Run dependency updates weekly on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+    # Run full security scan daily at midnight UTC
+    - cron: '0 0 * * *'

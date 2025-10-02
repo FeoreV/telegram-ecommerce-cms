@@ -1,0 +1,80 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Source code
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Shell scripts
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Windows scripts
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Config files
+.env* text eol=lf
+*.conf text eol=lf
+*.config text eol=lf
+Dockerfile* text eol=lf
+docker-compose*.yml text eol=lf
+
+# SQL
+*.sql text eol=lf
+
+# Documents
+*.txt text eol=lf
+LICENSE text eol=lf
+README* text eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary
+*.eot binary
+*.ttf binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tar binary
+
+# Archives
+*.7z binary
+*.jar binary
+*.rar binary
+*.tar.gz binary
+*.tgz binary
+
+# Certificates
+*.pem binary
+*.key binary
+*.crt binary
+*.p12 binary
+*.pfx binary
+
+# Databases
+*.db binary
+*.sqlite binary
+*.sqlite3 binary
+
+# Exclude from exports
+.gitattributes export-ignore
+.gitignore export-ignore
+.editorconfig export-ignore
+*.log export-ignore
+*.bak export-ignore
+test* export-ignore
+tools/development/* export-ignore

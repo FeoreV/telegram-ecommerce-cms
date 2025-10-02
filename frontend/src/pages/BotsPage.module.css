@@ -1,0 +1,953 @@
+/* BotsPage - BEM Style */
+
+.botsPage {
+  min-height: 100vh;
+  background-color: var(--color-bg, #ffffff);
+  padding-bottom: var(--spacing-xl);
+}
+
+.botsPage__header {
+  margin-bottom: var(--spacing-lg);
+}
+
+.botsPage__headerTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.botsPage__titleSection {
+  flex: 1;
+  min-width: 200px;
+}
+
+.botsPage__title {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--color-text, #333333);
+  margin-bottom: var(--spacing-xs);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.botsPage__titleIcon {
+  background: linear-gradient(135deg, #229ED9 0%, #0088cc 100%);
+  color: white;
+  padding: 12px;
+  border-radius: var(--border-radius-lg);
+  font-size: 24px;
+}
+
+.botsPage__subtitle {
+  font-size: 16px;
+  color: var(--color-text-secondary, #666666);
+  line-height: 1.4;
+}
+
+.botsPage__actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.botsPage__createButton {
+  background: linear-gradient(135deg, #229ED9 0%, #0088cc 100%);
+  color: white;
+  padding: 10px 20px;
+  border-radius: var(--border-radius-md);
+  font-weight: 600;
+  text-transform: none;
+  transition: var(--transition-normal);
+  border: none;
+  cursor: pointer;
+}
+
+.botsPage__createButton:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+  filter: brightness(1.1);
+}
+
+.botsPage__templatesButton {
+  background-color: var(--color-success, #4caf50);
+  color: white;
+  padding: 10px 20px;
+  border-radius: var(--border-radius-md);
+  font-weight: 600;
+  text-transform: none;
+  transition: var(--transition-normal);
+}
+
+.botsPage__templatesButton:hover {
+  background-color: #45a049;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.botsPage__refreshButton {
+  padding: 10px;
+  border-radius: var(--border-radius-full);
+  transition: var(--transition-normal);
+  color: var(--color-text-secondary, #666666);
+  background: none;
+  border: 1px solid var(--color-border, #dee2e6);
+}
+
+.botsPage__refreshButton:hover {
+  background-color: rgba(0, 136, 204, 0.1);
+  color: var(--color-primary, #0088cc);
+  border-color: var(--color-primary, #0088cc);
+  transform: rotate(180deg);
+}
+
+/* Bot Status Overview */
+.botsPage__overview {
+  background-color: var(--color-bg, #ffffff);
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--color-border, #dee2e6);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--spacing-lg);
+  overflow: hidden;
+}
+
+.botsPage__overviewHeader {
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border, #dee2e6);
+  background: linear-gradient(135deg, #229ED9 0%, #0088cc 100%);
+  color: white;
+}
+
+.botsPage__overviewTitle {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: var(--spacing-xs);
+}
+
+.botsPage__overviewSubtitle {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.botsPage__overviewContent {
+  padding: var(--spacing-lg);
+}
+
+.botsPage__overviewStats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.botsPage__overviewStat {
+  text-align: center;
+  padding: var(--spacing-md);
+  background-color: var(--color-bg-secondary, #f8f9fa);
+  border-radius: var(--border-radius-md);
+}
+
+.botsPage__overviewStatValue {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: var(--spacing-xs);
+}
+
+.botsPage__overviewStatValue--active {
+  color: var(--color-success, #4caf50);
+}
+
+.botsPage__overviewStatValue--inactive {
+  color: var(--color-error, #f44336);
+}
+
+.botsPage__overviewStatValue--total {
+  color: var(--color-primary, #0088cc);
+}
+
+.botsPage__overviewStatLabel {
+  font-size: 12px;
+  color: var(--color-text-secondary, #666666);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Filters */
+.botsPage__filters {
+  background-color: var(--color-bg, #ffffff);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  border: 1px solid var(--color-border, #dee2e6);
+  box-shadow: var(--shadow-sm);
+}
+
+.botsPage__filtersGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+  align-items: end;
+}
+
+.botsPage__searchField {
+  grid-column: 1 / -1;
+}
+
+.botsPage__filterField {
+  min-width: 0;
+}
+
+/* Bots Grid */
+.botsPage__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+/* Bot Card */
+.botsPage__botCard {
+  background-color: var(--color-bg, #ffffff);
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--color-border, #dee2e6);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: var(--transition-normal);
+  cursor: pointer;
+}
+
+.botsPage__botCard:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.botsPage__botCard--active {
+  border-color: var(--color-success, #4caf50);
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.05) 0%, rgba(76, 175, 80, 0.02) 100%);
+}
+
+.botsPage__botCard--inactive {
+  opacity: 0.6;
+  border-color: var(--color-text-secondary, #666666);
+}
+
+.botsPage__botCard--error {
+  border-color: var(--color-error, #f44336);
+  background: linear-gradient(135deg, rgba(244, 67, 54, 0.05) 0%, rgba(244, 67, 54, 0.02) 100%);
+}
+
+.botsPage__botHeader {
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border, #dee2e6);
+  background: linear-gradient(135deg, #229ED9 0%, #0088cc 100%);
+  color: white;
+  position: relative;
+}
+
+.botsPage__botStatus {
+  position: absolute;
+  top: var(--spacing-md);
+  right: var(--spacing-md);
+  width: 12px;
+  height: 12px;
+  border-radius: var(--border-radius-full);
+  border: 2px solid white;
+}
+
+.botsPage__botStatus--active {
+  background-color: var(--color-success, #4caf50);
+  animation: pulse 2s infinite;
+}
+
+.botsPage__botStatus--inactive {
+  background-color: var(--color-text-secondary, #666666);
+}
+
+.botsPage__botStatus--error {
+  background-color: var(--color-error, #f44336);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.botsPage__botInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.botsPage__botAvatar {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--border-radius-full);
+  background-color: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.botsPage__botDetails {
+  flex: 1;
+  min-width: 0;
+}
+
+.botsPage__botName {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: var(--spacing-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.botsPage__botUsername {
+  font-size: 14px;
+  opacity: 0.9;
+  margin-bottom: var(--spacing-xs);
+}
+
+.botsPage__botStore {
+  font-size: 12px;
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.botsPage__botContent {
+  padding: var(--spacing-lg);
+}
+
+.botsPage__botMetrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.botsPage__botMetric {
+  text-align: center;
+  padding: var(--spacing-sm);
+  background-color: var(--color-bg-secondary, #f8f9fa);
+  border-radius: var(--border-radius-md);
+}
+
+.botsPage__botMetricValue {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text, #333333);
+  margin-bottom: 2px;
+}
+
+.botsPage__botMetricLabel {
+  font-size: 10px;
+  color: var(--color-text-secondary, #666666);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.botsPage__botInfo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.botsPage__botInfoItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: 14px;
+}
+
+.botsPage__botInfoIcon {
+  color: var(--color-text-secondary, #666666);
+  font-size: 16px;
+  width: 20px;
+  flex-shrink: 0;
+}
+
+.botsPage__botInfoText {
+  color: var(--color-text, #333333);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.botsPage__botActions {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-top: 1px solid var(--color-border, #dee2e6);
+  background-color: var(--color-bg-secondary, #f8f9fa);
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: flex-end;
+}
+
+.botsPage__botAction {
+  padding: 6px 12px;
+  border-radius: var(--border-radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--color-border, #dee2e6);
+  background-color: transparent;
+  color: var(--color-text-secondary, #666666);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.botsPage__botAction:hover {
+  background-color: var(--color-primary, #0088cc);
+  color: white;
+  border-color: var(--color-primary, #0088cc);
+}
+
+.botsPage__botAction--primary {
+  background-color: var(--color-primary, #0088cc);
+  color: white;
+  border-color: var(--color-primary, #0088cc);
+}
+
+.botsPage__botAction--primary:hover {
+  background-color: #0077b3;
+}
+
+.botsPage__botAction--success {
+  background-color: var(--color-success, #4caf50);
+  color: white;
+  border-color: var(--color-success, #4caf50);
+}
+
+.botsPage__botAction--success:hover {
+  background-color: #45a049;
+}
+
+.botsPage__botAction--danger {
+  border-color: var(--color-error, #f44336);
+  color: var(--color-error, #f44336);
+}
+
+.botsPage__botAction--danger:hover {
+  background-color: var(--color-error, #f44336);
+  color: white;
+}
+
+/* Bot Constructor */
+.botsPage__constructor {
+  background-color: var(--color-bg, #ffffff);
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--color-border, #dee2e6);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--spacing-lg);
+  overflow: hidden;
+}
+
+.botsPage__constructorHeader {
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border, #dee2e6);
+  background: linear-gradient(135deg, var(--color-success, #4caf50) 0%, #45a049 100%);
+  color: white;
+}
+
+.botsPage__constructorTitle {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: var(--spacing-xs);
+}
+
+.botsPage__constructorSubtitle {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.botsPage__constructorContent {
+  padding: var(--spacing-lg);
+}
+
+.botsPage__constructorSteps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.botsPage__constructorStep {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--color-border, #dee2e6);
+  transition: var(--transition-fast);
+}
+
+.botsPage__constructorStep:hover {
+  background-color: var(--color-bg-secondary, #f8f9fa);
+}
+
+.botsPage__constructorStep--completed {
+  background-color: rgba(76, 175, 80, 0.1);
+  border-color: var(--color-success, #4caf50);
+}
+
+.botsPage__stepNumber {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--border-radius-full);
+  background-color: var(--color-text-secondary, #666666);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.botsPage__stepNumber--completed {
+  background-color: var(--color-success, #4caf50);
+}
+
+.botsPage__stepNumber--current {
+  background-color: var(--color-primary, #0088cc);
+  animation: pulse 2s infinite;
+}
+
+.botsPage__stepContent {
+  flex: 1;
+}
+
+.botsPage__stepTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text, #333333);
+  margin-bottom: var(--spacing-xs);
+}
+
+.botsPage__stepDescription {
+  font-size: 14px;
+  color: var(--color-text-secondary, #666666);
+  line-height: 1.4;
+}
+
+.botsPage__stepAction {
+  margin-left: auto;
+  padding: 6px 12px;
+  border-radius: var(--border-radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  background-color: var(--color-primary, #0088cc);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.botsPage__stepAction:hover {
+  background-color: #0077b3;
+}
+
+.botsPage__stepAction:disabled {
+  background-color: var(--color-text-secondary, #666666);
+  cursor: not-allowed;
+}
+
+/* Bot Templates */
+.botsPage__templates {
+  background-color: var(--color-bg, #ffffff);
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--color-border, #dee2e6);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--spacing-lg);
+  overflow: hidden;
+}
+
+.botsPage__templatesHeader {
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border, #dee2e6);
+  background-color: var(--color-bg-secondary, #f8f9fa);
+}
+
+.botsPage__templatesTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text, #333333);
+}
+
+.botsPage__templatesContent {
+  padding: var(--spacing-lg);
+}
+
+.botsPage__templatesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.botsPage__template {
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-border, #dee2e6);
+  border-radius: var(--border-radius-md);
+  text-align: center;
+  cursor: pointer;
+  transition: var(--transition-normal);
+}
+
+.botsPage__template:hover {
+  border-color: var(--color-primary, #0088cc);
+  background-color: rgba(0, 136, 204, 0.05);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.botsPage__templateIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--border-radius-lg);
+  background-color: var(--color-primary, #0088cc);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  margin: 0 auto var(--spacing-md);
+}
+
+.botsPage__templateName {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text, #333333);
+  margin-bottom: var(--spacing-xs);
+}
+
+.botsPage__templateDescription {
+  font-size: 14px;
+  color: var(--color-text-secondary, #666666);
+  line-height: 1.4;
+}
+
+/* Bot Management Tools */
+.botsPage__management {
+  background-color: var(--color-bg, #ffffff);
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--color-border, #dee2e6);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--spacing-lg);
+  overflow: hidden;
+}
+
+.botsPage__managementHeader {
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border, #dee2e6);
+  background-color: var(--color-bg-secondary, #f8f9fa);
+}
+
+.botsPage__managementTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text, #333333);
+}
+
+.botsPage__managementContent {
+  padding: var(--spacing-lg);
+}
+
+.botsPage__managementActions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.botsPage__managementAction {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-border, #dee2e6);
+  border-radius: var(--border-radius-md);
+  background-color: transparent;
+  color: var(--color-text, #333333);
+  cursor: pointer;
+  transition: var(--transition-normal);
+  text-decoration: none;
+}
+
+.botsPage__managementAction:hover {
+  background-color: var(--color-bg-secondary, #f8f9fa);
+  border-color: var(--color-primary, #0088cc);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.botsPage__managementActionIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--border-radius-md);
+  background-color: var(--color-primary, #0088cc);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.botsPage__managementActionContent {
+  flex: 1;
+}
+
+.botsPage__managementActionTitle {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.botsPage__managementActionDescription {
+  font-size: 12px;
+  color: var(--color-text-secondary, #666666);
+  line-height: 1.3;
+}
+
+/* Loading and Empty States */
+.botsPage__loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 300px;
+  background-color: var(--color-bg, #ffffff);
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--color-border, #dee2e6);
+}
+
+.botsPage__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xxl);
+  background-color: var(--color-bg, #ffffff);
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--color-border, #dee2e6);
+  text-align: center;
+}
+
+.botsPage__emptyIcon {
+  font-size: 64px;
+  color: var(--color-text-secondary, #666666);
+  margin-bottom: var(--spacing-md);
+  opacity: 0.5;
+}
+
+.botsPage__emptyTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text, #333333);
+  margin-bottom: var(--spacing-sm);
+}
+
+.botsPage__emptyDescription {
+  font-size: 16px;
+  color: var(--color-text-secondary, #666666);
+  line-height: 1.5;
+  margin-bottom: var(--spacing-lg);
+  max-width: 400px;
+}
+
+.botsPage__emptyActions {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Dark Theme Support */
+.theme--dark .botsPage {
+  background-color: var(--color-bg, #1a1a1a);
+}
+
+.theme--dark .botsPage__title {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .botsPage__overview {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .botsPage__overviewStat {
+  background-color: var(--color-bg, #1a1a1a);
+}
+
+.theme--dark .botsPage__filters {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .botsPage__botCard {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .botsPage__botContent {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+}
+
+.theme--dark .botsPage__botMetric {
+  background-color: var(--color-bg, #1a1a1a);
+}
+
+.theme--dark .botsPage__botMetricValue {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .botsPage__botInfoText {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .botsPage__botActions {
+  background-color: var(--color-bg, #1a1a1a);
+  border-top-color: var(--color-border, #404040);
+}
+
+.theme--dark .botsPage__botAction {
+  border-color: var(--color-border, #404040);
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .botsPage__templates {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .botsPage__templatesHeader {
+  background-color: var(--color-bg, #1a1a1a);
+  border-bottom-color: var(--color-border, #404040);
+}
+
+.theme--dark .botsPage__templatesTitle {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .botsPage__template {
+  border-color: var(--color-border, #404040);
+  background-color: var(--color-bg, #1a1a1a);
+}
+
+.theme--dark .botsPage__templateName {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .botsPage__management {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .botsPage__managementHeader {
+  background-color: var(--color-bg, #1a1a1a);
+  border-bottom-color: var(--color-border, #404040);
+}
+
+.theme--dark .botsPage__managementTitle {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .botsPage__managementAction {
+  border-color: var(--color-border, #404040);
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .botsPage__managementActionTitle {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .botsPage__loading {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .botsPage__empty {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .botsPage__emptyTitle {
+  color: var(--color-text, #ffffff);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .botsPage__headerTop {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .botsPage__title {
+    font-size: 28px;
+  }
+  
+  .botsPage__actions {
+    justify-content: center;
+  }
+  
+  .botsPage__grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .botsPage__filtersGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .botsPage__overviewStats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .botsPage__botMetrics {
+    grid-template-columns: 1fr;
+  }
+  
+  .botsPage__templatesGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .botsPage__managementActions {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .botsPage__overviewStats {
+    grid-template-columns: 1fr;
+  }
+  
+  .botsPage__botHeader {
+    padding: var(--spacing-md);
+  }
+  
+  .botsPage__botContent {
+    padding: var(--spacing-md);
+  }
+  
+  .botsPage__botActions {
+    padding: var(--spacing-sm) var(--spacing-md);
+    flex-direction: column;
+  }
+  
+  .botsPage__botAction {
+    width: 100%;
+  }
+  
+  .botsPage__constructorStep {
+    flex-direction: column;
+    text-align: center;
+    gap: var(--spacing-sm);
+  }
+}

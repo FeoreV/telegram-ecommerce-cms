@@ -1,0 +1,7 @@
+{"isProduction":false,"level":"info","message":"Initializing Telegram Bot","port":"3003","service":"telegram-bot","timestamp":"2025-10-02T11:21:44.287Z","useWebhook":false}
+{"level":"info","message":"Redis not configured for bot security; using in-memory mode.","service":"telegram-bot","timestamp":"2025-10-02T11:21:44.295Z"}
+{"level":"info","message":"Redis not configured, using in-memory session store (development mode)","service":"telegram-bot","timestamp":"2025-10-02T11:21:44.296Z"}
+{"level":"info","message":"✅ Bot handlers configured","service":"telegram-bot","timestamp":"2025-10-02T11:21:44.297Z"}
+{"level":"info","message":"🤖 Bot running in polling mode with enhanced security","service":"telegram-bot","timestamp":"2025-10-02T11:21:44.301Z"}
+{"level":"info","message":"🤖 Bot API server running on port 3003 (polling mode with security)","service":"telegram-bot","timestamp":"2025-10-02T11:21:44.301Z"}
+{"level":"info","message":"🚀 Telegram bot started successfully with enhanced security","service":"telegram-bot","timestamp":"2025-10-02T11:21:44.302Z"}

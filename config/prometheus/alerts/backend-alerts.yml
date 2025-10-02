@@ -1,0 +1,134 @@
+# Backend Alert Rules for Telegram E-commerce Platform
+
+groups:
+  - name: backend_alerts
+    interval: 30s
+    rules:
+      # High error rate alert
+      - alert: HighErrorRate
+        expr: |
+          (sum(rate(botrt_http_requests_total{status_code=~"5.."}[5m])) 
+          / 
+          sum(rate(botrt_http_requests_total[5m]))) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+
+      # Slow response time
+      - alert: SlowResponseTime
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(botrt_http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 2
+        for: 10m
+        labels:
+          severity: warning
+          component: backend
+        annotations:
+          summary: "API response time is slow"
+          description: "95th percentile response time is {{ $value }}s (threshold: 2s)"
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: |
+          (botrt_system_memory_usage_bytes{type="heapUsed"} 
+          / 
+          botrt_system_memory_usage_bytes{type="heapTotal"}) > 0.90
+        for: 5m
+        labels:
+          severity: warning
+          component: backend
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value | humanizePercentage }}"
+
+      # Service down
+      - alert: ServiceDown
+        expr: up{job="backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "Backend service is down"
+          description: "Backend service has been down for more than 1 minute"
+
+      # High rate limit hits
+      - alert: HighRateLimitHits
+        expr: rate(botrt_rate_limit_hits_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: security
+        annotations:
+          summary: "High rate limit hits detected"
+          description: "Rate limit is being hit {{ $value }} times per second"
+
+      # Authentication failures
+      - alert: HighAuthFailures
+        expr: |
+          sum(rate(botrt_auth_attempts_total{result="failure"}[5m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: security
+        annotations:
+          summary: "High authentication failure rate"
+          description: "{{ $value }} authentication failures per second"
+
+  - name: business_alerts
+    interval: 60s
+    rules:
+      # Low stock alert
+      - alert: LowStockLevel
+        expr: botrt_stock_levels < 10
+        for: 5m
+        labels:
+          severity: info
+          component: inventory
+        annotations:
+          summary: "Low stock level for product {{ $labels.product_name }}"
+          description: "Only {{ $value }} units remaining"
+
+      # High order failure rate
+      - alert: HighOrderFailureRate
+        expr: |
+          (sum(rate(botrt_orders_total{status="FAILED"}[1h])) 
+          / 
+          sum(rate(botrt_orders_total[1h]))) > 0.10
+        for: 30m
+        labels:
+          severity: warning
+          component: orders
+        annotations:
+          summary: "High order failure rate"
+          description: "Order failure rate is {{ $value | humanizePercentage }}"
+
+  - name: infrastructure_alerts
+    interval: 30s
+    rules:
+      # Database connections
+      - alert: HighDatabaseConnections
+        expr: botrt_database_connections_active > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "High number of database connections"
+          description: "{{ $value }} active database connections"
+
+      # Redis connections
+      - alert: HighRedisConnections
+        expr: botrt_redis_connections_active > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "High number of Redis connections"
+          description: "{{ $value }} active Redis connections"

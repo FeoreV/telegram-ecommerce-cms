@@ -1,0 +1,1 @@
+{"version":3,"file":"theme-switcher.d.ts","sourceRoot":"","sources":["../../../src/admin/theme-switcher.tsx"],"names":[],"mappings":"AAAA,OAAO,KAA8B,MAAM,OAAO,CAAC;AAEnD,UAAU,kBAAkB;IAC1B,aAAa,CAAC,EAAE,CAAC,KAAK,EAAE,OAAO,GAAG,MAAM,KAAK,IAAI,CAAC;CACnD;AAwGD,QAAA,MAAM,aAAa,EAAE,KAAK,CAAC,EAAE,CAAC,kBAAkB,CAoL/C,CAAC;AAEF,eAAe,aAAa,CAAC"}

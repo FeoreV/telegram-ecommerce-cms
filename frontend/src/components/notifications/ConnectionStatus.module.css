@@ -1,0 +1,343 @@
+/* ConnectionStatus - BEM Style */
+
+.connectionStatus {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius-md);
+  font-size: 14px;
+  font-weight: 500;
+  transition: var(--transition-fast);
+  cursor: pointer;
+  user-select: none;
+}
+
+.connectionStatus__indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  background: transparent;
+  border: none;
+  color: inherit;
+  padding: 0;
+  cursor: pointer;
+}
+
+.connectionStatus__indicator:focus-visible {
+  outline: 2px solid var(--color-primary, #1976d2);
+  outline-offset: 2px;
+}
+
+.connectionStatus--connected {
+  background-color: rgba(76, 175, 80, 0.1);
+  color: var(--color-success, #4caf50);
+  border: 1px solid rgba(76, 175, 80, 0.2);
+}
+
+.connectionStatus--connecting {
+  background-color: rgba(255, 152, 0, 0.1);
+  color: var(--color-warning, #ff9800);
+  border: 1px solid rgba(255, 152, 0, 0.2);
+}
+
+.connectionStatus--disconnected {
+  background-color: rgba(244, 67, 54, 0.1);
+  color: var(--color-error, #f44336);
+  border: 1px solid rgba(244, 67, 54, 0.2);
+}
+
+.connectionStatus--error {
+  background-color: rgba(244, 67, 54, 0.15);
+  color: var(--color-error, #f44336);
+  border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
+.connectionStatus:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.connectionStatus__icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.connectionStatus__menu {
+  min-width: 250px;
+}
+
+.connectionStatus__menuHeader {
+  opacity: 1 !important;
+}
+
+.connectionStatus__error {
+  opacity: 1 !important;
+}
+
+.connectionStatus__quickSettings {
+  display: block;
+  opacity: 1 !important;
+}
+
+.connectionStatus__settingsAction {
+  gap: var(--spacing-xs);
+}
+
+.connectionStatus__icon--connected {
+  color: var(--color-success, #4caf50);
+}
+
+.connectionStatus__icon--connecting {
+  color: var(--color-warning, #ff9800);
+  animation: pulse 2s infinite;
+}
+
+.connectionStatus__icon--disconnected {
+  color: var(--color-error, #f44336);
+}
+
+.connectionStatus__icon--error {
+  color: var(--color-error, #f44336);
+  animation: shake 0.5s ease-in-out;
+}
+
+.connectionStatus__text {
+  font-weight: 500;
+}
+
+.connectionStatus__details {
+  font-size: 12px;
+  opacity: 0.8;
+  margin-left: var(--spacing-xs);
+}
+
+/* Compact variant */
+.connectionStatus--compact {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: 12px;
+  gap: var(--spacing-xs);
+}
+
+.connectionStatus--compact .connectionStatus__icon {
+  font-size: 14px;
+}
+
+.connectionStatus--compact .connectionStatus__details {
+  display: none;
+}
+
+/* Minimal variant (icon only) */
+.connectionStatus--minimal {
+  padding: var(--spacing-xs);
+  border-radius: var(--border-radius-full);
+  background: none;
+  border: none;
+}
+
+.connectionStatus--minimal .connectionStatus__text,
+.connectionStatus--minimal .connectionStatus__details {
+  display: none;
+}
+
+.connectionStatus--minimal .connectionStatus__icon {
+  font-size: 18px;
+}
+
+/* Tooltip for minimal variant */
+.connectionStatus__tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--color-bg, #ffffff);
+  color: var(--color-text, #333333);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius-md);
+  font-size: 12px;
+  white-space: nowrap;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--color-border, #dee2e6);
+  z-index: var(--z-tooltip);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  margin-bottom: var(--spacing-xs);
+}
+
+.connectionStatus__tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: var(--color-border, #dee2e6);
+}
+
+.connectionStatus:hover .connectionStatus__tooltip {
+  opacity: 1;
+}
+
+/* Status Indicator Dot */
+.connectionStatus__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--border-radius-full);
+  margin-right: var(--spacing-xs);
+  flex-shrink: 0;
+}
+
+.connectionStatus__dot--connected {
+  background-color: var(--color-success, #4caf50);
+  animation: pulse 2s infinite;
+}
+
+.connectionStatus__dot--connecting {
+  background-color: var(--color-warning, #ff9800);
+  animation: blink 1s infinite;
+}
+
+.connectionStatus__dot--disconnected {
+  background-color: var(--color-error, #f44336);
+}
+
+.connectionStatus__dot--error {
+  background-color: var(--color-error, #f44336);
+  animation: shake 0.5s ease-in-out infinite;
+}
+
+/* Reconnect Button */
+.connectionStatus__reconnectButton {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--border-radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: var(--spacing-sm);
+  transition: var(--transition-fast);
+}
+
+.connectionStatus__reconnectButton:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Signal Strength Indicator */
+.connectionStatus__signal {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  margin-left: var(--spacing-xs);
+}
+
+.connectionStatus__signalBar {
+  width: 3px;
+  background-color: currentColor;
+  border-radius: 1px;
+  opacity: 0.3;
+  transition: var(--transition-fast);
+}
+
+.connectionStatus__signalBar--active {
+  opacity: 1;
+}
+
+.connectionStatus__signalBar:nth-child(1) {
+  height: 4px;
+}
+
+.connectionStatus__signalBar:nth-child(2) {
+  height: 6px;
+}
+
+.connectionStatus__signalBar:nth-child(3) {
+  height: 8px;
+}
+
+.connectionStatus__signalBar:nth-child(4) {
+  height: 10px;
+}
+
+/* Latency Indicator */
+.connectionStatus__latency {
+  font-family: monospace;
+  font-size: 11px;
+  opacity: 0.7;
+  margin-left: var(--spacing-xs);
+}
+
+.connectionStatus__latency--good {
+  color: var(--color-success, #4caf50);
+}
+
+.connectionStatus__latency--medium {
+  color: var(--color-warning, #ff9800);
+}
+
+.connectionStatus__latency--poor {
+  color: var(--color-error, #f44336);
+}
+
+/* Animations */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-2px);
+  }
+  75% {
+    transform: translateX(2px);
+  }
+}
+
+/* Dark Theme Support */
+.theme--dark .connectionStatus__tooltip {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  color: var(--color-text, #ffffff);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .connectionStatus__tooltip::after {
+  border-top-color: var(--color-border, #404040);
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .connectionStatus {
+    font-size: 12px;
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+  
+  .connectionStatus__details {
+    display: none;
+  }
+  
+  .connectionStatus__signal,
+  .connectionStatus__latency {
+    display: none;
+  }
+}

@@ -1,0 +1,566 @@
+/* StoresPage - BEM Style */
+
+.storesPage {
+  min-height: 100vh;
+  background-color: var(--color-bg, #ffffff);
+  padding-bottom: var(--spacing-xl);
+}
+
+.storesPage__header {
+  margin-bottom: var(--spacing-lg);
+}
+
+.storesPage__headerTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.storesPage__titleSection {
+  flex: 1;
+  min-width: 200px;
+}
+
+.storesPage__title {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--color-text, #333333);
+  margin-bottom: var(--spacing-xs);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.storesPage__titleIcon {
+  background-color: var(--color-primary, #0088cc);
+  color: white;
+  padding: 12px;
+  border-radius: var(--border-radius-lg);
+  font-size: 24px;
+}
+
+.storesPage__subtitle {
+  font-size: 16px;
+  color: var(--color-text-secondary, #666666);
+  line-height: 1.4;
+}
+
+.storesPage__actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.storesPage__createButton {
+  background-color: var(--color-primary, #0088cc);
+  color: white;
+  padding: 10px 20px;
+  border-radius: var(--border-radius-md);
+  font-weight: 600;
+  text-transform: none;
+  transition: var(--transition-normal);
+}
+
+.storesPage__createButton:hover {
+  background-color: #0077b3;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.storesPage__templatesButton {
+  background-color: var(--color-success, #4caf50);
+  color: white;
+  padding: 10px 20px;
+  border-radius: var(--border-radius-md);
+  font-weight: 600;
+  text-transform: none;
+  transition: var(--transition-normal);
+}
+
+.storesPage__templatesButton:hover {
+  background-color: #45a049;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.storesPage__bulkButton {
+  background-color: var(--color-warning, #ff9800);
+  color: white;
+  padding: 10px 20px;
+  border-radius: var(--border-radius-md);
+  font-weight: 600;
+  text-transform: none;
+  transition: var(--transition-normal);
+}
+
+.storesPage__bulkButton:hover {
+  background-color: #f57c00;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Filters */
+.storesPage__filters {
+  background-color: var(--color-bg, #ffffff);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  border: 1px solid var(--color-border, #dee2e6);
+  box-shadow: var(--shadow-sm);
+}
+
+.storesPage__filtersGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+  align-items: end;
+}
+
+.storesPage__searchField {
+  grid-column: 1 / -1;
+}
+
+.storesPage__filterField {
+  min-width: 0;
+}
+
+/* Store Analytics */
+.storesPage__analytics {
+  background-color: var(--color-bg, #ffffff);
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--color-border, #dee2e6);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--spacing-lg);
+  overflow: hidden;
+}
+
+.storesPage__analyticsHeader {
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border, #dee2e6);
+  background-color: var(--color-bg-secondary, #f8f9fa);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.storesPage__analyticsTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text, #333333);
+}
+
+.storesPage__analyticsToggle {
+  color: var(--color-primary, #0088cc);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: var(--border-radius-sm);
+  transition: var(--transition-fast);
+}
+
+.storesPage__analyticsToggle:hover {
+  background-color: rgba(0, 136, 204, 0.1);
+}
+
+.storesPage__analyticsContent {
+  padding: var(--spacing-lg);
+}
+
+.storesPage__analyticsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.storesPage__analyticItem {
+  text-align: center;
+}
+
+.storesPage__analyticValue {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-primary, #0088cc);
+  margin-bottom: var(--spacing-xs);
+}
+
+.storesPage__analyticLabel {
+  font-size: 12px;
+  color: var(--color-text-secondary, #666666);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Stores Grid */
+.storesPage__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+/* Store Card */
+.storesPage__storeCard {
+  background-color: var(--color-bg, #ffffff);
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--color-border, #dee2e6);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: var(--transition-normal);
+  cursor: pointer;
+}
+
+.storesPage__storeCard:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.storesPage__storeCard--inactive {
+  opacity: 0.6;
+}
+
+.storesPage__storeHeader {
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border, #dee2e6);
+  background: linear-gradient(135deg, var(--color-primary, #0088cc) 0%, #0077b3 100%);
+  color: white;
+  position: relative;
+}
+
+.storesPage__storeActions {
+  position: absolute;
+  top: var(--spacing-md);
+  right: var(--spacing-md);
+}
+
+.storesPage__storeActionButton {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: none;
+  padding: 6px;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.storesPage__storeActionButton:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.storesPage__storeName {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: var(--spacing-xs);
+}
+
+.storesPage__storeDescription {
+  font-size: 14px;
+  opacity: 0.9;
+  line-height: 1.4;
+}
+
+.storesPage__storeContent {
+  padding: var(--spacing-lg);
+}
+
+.storesPage__storeStats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.storesPage__storeStat {
+  text-align: center;
+  padding: var(--spacing-md);
+  background-color: var(--color-bg-secondary, #f8f9fa);
+  border-radius: var(--border-radius-md);
+}
+
+.storesPage__storeStatValue {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text, #333333);
+  margin-bottom: var(--spacing-xs);
+}
+
+.storesPage__storeStatLabel {
+  font-size: 12px;
+  color: var(--color-text-secondary, #666666);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.storesPage__storeInfo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.storesPage__storeInfoItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: 14px;
+}
+
+.storesPage__storeInfoIcon {
+  color: var(--color-text-secondary, #666666);
+  font-size: 16px;
+  width: 20px;
+  flex-shrink: 0;
+}
+
+.storesPage__storeInfoText {
+  color: var(--color-text, #333333);
+}
+
+.storesPage__storeFooter {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-top: 1px solid var(--color-border, #dee2e6);
+  background-color: var(--color-bg-secondary, #f8f9fa);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.storesPage__storeStatus {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.storesPage__storeStatusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--border-radius-full);
+}
+
+.storesPage__storeStatusDot--active {
+  background-color: var(--color-success, #4caf50);
+}
+
+.storesPage__storeStatusDot--inactive {
+  background-color: var(--color-text-secondary, #666666);
+}
+
+.storesPage__storeFooterActions {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.storesPage__storeFooterButton {
+  padding: 4px 8px;
+  border-radius: var(--border-radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--color-border, #dee2e6);
+  background-color: transparent;
+  color: var(--color-text-secondary, #666666);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.storesPage__storeFooterButton:hover {
+  background-color: var(--color-primary, #0088cc);
+  color: white;
+  border-color: var(--color-primary, #0088cc);
+}
+
+/* Loading States */
+.storesPage__loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 300px;
+  background-color: var(--color-bg, #ffffff);
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--color-border, #dee2e6);
+}
+
+.storesPage__skeleton {
+  animation: loading-shimmer 1.5s infinite;
+}
+
+/* Empty State */
+.storesPage__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xxl);
+  background-color: var(--color-bg, #ffffff);
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--color-border, #dee2e6);
+  text-align: center;
+}
+
+.storesPage__emptyIcon {
+  font-size: 64px;
+  color: var(--color-text-secondary, #666666);
+  margin-bottom: var(--spacing-md);
+  opacity: 0.5;
+}
+
+.storesPage__emptyTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text, #333333);
+  margin-bottom: var(--spacing-sm);
+}
+
+.storesPage__emptyDescription {
+  font-size: 16px;
+  color: var(--color-text-secondary, #666666);
+  line-height: 1.5;
+  margin-bottom: var(--spacing-lg);
+  max-width: 400px;
+}
+
+.storesPage__emptyActions {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Dark Theme Support */
+.theme--dark .storesPage {
+  background-color: var(--color-bg, #1a1a1a);
+}
+
+.theme--dark .storesPage__title {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .storesPage__filters {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .storesPage__analytics {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .storesPage__analyticsHeader {
+  background-color: var(--color-bg, #1a1a1a);
+  border-bottom-color: var(--color-border, #404040);
+}
+
+.theme--dark .storesPage__analyticsTitle {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .storesPage__storeCard {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .storesPage__storeContent {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+}
+
+.theme--dark .storesPage__storeStat {
+  background-color: var(--color-bg, #1a1a1a);
+}
+
+.theme--dark .storesPage__storeStatValue {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .storesPage__storeInfoText {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .storesPage__storeFooter {
+  background-color: var(--color-bg, #1a1a1a);
+  border-top-color: var(--color-border, #404040);
+}
+
+.theme--dark .storesPage__storeFooterButton {
+  border-color: var(--color-border, #404040);
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .storesPage__loading {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .storesPage__empty {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .storesPage__emptyTitle {
+  color: var(--color-text, #ffffff);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .storesPage__headerTop {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .storesPage__title {
+    font-size: 28px;
+  }
+  
+  .storesPage__actions {
+    justify-content: center;
+  }
+  
+  .storesPage__grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .storesPage__filtersGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .storesPage__analyticsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .storesPage__storeStats {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .storesPage__analyticsGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .storesPage__storeHeader {
+    padding: var(--spacing-md);
+  }
+  
+  .storesPage__storeContent {
+    padding: var(--spacing-md);
+  }
+  
+  .storesPage__storeFooter {
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+  
+  .storesPage__actions {
+    flex-direction: column;
+  }
+  
+  .storesPage__createButton,
+  .storesPage__templatesButton,
+  .storesPage__bulkButton {
+    width: 100%;
+  }
+}

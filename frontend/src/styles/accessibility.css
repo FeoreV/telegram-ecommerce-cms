@@ -1,0 +1,321 @@
+/* Accessibility styles for the e-commerce platform */
+
+/* High contrast mode */
+.accessibility--high-contrast {
+  /* Override colors for better contrast */
+  --primary-color: #000000;
+  --secondary-color: #ffffff;
+  --background-color: #ffffff;
+  --text-color: #000000;
+  --border-color: #000000;
+  --focus-color: #0000ff;
+}
+
+.accessibility--high-contrast * {
+  /* Force high contrast colors */
+  color: var(--text-color) !important;
+  background-color: var(--background-color) !important;
+  border-color: var(--border-color) !important;
+}
+
+.accessibility--high-contrast button,
+.accessibility--high-contrast .MuiButton-root {
+  background-color: var(--text-color) !important;
+  color: var(--background-color) !important;
+  border: 2px solid var(--text-color) !important;
+}
+
+.accessibility--high-contrast button:hover,
+.accessibility--high-contrast .MuiButton-root:hover {
+  background-color: var(--background-color) !important;
+  color: var(--text-color) !important;
+}
+
+.accessibility--high-contrast a {
+  color: var(--focus-color) !important;
+  text-decoration: underline !important;
+}
+
+/* Reduced motion */
+.accessibility--reduced-motion *,
+.accessibility--reduced-motion *::before,
+.accessibility--reduced-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Font size variants */
+.accessibility__font-size--small {
+  font-size: 14px;
+}
+
+.accessibility__font-size--medium {
+  font-size: 16px;
+}
+
+.accessibility__font-size--large {
+  font-size: 18px;
+}
+
+.accessibility__font-size--large h1 { font-size: 2.5rem; }
+.accessibility__font-size--large h2 { font-size: 2rem; }
+.accessibility__font-size--large h3 { font-size: 1.75rem; }
+.accessibility__font-size--large h4 { font-size: 1.5rem; }
+.accessibility__font-size--large h5 { font-size: 1.25rem; }
+.accessibility__font-size--large h6 { font-size: 1.125rem; }
+
+/* Keyboard navigation */
+.accessibility--keyboard-navigation *:focus {
+  outline: 3px solid #005fcc !important;
+  outline-offset: 2px !important;
+}
+
+.accessibility--keyboard-navigation button:focus,
+.accessibility--keyboard-navigation input:focus,
+.accessibility--keyboard-navigation select:focus,
+.accessibility--keyboard-navigation textarea:focus,
+.accessibility--keyboard-navigation [tabindex]:focus {
+  box-shadow: 0 0 0 3px rgba(0, 95, 204, 0.5) !important;
+}
+
+/* Skip links */
+.accessibility__skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: #000;
+  color: #fff;
+  padding: 8px;
+  text-decoration: none;
+  z-index: 10000;
+  border-radius: 4px;
+}
+
+.accessibility__skip-link:focus {
+  top: 6px;
+}
+
+/* Screen reader only content */
+.accessibility__sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Focus management */
+.accessibility__focus-trap {
+  position: relative;
+}
+
+.accessibility__focus-trap::before,
+.accessibility__focus-trap::after {
+  content: '';
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(1px, 1px, 1px, 1px);
+}
+
+/* High contrast mode icons and images */
+.accessibility--high-contrast img,
+.accessibility--high-contrast svg,
+.accessibility--high-contrast .MuiSvgIcon-root {
+  filter: contrast(2) brightness(0.8) !important;
+}
+
+.accessibility--high-contrast .MuiChip-root {
+  background-color: var(--text-color) !important;
+  color: var(--background-color) !important;
+  border: 1px solid var(--text-color) !important;
+}
+
+.accessibility--high-contrast .MuiPaper-root {
+  background-color: var(--background-color) !important;
+  border: 2px solid var(--text-color) !important;
+}
+
+/* Improved focus indicators for interactive elements */
+.accessibility--keyboard-navigation .MuiButton-root:focus,
+.accessibility--keyboard-navigation .MuiIconButton-root:focus,
+.accessibility--keyboard-navigation .MuiToggleButton-root:focus {
+  outline: 3px solid #005fcc;
+  outline-offset: 2px;
+}
+
+.accessibility--keyboard-navigation .MuiTextField-root:focus-within {
+  outline: 2px solid #005fcc;
+  outline-offset: 1px;
+  border-radius: 4px;
+}
+
+/* Ensure sufficient color contrast for form elements */
+.accessibility--high-contrast .MuiOutlinedInput-root {
+  background-color: white !important;
+}
+
+.accessibility--high-contrast .MuiOutlinedInput-input {
+  color: black !important;
+}
+
+.accessibility--high-contrast .MuiOutlinedInput-notchedOutline {
+  border-color: black !important;
+  border-width: 2px !important;
+}
+
+/* Status indicators with better accessibility */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.status::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status--success::before {
+  background-color: #4caf50;
+}
+
+.status--warning::before {
+  background-color: #ff9800;
+}
+
+.status--error::before {
+  background-color: #f44336;
+}
+
+.status--info::before {
+  background-color: #2196f3;
+}
+
+/* High contrast status indicators */
+.accessibility--high-contrast .status--success::before {
+  background-color: #000;
+  border: 2px solid #000;
+}
+
+.accessibility--high-contrast .status--warning::before {
+  background-color: #000;
+  border: 2px solid #000;
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+}
+
+.accessibility--high-contrast .status--error::before {
+  background-color: #000;
+  border: 2px solid #000;
+  border-radius: 0;
+  transform: rotate(45deg);
+}
+
+.accessibility--high-contrast .status--info::before {
+  background-color: #000;
+  border: 2px solid #000;
+  border-radius: 0;
+}
+
+/* Tooltips and help text */
+.tooltip__content {
+  background: #333;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  max-width: 250px;
+  z-index: 1000;
+}
+
+.accessibility--high-contrast .tooltip__content {
+  background: #000 !important;
+  color: #fff !important;
+  border: 2px solid #fff !important;
+}
+
+/* Loading states with better accessibility */
+.loading {
+  position: relative;
+}
+
+.loading::after {
+  content: 'Загрузка...';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 20px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.accessibility--high-contrast .loading::after {
+  background: #fff !important;
+  color: #000 !important;
+  border: 2px solid #000 !important;
+}
+
+/* Responsive text scaling */
+@media (max-width: 768px) {
+  .accessibility__font-size--large {
+    font-size: 16px;
+  }
+  
+  .accessibility__font-size--large h1 { font-size: 2rem; }
+  .accessibility__font-size--large h2 { font-size: 1.75rem; }
+  .accessibility__font-size--large h3 { font-size: 1.5rem; }
+  .accessibility__font-size--large h4 { font-size: 1.25rem; }
+  .accessibility__font-size--large h5 { font-size: 1.125rem; }
+  .accessibility__font-size--large h6 { font-size: 1rem; }
+}
+
+/* Print styles for accessibility */
+@media print {
+  .accessibility__no-print {
+    display: none !important;
+  }
+  
+  a[href^="http"]:after {
+    content: " (" attr(href) ")";
+  }
+  
+  .accessibility--high-contrast * {
+    background: white !important;
+    color: black !important;
+  }
+}
+
+/* Prefers reduced motion media query support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Prefers high contrast media query support */
+@media (prefers-contrast: high) {
+  :root {
+    --primary-color: #000000;
+    --secondary-color: #ffffff;
+    --background-color: #ffffff;
+    --text-color: #000000;
+    --border-color: #000000;
+  }
+}

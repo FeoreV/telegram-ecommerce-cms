@@ -1,0 +1,148 @@
+export interface SecretPattern {
+    name: string;
+    description: string;
+    pattern: RegExp;
+    confidence: number;
+    entropy: number;
+    category: 'api_key' | 'password' | 'token' | 'certificate' | 'database' | 'encryption_key' | 'custom';
+    severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+    enabled: boolean;
+}
+export interface SecretDetectionConfig {
+    enableSecretDetection: boolean;
+    enableRealtimeScanning: boolean;
+    enableBatchScanning: boolean;
+    enableLogScanning: boolean;
+    enableFileScanning: boolean;
+    enableNetworkScanning: boolean;
+    logDirectories: string[];
+    fileExtensions: string[];
+    excludeDirectories: string[];
+    excludeFiles: string[];
+    confidenceThreshold: number;
+    entropyThreshold: number;
+    maxFileSize: number;
+    enableAutoQuarantine: boolean;
+    enableAutoRotation: boolean;
+    enableNotifications: boolean;
+    notificationWebhook?: string;
+    batchSize: number;
+    scanIntervalMs: number;
+    maxConcurrentScans: number;
+    enableWhitelist: boolean;
+    whitelistPatterns: string[];
+    enableContextAnalysis: boolean;
+    retentionDays: number;
+    enableEncryptedStorage: boolean;
+}
+export interface SecretDetectionResult {
+    id: string;
+    timestamp: Date;
+    secretType: string;
+    pattern: string;
+    confidence: number;
+    entropy: number;
+    severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+    source: 'log' | 'file' | 'network' | 'database' | 'memory';
+    location: string;
+    lineNumber?: number;
+    columnStart?: number;
+    columnEnd?: number;
+    beforeContext: string;
+    matchedContent: string;
+    afterContext: string;
+    fullLine?: string;
+    filename?: string;
+    filepath?: string;
+    fileSize?: number;
+    lastModified?: Date;
+    sourceIP?: string;
+    destinationIP?: string;
+    protocol?: string;
+    riskScore: number;
+    isValidSecret: boolean;
+    isActiveSecret: boolean;
+    potentialImpact: string[];
+    quarantined: boolean;
+    rotated: boolean;
+    notified: boolean;
+    scanId: string;
+    userId?: string;
+    applicationContext?: string;
+}
+export interface SecretLeakAlert {
+    id: string;
+    timestamp: Date;
+    severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+    title: string;
+    description: string;
+    category: string;
+    detections: SecretDetectionResult[];
+    detectionCount: number;
+    riskScore: number;
+    impactLevel: 'minimal' | 'moderate' | 'significant' | 'severe';
+    urgency: 'low' | 'medium' | 'high' | 'critical';
+    status: 'open' | 'investigating' | 'mitigated' | 'resolved' | 'false_positive';
+    assignee?: string;
+    responseActions: string[];
+    firstDetected: Date;
+    lastDetected: Date;
+    estimatedExposureDuration: number;
+}
+export declare class SecretLeakDetectionService {
+    private static instance;
+    private config;
+    private secretPatterns;
+    private scanQueue;
+    private activeScanners;
+    private detectionCache;
+    private alertHistory;
+    private constructor();
+    static getInstance(): SecretLeakDetectionService;
+    private initializeSecretPatterns;
+    scanText(content: string, source: SecretDetectionResult['source'], location: string, metadata?: Record<string, any>): Promise<SecretDetectionResult[]>;
+    scanLogFile(filepath: string): Promise<SecretDetectionResult[]>;
+    scanSourceFile(filepath: string): Promise<SecretDetectionResult[]>;
+    scanLogEntry(logEntry: string, source: string): Promise<void>;
+    private findPatternMatches;
+    private analyzeMatch;
+    private calculateEntropy;
+    private isWhitelisted;
+    private isLikelyFalsePositive;
+    private calculateRiskScore;
+    private validateSecret;
+    private validateAPIKey;
+    private validateToken;
+    private validateCertificate;
+    private checkSecretActivity;
+    private assessPotentialImpact;
+    private shouldReportDetection;
+    private processDetections;
+    private takeAutomatedActions;
+    private quarantineSecret;
+    private initiateSecretRotation;
+    private sendNotification;
+    private createAlert;
+    private mapRiskToImpact;
+    private mapSeverityToUrgency;
+    private generateResponseActions;
+    private shouldExcludeFile;
+    private maskSecret;
+    private startBackgroundTasks;
+    private scanLogDirectories;
+    private cleanupOldDetections;
+    getStats(): {
+        config: SecretDetectionConfig;
+        patternsCount: number;
+        activeScanners: number;
+        queueSize: number;
+        cacheSize: number;
+        alertsCount: number;
+    };
+    healthCheck(): Promise<{
+        status: string;
+        stats: any;
+    }>;
+}
+export declare const secretLeakDetectionService: SecretLeakDetectionService;
+//# sourceMappingURL=SecretLeakDetectionService.d.ts.map

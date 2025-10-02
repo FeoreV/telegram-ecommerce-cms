@@ -1,0 +1,227 @@
+/* AccessDeniedPage - BEM Style */
+
+.accessDeniedPage {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+  padding: var(--spacing-md);
+}
+
+.accessDeniedPage__container {
+  max-width: 600px;
+  width: 100%;
+  text-align: center;
+}
+
+.accessDeniedPage__card {
+  background-color: var(--color-bg, #ffffff);
+  border-radius: var(--border-radius-xl);
+  padding: var(--spacing-xxl);
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--color-border, #dee2e6);
+  animation: slideInUp 0.5s ease-out;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.accessDeniedPage__icon {
+  width: 96px;
+  height: 96px;
+  margin: 0 auto var(--spacing-lg);
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+  border-radius: var(--border-radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 48px;
+}
+
+.accessDeniedPage__title {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--color-text, #333333);
+  margin-bottom: var(--spacing-md);
+}
+
+.accessDeniedPage__message {
+  font-size: 18px;
+  color: var(--color-text-secondary, #666666);
+  line-height: 1.6;
+  margin-bottom: var(--spacing-lg);
+}
+
+.accessDeniedPage__description {
+  font-size: 16px;
+  color: var(--color-text-secondary, #666666);
+  line-height: 1.5;
+  margin-bottom: var(--spacing-xl);
+}
+
+.accessDeniedPage__actions {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.accessDeniedPage__homeButton {
+  background-color: var(--color-primary, #0088cc);
+  color: white;
+  padding: 12px 24px;
+  border-radius: var(--border-radius-md);
+  font-weight: 600;
+  text-transform: none;
+  transition: var(--transition-normal);
+  text-decoration: none;
+}
+
+.accessDeniedPage__homeButton:hover {
+  background-color: #0077b3;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+  text-decoration: none;
+}
+
+.accessDeniedPage__contactButton {
+  background-color: transparent;
+  color: var(--color-text-secondary, #666666);
+  padding: 12px 24px;
+  border-radius: var(--border-radius-md);
+  font-weight: 600;
+  text-transform: none;
+  border: 2px solid var(--color-border, #dee2e6);
+  transition: var(--transition-normal);
+  text-decoration: none;
+}
+
+.accessDeniedPage__contactButton:hover {
+  background-color: var(--color-text-secondary, #666666);
+  color: white;
+  border-color: var(--color-text-secondary, #666666);
+  text-decoration: none;
+}
+
+.accessDeniedPage__backButton {
+  background-color: transparent;
+  color: var(--color-text-secondary, #666666);
+  padding: 8px 16px;
+  border-radius: var(--border-radius-md);
+  font-weight: 500;
+  text-transform: none;
+  border: 1px solid var(--color-border, #dee2e6);
+  transition: var(--transition-normal);
+  text-decoration: none;
+  margin-top: var(--spacing-md);
+}
+
+.accessDeniedPage__backButton:hover {
+  background-color: var(--color-bg-secondary, #f8f9fa);
+  text-decoration: none;
+}
+
+/* Info Section */
+.accessDeniedPage__info {
+  margin-top: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  background-color: rgba(0, 136, 204, 0.1);
+  border: 1px solid rgba(0, 136, 204, 0.2);
+  border-radius: var(--border-radius-md);
+  color: var(--color-info, #2196f3);
+}
+
+.accessDeniedPage__infoTitle {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: var(--spacing-sm);
+}
+
+.accessDeniedPage__infoText {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Dark Theme Support */
+.theme--dark .accessDeniedPage__card {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .accessDeniedPage__title {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .accessDeniedPage__message {
+  color: var(--color-text-secondary, #cccccc);
+}
+
+.theme--dark .accessDeniedPage__description {
+  color: var(--color-text-secondary, #cccccc);
+}
+
+.theme--dark .accessDeniedPage__contactButton {
+  color: var(--color-text, #ffffff);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .accessDeniedPage__contactButton:hover {
+  background-color: var(--color-text, #ffffff);
+  color: var(--color-bg, #1a1a1a);
+  border-color: var(--color-text, #ffffff);
+}
+
+.theme--dark .accessDeniedPage__backButton {
+  color: var(--color-text, #ffffff);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .accessDeniedPage__backButton:hover {
+  background-color: var(--color-bg, #1a1a1a);
+}
+
+.theme--dark .accessDeniedPage__info {
+  background-color: rgba(33, 150, 243, 0.2);
+  border-color: rgba(33, 150, 243, 0.3);
+  color: #64b5f6;
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .accessDeniedPage__card {
+    padding: var(--spacing-xl);
+  }
+  
+  .accessDeniedPage__icon {
+    width: 80px;
+    height: 80px;
+    font-size: 40px;
+  }
+  
+  .accessDeniedPage__title {
+    font-size: 28px;
+  }
+  
+  .accessDeniedPage__message {
+    font-size: 16px;
+  }
+  
+  .accessDeniedPage__actions {
+    flex-direction: column;
+  }
+  
+  .accessDeniedPage__homeButton,
+  .accessDeniedPage__contactButton {
+    width: 100%;
+  }
+}

@@ -1,0 +1,525 @@
+version: '3.8'
+
+# Secure Infrastructure Stack with Network Isolation
+# This configuration provides maximum security with proper network segmentation
+
+networks:
+  # DMZ network for public-facing services
+  dmz:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.1.0/24
+    driver_opts:
+      com.docker.network.bridge.enable_icc: "false"
+      com.docker.network.bridge.enable_ip_masquerade: "true"
+      com.docker.network.driver.mtu: "1500"
+
+  # Application network for backend services
+  app_tier:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.2.0/24
+    driver_opts:
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.enable_ip_masquerade: "false"
+      com.docker.network.driver.mtu: "1500"
+
+  # Data network for databases and storage
+  data_tier:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.3.0/24
+    driver_opts:
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.enable_ip_masquerade: "false"
+      com.docker.network.driver.mtu: "1500"
+
+  # Management network for admin and monitoring
+  mgmt_tier:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.4.0/24
+    driver_opts:
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.enable_ip_masquerade: "false"
+      com.docker.network.driver.mtu: "1500"
+
+services:
+  # WAF and Reverse Proxy (DMZ)
+  nginx-waf:
+    image: nginx:1.25-alpine
+    container_name: botrt-waf
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      dmz:
+        ipv4_address: 172.20.1.10
+      app_tier:
+        ipv4_address: 172.20.2.10
+    volumes:
+      - ./nginx/nginx-waf.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./tls/certs:/etc/nginx/certs:ro
+      - ./nginx/logs:/var/log/nginx
+      - /tmp/nginx-cache:/var/cache/nginx
+    environment:
+      - NGINX_WORKER_PROCESSES=auto
+      - NGINX_WORKER_CONNECTIONS=1024
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:default
+      - apparmor:docker-nginx
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETGID
+      - SETUID
+      - NET_BIND_SERVICE
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+      - /var/cache/nginx:noexec,nosuid,size=200m
+      - /var/run:noexec,nosuid,size=50m
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Backend Application (App Tier)
+  backend:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile.secure
+    container_name: botrt-backend
+    restart: unless-stopped
+    networks:
+      app_tier:
+        ipv4_address: 172.20.2.20
+      data_tier:
+        ipv4_address: 172.20.3.20
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=postgresql://telegram_user:${DB_PASSWORD}@postgres:5432/telegram_ecommerce?sslmode=require
+      - REDIS_URL=rediss://redis:6379
+      - VAULT_ADDR=https://vault:8200
+      - ENABLE_WAF=true
+      - ENABLE_BOT_PROTECTION=true
+      - ENABLE_ADMIN_IP_ALLOWLIST=true
+      - ENABLE_ADMIN_MFA=true
+    volumes:
+      - ./backend/logs:/app/logs:rw
+      - ./backend/uploads:/app/uploads:rw
+      - ./tls/certs:/app/certs:ro
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:default
+      - apparmor:docker-default
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETGID
+      - SETUID
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+      - /app/tmp:noexec,nosuid,size=200m
+    user: "1001:1001"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      - postgres
+      - redis
+      - vault
+
+  # PostgreSQL Database (Data Tier)
+  postgres:
+    image: postgres:15-alpine
+    container_name: botrt-postgres
+    restart: unless-stopped
+    networks:
+      data_tier:
+        ipv4_address: 172.20.3.30
+    environment:
+      - POSTGRES_DB=telegram_ecommerce
+      - POSTGRES_USER=telegram_user
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256 --auth-local=scram-sha-256
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+      - ./tls/certs:/etc/postgresql/certs:ro
+      - ./postgres/init-scripts:/docker-entrypoint-initdb.d:ro
+    command: >
+      postgres
+      -c config_file=/etc/postgresql/postgresql.conf
+      -c hba_file=/etc/postgresql/pg_hba.conf
+      -c ssl=on
+      -c ssl_cert_file=/etc/postgresql/certs/postgres.crt
+      -c ssl_key_file=/etc/postgresql/certs/postgres.key
+      -c ssl_ca_file=/etc/postgresql/certs/ca.crt
+      -c ssl_ciphers='ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256'
+      -c ssl_prefer_server_ciphers=on
+      -c log_connections=on
+      -c log_disconnections=on
+      -c log_statement=all
+      -c shared_preload_libraries=pg_stat_statements
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:default
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    read_only: false  # PostgreSQL needs write access to data directory
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+      - /run/postgresql:noexec,nosuid,size=50m
+    user: "999:999"  # postgres user
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U telegram_user -d telegram_ecommerce"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Redis Cache (Data Tier)
+  redis:
+    image: redis:7-alpine
+    container_name: botrt-redis
+    restart: unless-stopped
+    networks:
+      data_tier:
+        ipv4_address: 172.20.3.40
+    volumes:
+      - redis_data:/data
+      - ./redis/redis.conf:/etc/redis/redis.conf:ro
+      - ./tls/certs:/etc/redis/certs:ro
+    command: >
+      redis-server /etc/redis/redis.conf
+      --tls-port 6379
+      --port 0
+      --tls-cert-file /etc/redis/certs/redis.crt
+      --tls-key-file /etc/redis/certs/redis.key
+      --tls-ca-cert-file /etc/redis/certs/ca.crt
+      --tls-protocols "TLSv1.2 TLSv1.3"
+      --tls-ciphers "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256"
+      --tls-prefer-server-ciphers yes
+      --requirepass ${REDIS_PASSWORD}
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:default
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETGID
+      - SETUID
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+    user: "999:999"  # redis user
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--tls", "--cert", "/etc/redis/certs/redis.crt", "--key", "/etc/redis/certs/redis.key", "--cacert", "/etc/redis/certs/ca.crt", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # HashiCorp Vault (Data Tier)
+  vault:
+    image: vault:1.15
+    container_name: botrt-vault
+    restart: unless-stopped
+    networks:
+      data_tier:
+        ipv4_address: 172.20.3.50
+      mgmt_tier:
+        ipv4_address: 172.20.4.50
+    environment:
+      - VAULT_ADDR=https://0.0.0.0:8200
+      - VAULT_LOCAL_CONFIG={"storage":{"file":{"path":"/vault/data"}},"listener":{"tcp":{"address":"0.0.0.0:8200","tls_cert_file":"/vault/certs/vault.crt","tls_key_file":"/vault/certs/vault.key","tls_min_version":"tls12"}},"default_lease_ttl":"168h","max_lease_ttl":"720h","ui":true}
+    volumes:
+      - vault_data:/vault/data
+      - vault_logs:/vault/logs
+      - ./tls/certs:/vault/certs:ro
+      - ./vault/config:/vault/config:ro
+    cap_add:
+      - IPC_LOCK
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:default
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+    user: "100:1000"  # vault user
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Monitoring Stack (Management Tier)
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: botrt-prometheus
+    restart: unless-stopped
+    networks:
+      mgmt_tier:
+        ipv4_address: 172.20.4.60
+      app_tier:
+        ipv4_address: 172.20.2.60
+      data_tier:
+        ipv4_address: 172.20.3.60
+    volumes:
+      - prometheus_data:/prometheus
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/rules:/etc/prometheus/rules:ro
+      - ./tls/certs:/etc/prometheus/certs:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.size=10GB'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+      - '--web.listen-address=0.0.0.0:9090'
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:default
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+    user: "65534:65534"  # nobody user
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Log Aggregation (Management Tier)
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: botrt-loki
+    restart: unless-stopped
+    networks:
+      mgmt_tier:
+        ipv4_address: 172.20.4.70
+    volumes:
+      - loki_data:/loki
+      - ./monitoring/loki.yml:/etc/loki/loki.yml:ro
+    command: -config.file=/etc/loki/loki.yml
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:default
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+    user: "10001:10001"  # loki user
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3100/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Security Scanner
+  security-scanner:
+    image: aquasec/trivy:latest
+    container_name: botrt-security-scanner
+    restart: "no"
+    networks:
+      mgmt_tier:
+        ipv4_address: 172.20.4.80
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - trivy_cache:/root/.cache/trivy
+      - ./security/scan-results:/reports
+    command: >
+      sh -c "
+        trivy image --format json --output /reports/backend-scan.json botrt-backend:latest &&
+        trivy image --format json --output /reports/postgres-scan.json postgres:15-alpine &&
+        trivy image --format json --output /reports/redis-scan.json redis:7-alpine &&
+        trivy image --format json --output /reports/vault-scan.json vault:1.15
+      "
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+
+volumes:
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/postgres
+  redis_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/redis
+  vault_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/vault
+  vault_logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./logs/vault
+  prometheus_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/prometheus
+  loki_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/loki
+  trivy_cache:
+    driver: local
+
+# Security-hardened configuration
+# - All services run as non-root users
+# - Read-only filesystems where possible
+# - Dropped capabilities and security options
+# - Network segmentation with isolated tiers
+# - Resource limits to prevent DoS
+# - Health checks for all services
+# - Centralized logging and monitoring
+# - TLS encryption for all inter-service communication

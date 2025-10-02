@@ -1,0 +1,479 @@
+/* StatCard - BEM Style */
+
+.statCard {
+  background-color: var(--color-bg, #ffffff);
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--color-border, #dee2e6);
+  box-shadow: var(--shadow-sm);
+  padding: var(--spacing-lg);
+  transition: var(--transition-normal);
+  cursor: pointer;
+  overflow: hidden;
+  position: relative;
+}
+
+.statCard:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.statCard--clickable {
+  cursor: pointer;
+}
+
+.statCard--interactive:hover {
+  border-color: var(--color-primary, #0088cc);
+  background-color: rgba(0, 136, 204, 0.02);
+}
+
+/* Card Variants */
+.statCard--primary {
+  background: linear-gradient(135deg, rgba(0, 136, 204, 0.1) 0%, rgba(0, 136, 204, 0.05) 100%);
+  border-color: rgba(0, 136, 204, 0.2);
+}
+
+.statCard--success {
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.05) 100%);
+  border-color: rgba(76, 175, 80, 0.2);
+}
+
+.statCard--warning {
+  background: linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 152, 0, 0.05) 100%);
+  border-color: rgba(255, 152, 0, 0.2);
+}
+
+.statCard--error {
+  background: linear-gradient(135deg, rgba(244, 67, 54, 0.1) 0%, rgba(244, 67, 54, 0.05) 100%);
+  border-color: rgba(244, 67, 54, 0.2);
+}
+
+.statCard--info {
+  background: linear-gradient(135deg, rgba(33, 150, 243, 0.1) 0%, rgba(33, 150, 243, 0.05) 100%);
+  border-color: rgba(33, 150, 243, 0.2);
+}
+
+/* Card Header */
+.statCard__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-md);
+}
+
+.statCard__iconContainer {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--border-radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: white;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.statCard__iconContainer--primary {
+  background: linear-gradient(135deg, #0088cc 0%, #0077b3 100%);
+}
+
+.statCard__iconContainer--success {
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+}
+
+.statCard__iconContainer--warning {
+  background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+}
+
+.statCard__iconContainer--error {
+  background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+}
+
+.statCard__iconContainer--info {
+  background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+}
+
+.statCard__iconContainer--neutral {
+  background: linear-gradient(135deg, #666666 0%, #555555 100%);
+}
+
+.statCard__icon {
+  z-index: 2;
+  position: relative;
+}
+
+.statCard__iconContainer::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--border-radius-full);
+  transform: rotate(45deg);
+  transition: var(--transition-normal);
+}
+
+.statCard:hover .statCard__iconContainer::before {
+  transform: rotate(45deg) translate(25%, 25%);
+}
+
+.statCard__actions {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.statCard__actionButton {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary, #666666);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--border-radius-sm);
+  transition: var(--transition-fast);
+}
+
+.statCard__actionButton:hover {
+  background-color: rgba(0, 136, 204, 0.1);
+  color: var(--color-primary, #0088cc);
+}
+
+/* Card Content */
+.statCard__content {
+  flex: 1;
+}
+
+.statCard__value {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--color-text, #333333);
+  margin-bottom: var(--spacing-xs);
+  line-height: 1.2;
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-xs);
+}
+
+.statCard__valueMain {
+  flex: 1;
+}
+
+.statCard__valueUnit {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--color-text-secondary, #666666);
+}
+
+.statCard__label {
+  font-size: 14px;
+  color: var(--color-text-secondary, #666666);
+  font-weight: 500;
+  margin-bottom: var(--spacing-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.statCard__description {
+  font-size: 13px;
+  color: var(--color-text-secondary, #666666);
+  line-height: 1.4;
+  margin-bottom: var(--spacing-md);
+}
+
+/* Change Indicator */
+.statCard__change {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: var(--spacing-sm);
+}
+
+.statCard__change--positive {
+  color: var(--color-success, #4caf50);
+}
+
+.statCard__change--negative {
+  color: var(--color-error, #f44336);
+}
+
+.statCard__change--neutral {
+  color: var(--color-text-secondary, #666666);
+}
+
+.statCard__changeIcon {
+  font-size: 16px;
+}
+
+.statCard__changeValue {
+  font-weight: 700;
+}
+
+.statCard__changePeriod {
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+/* Progress Indicator */
+.statCard__progress {
+  margin-top: var(--spacing-md);
+}
+
+.statCard__progressLabel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xs);
+  font-size: 12px;
+  color: var(--color-text-secondary, #666666);
+}
+
+.statCard__progressBar {
+  height: 6px;
+  background-color: var(--color-bg-secondary, #f8f9fa);
+  border-radius: var(--border-radius-full);
+  overflow: hidden;
+  position: relative;
+}
+
+.statCard__progressFill {
+  height: 100%;
+  border-radius: var(--border-radius-full);
+  transition: width 0.8s ease-out;
+  position: relative;
+  overflow: hidden;
+}
+
+.statCard__progressFill--primary {
+  background: linear-gradient(90deg, #0088cc 0%, #0077b3 100%);
+}
+
+.statCard__progressFill--success {
+  background: linear-gradient(90deg, #4caf50 0%, #45a049 100%);
+}
+
+.statCard__progressFill--warning {
+  background: linear-gradient(90deg, #ff9800 0%, #f57c00 100%);
+}
+
+.statCard__progressFill--error {
+  background: linear-gradient(90deg, #f44336 0%, #d32f2f 100%);
+}
+
+.statCard__progressFill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.2) 50%, transparent 70%);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Trend Chart */
+.statCard__trend {
+  margin-top: var(--spacing-md);
+  height: 40px;
+  position: relative;
+}
+
+.statCard__trendChart {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--border-radius-sm);
+}
+
+/* Footer */
+.statCard__footer {
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--color-border, #dee2e6);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.statCard__footerText {
+  font-size: 12px;
+  color: var(--color-text-secondary, #666666);
+}
+
+.statCard__footerLink {
+  font-size: 12px;
+  color: var(--color-primary, #0088cc);
+  text-decoration: none;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: var(--border-radius-sm);
+  transition: var(--transition-fast);
+}
+
+.statCard__footerLink:hover {
+  background-color: rgba(0, 136, 204, 0.1);
+  text-decoration: none;
+}
+
+/* Loading State */
+.statCard--loading {
+  pointer-events: none;
+}
+
+.statCard--loading .statCard__value,
+.statCard--loading .statCard__label {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading-shimmer 1.5s infinite;
+  border-radius: var(--border-radius-sm);
+  color: transparent;
+}
+
+.statCard--loading .statCard__value {
+  height: 40px;
+  width: 80%;
+}
+
+.statCard--loading .statCard__label {
+  height: 16px;
+  width: 60%;
+}
+
+/* Compact Variant */
+.statCard--compact {
+  padding: var(--spacing-md);
+}
+
+.statCard--compact .statCard__header {
+  margin-bottom: var(--spacing-sm);
+}
+
+.statCard--compact .statCard__iconContainer {
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+}
+
+.statCard--compact .statCard__value {
+  font-size: 24px;
+  margin-bottom: 2px;
+}
+
+.statCard--compact .statCard__label {
+  font-size: 12px;
+  margin-bottom: var(--spacing-xs);
+}
+
+.statCard--compact .statCard__progress,
+.statCard--compact .statCard__trend,
+.statCard--compact .statCard__footer {
+  display: none;
+}
+
+/* Horizontal Variant */
+.statCard--horizontal {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-lg) var(--spacing-xl);
+}
+
+.statCard--horizontal .statCard__header {
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
+
+.statCard--horizontal .statCard__content {
+  text-align: left;
+}
+
+.statCard--horizontal .statCard__actions {
+  margin-left: auto;
+}
+
+/* Dark Theme Support */
+.theme--dark .statCard {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .statCard__value {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .statCard__actionButton {
+  color: var(--color-text-secondary, #cccccc);
+}
+
+.theme--dark .statCard__progressBar {
+  background-color: var(--color-bg, #1a1a1a);
+}
+
+.theme--dark .statCard__footer {
+  border-top-color: var(--color-border, #404040);
+}
+
+.theme--dark .statCard--loading .statCard__value,
+.theme--dark .statCard--loading .statCard__label {
+  background: linear-gradient(90deg, #2d2d2d 25%, #404040 50%, #2d2d2d 75%);
+  background-size: 200% 100%;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .statCard {
+    padding: var(--spacing-md);
+  }
+  
+  .statCard__value {
+    font-size: 28px;
+  }
+  
+  .statCard__iconContainer {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+  
+  .statCard--horizontal {
+    flex-direction: column;
+    text-align: center;
+    gap: var(--spacing-md);
+  }
+  
+  .statCard--horizontal .statCard__content {
+    text-align: center;
+  }
+  
+  .statCard--horizontal .statCard__actions {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .statCard__value {
+    font-size: 24px;
+  }
+  
+  .statCard__header {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    text-align: center;
+  }
+  
+  .statCard__actions {
+    align-self: center;
+  }
+}

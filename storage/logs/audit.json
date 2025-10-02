@@ -1,0 +1,35 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "D:\\projects\\botrt\\backend\\logs\\audit.json",
+    "files": [
+        {
+            "date": 1758698762370,
+            "name": "D:\\projects\\botrt\\backend\\logs\\error-2025-09-24.log",
+            "hash": "0b87d067ab06517d242651620962e98e4f91f26fddcbc168ffa9a44a7cbc7c0f"
+        },
+        {
+            "date": 1758698762373,
+            "name": "D:\\projects\\botrt\\backend\\logs\\combined-2025-09-24.log",
+            "hash": "2cb530550eebce1914901bed987a141f55ebe57b026e43723969abd929b52b40"
+        },
+        {
+            "date": 1758698762374,
+            "name": "D:\\projects\\botrt\\backend\\logs\\http-2025-09-24.log",
+            "hash": "5195fca8e75ab8406a3c80c40ed2670d6f95af49577990f6c4e7e35e943ea548"
+        },
+        {
+            "date": 1758698762375,
+            "name": "D:\\projects\\botrt\\backend\\logs\\security-2025-09-24.log",
+            "hash": "5f81f4eff8b715d056fab05882a51640d7b2c8bb3e61694c1a99d750e5196b35"
+        },
+        {
+            "date": 1758698762377,
+            "name": "D:\\projects\\botrt\\backend\\logs\\audit-2025-09-24.log",
+            "hash": "9cadf4f290da5f99c7a8a39b51fb590ec8a9a9cb5f673587ed54d86323579d54"
+        }
+    ],
+    "hashType": "sha256"
+}

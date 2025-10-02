@@ -1,0 +1,220 @@
+/* Layout Component - BEM Style */
+
+.layout {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--color-bg, #ffffff);
+}
+
+.layout__drawer {
+  width: 240px;
+  flex-shrink: 0;
+}
+
+.layout__drawerMobile {
+  display: none;
+  width: 240px;
+}
+
+.layout__drawerPaper {
+  width: 240px;
+  background-color: var(--color-sidebar-bg, #ffffff);
+  border-right: 1px solid var(--color-border, #dee2e6);
+}
+
+.layout__appBar {
+  width: 100%;
+  z-index: 1200;
+  background-color: var(--color-bg-secondary, #f8f9fa);
+  border-bottom: 1px solid var(--color-border, #dee2e6);
+  color: var(--color-text, #333333);
+}
+
+.layout__appBar--shifted {
+  width: calc(100% - 240px);
+  margin-left: 240px;
+}
+
+.layout__toolbar {
+  justify-content: space-between;
+  padding: 0 16px;
+}
+
+.layout__menuButton {
+  margin-right: 16px;
+}
+
+.layout__title {
+  flex-grow: 1;
+  color: var(--color-text, #333333);
+}
+
+.layout__userSection {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.layout__content {
+  flex-grow: 1;
+  padding: 24px;
+  margin-top: 64px;
+}
+
+.layout__content--shifted {
+  width: calc(100% - 240px);
+}
+
+/* Navigation List */
+.layout__navList {
+  padding: 16px 8px;
+}
+
+.layout__navItem {
+  margin: 0 0 8px;
+  transition: background-color 0.2s ease;
+}
+
+.layout__navItem:last-child {
+  margin-bottom: 0;
+}
+
+.layout__navItem:hover {
+  background-color: rgba(0, 136, 204, 0.1);
+}
+
+.layout__navItem--active {
+  background-color: rgba(0, 136, 204, 0.15);
+  color: var(--color-primary, #0088cc);
+}
+
+.layout__navItem--active .layout__navIcon,
+.layout__navItem--active .layout__navText {
+  color: var(--color-primary, #0088cc);
+}
+
+.layout__navIcon {
+  color: var(--color-text-secondary, #666666);
+  transition: color 0.2s ease;
+}
+
+.layout__navText {
+  color: var(--color-text, #333333);
+  transition: color 0.2s ease;
+}
+
+/* User Profile */
+.layout__userAvatar {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.layout__userAvatar:hover {
+  transform: scale(1.05);
+}
+
+.layout__profileMenu {
+  margin-top: 8px;
+}
+
+.layout__profileMenuItem {
+  padding: 12px 16px;
+  transition: background-color 0.2s ease;
+}
+
+.layout__profileMenuItem:hover {
+  background-color: var(--color-bg-secondary, #f8f9fa);
+}
+
+
+/* Theme Toggle */
+.layout__themeToggle {
+  margin-left: 8px;
+  padding: 8px;
+  border-radius: 50%;
+  transition: background-color 0.2s ease;
+}
+
+.layout__themeToggle:hover {
+  background-color: rgba(0, 136, 204, 0.1);
+}
+
+/* Notifications */
+.layout__notificationButton {
+  position: relative;
+  margin-right: 8px;
+}
+
+.layout__notificationBadge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .layout__drawer {
+    display: none;
+  }
+  
+  .layout__drawerMobile {
+    display: block;
+  }
+  
+  .layout__appBar--shifted {
+    width: 100%;
+    margin-left: 0;
+  }
+  
+  .layout__content--shifted {
+    margin-left: 0;
+    width: 100%;
+  }
+  
+  .layout__content {
+    padding: 16px;
+  }
+  
+  .layout__menuButton {
+    display: block;
+  }
+}
+
+/* Dark Theme Support */
+.theme--dark .layout {
+  background-color: var(--color-bg, #1a1a1a);
+}
+
+.theme--dark .layout__drawerPaper {
+  background-color: var(--color-sidebar-bg, #262626);
+  border-right-color: var(--color-border, #404040);
+}
+
+.theme--dark .layout__appBar {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-bottom-color: var(--color-border, #404040);
+  color: var(--color-text, #f5f5f5);
+}
+
+.theme--dark .layout__navItem {
+  color: var(--color-text, #f5f5f5);
+}
+
+.theme--dark .layout__navIcon,
+.theme--dark .layout__navText {
+  color: var(--color-text, #f5f5f5);
+}
+
+.theme--dark .layout__navItem:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.theme--dark .layout__navItem--active {
+  background-color: rgba(0, 136, 204, 0.3);
+  color: var(--color-primary, #61a8ff);
+}
+
+.theme--dark .layout__navItem--active .layout__navIcon,
+.theme--dark .layout__navItem--active .layout__navText {
+  color: var(--color-primary, #61a8ff);
+}

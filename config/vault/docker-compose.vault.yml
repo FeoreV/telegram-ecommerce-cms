@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  vault:
+    image: vault:1.15.2
+    container_name: botrt-vault
+    restart: unless-stopped
+    ports:
+      - "8200:8200"
+    volumes:
+      - vault_data:/vault/data
+      - ./vault-config.hcl:/vault/config/vault.hcl:ro
+      - vault_config:/vault/config
+    environment:
+      VAULT_ADDR: 'http://0.0.0.0:8200'
+      VAULT_API_ADDR: 'http://0.0.0.0:8200'
+      VAULT_LOCAL_CONFIG: |
+        ui = true
+        disable_mlock = true
+        storage "file" {
+          path = "/vault/data"
+        }
+        listener "tcp" {
+          address = "0.0.0.0:8200"
+          tls_disable = 1
+        }
+    cap_add:
+      - IPC_LOCK
+    command: vault server -config=/vault/config/vault.hcl
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - botrt-network
+
+  vault-init:
+    image: vault:1.15.2
+    container_name: botrt-vault-init
+    depends_on:
+      - vault
+    volumes:
+      - ./vault-init.sh:/vault-init.sh:ro
+      - vault_config:/vault/config
+    environment:
+      VAULT_ADDR: 'http://vault:8200'
+    command: sh /vault-init.sh
+    networks:
+      - botrt-network
+
+volumes:
+  vault_data:
+    driver: local
+  vault_config:
+    driver: local
+
+networks:
+  botrt-network:
+    external: true

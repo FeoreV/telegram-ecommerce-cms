@@ -1,0 +1,106 @@
+# Dependencies
+node_modules/
+**/node_modules/
+.pnp
+.pnp.js
+.yarn/
+
+# Build outputs
+dist/
+**/dist/
+build/
+**/build/
+out/
+coverage/
+.next/
+.nuxt/
+.turbo/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+**/.env
+**/.env.local
+
+# Logs
+logs/
+**/logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE files
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.iml
+
+# Testing
+coverage/
+*.coverage
+.nyc_output/
+.jest-cache/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+prisma/migrations/**/migration.sql.bak
+
+# Cache
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Uploads & Storage
+uploads/*
+!uploads/.gitkeep
+storage/uploads/*
+!storage/uploads/.gitkeep
+storage/logs/*
+!storage/logs/.gitkeep
+storage/backups/*
+!storage/backups/.gitkeep
+
+# Build errors
+builderrors.log
+
+# Monitoring & Metrics
+prometheus_data/
+grafana_data/
+
+# Package manager
+.pnpm-store/
+.pnpm-debug.log
+node_modules
+node_modules

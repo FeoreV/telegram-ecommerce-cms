@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Database
+*.db
+*.db-journal
+
+# Test coverage
+coverage/
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+
+# AdminJS
+.adminjs/
+
+# Environment
+.env
+.env.*
+
+# Backups
+backups/
+
+# Uploads
+uploads/
+storage/
+
+# Patches
+patches/
+
+# Scripts
+scripts/
+tools/
+
+# Prisma compiled
+prisma/*.js
+prisma/*.d.ts

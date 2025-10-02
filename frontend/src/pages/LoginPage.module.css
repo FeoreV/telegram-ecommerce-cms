@@ -1,0 +1,323 @@
+/* LoginPage - BEM Style */
+
+.loginPage {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: var(--spacing-md);
+}
+
+.loginPage__container {
+  width: 100%;
+  max-width: 480px;
+}
+
+.loginPage__wrapper {
+  margin-top: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.loginPage__card {
+  padding: 32px;
+  width: 100%;
+  background-color: var(--color-bg, #ffffff);
+  border-radius: var(--border-radius-xl);
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--color-border, #dee2e6);
+}
+
+.loginPage__header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.loginPage__title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-text, #333333);
+  margin-bottom: 8px;
+}
+
+.loginPage__subtitle {
+  font-size: 16px;
+  color: var(--color-text-secondary, #666666);
+  line-height: 1.5;
+  margin-bottom: 0;
+}
+
+.loginPage__error {
+  margin-bottom: 16px;
+  border-radius: var(--border-radius-md);
+}
+
+.loginPage__form {
+  margin-top: 8px;
+}
+
+.loginPage__field {
+  margin-bottom: 16px;
+}
+
+.loginPage__field:last-of-type {
+  margin-bottom: 24px;
+}
+
+.loginPage__submit {
+  margin-top: 24px;
+  margin-bottom: 16px;
+  height: 48px;
+  font-size: 16px;
+  font-weight: 600;
+  text-transform: none;
+  border-radius: var(--border-radius-md);
+  background-color: var(--color-primary, #0088cc);
+  transition: var(--transition-normal);
+}
+
+.loginPage__submit:hover {
+  background-color: #0077b3;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.loginPage__submit:disabled {
+  background-color: var(--color-text-secondary, #666666);
+  transform: none;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.loginPage__help {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 14px;
+  color: var(--color-text-secondary, #666666);
+  line-height: 1.4;
+}
+
+.loginPage__help-link {
+  color: var(--color-primary, #0088cc);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.loginPage__help-link:hover {
+  text-decoration: underline;
+}
+
+/* Loading State */
+.loginPage--loading {
+  pointer-events: none;
+}
+
+.loginPage--loading .loginPage__form {
+  opacity: 0.6;
+}
+
+/* Logo/Icon Section */
+.loginPage__logo {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.loginPage__logo-icon {
+  width: 64px;
+  height: 64px;
+  background-color: var(--color-primary, #0088cc);
+  border-radius: var(--border-radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  color: white;
+  font-size: 32px;
+}
+
+.loginPage__logo-text {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text, #333333);
+}
+
+/* Input Field Styling */
+.loginPage__input {
+  background-color: var(--color-bg, #ffffff);
+  border-radius: var(--border-radius-md);
+}
+
+.loginPage__input .MuiOutlinedInput-root {
+  border-radius: var(--border-radius-md);
+}
+
+.loginPage__input .MuiInputLabel-root {
+  color: var(--color-text-secondary, #666666);
+}
+
+.loginPage__input .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: var(--color-primary, #0088cc);
+}
+
+.loginPage__input .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: var(--color-primary, #0088cc);
+  border-width: 2px;
+}
+
+/* Features Section */
+.loginPage__features {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--color-border, #dee2e6);
+}
+
+.loginPage__features-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text, #333333);
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.loginPage__features-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.loginPage__feature {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: var(--color-text-secondary, #666666);
+}
+
+.loginPage__feature-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--color-success, #4caf50);
+  flex-shrink: 0;
+}
+
+/* Dark Theme Support */
+.theme--dark .loginPage {
+  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+}
+
+.theme--dark .loginPage__card {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .loginPage__title {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .loginPage__subtitle {
+  color: var(--color-text-secondary, #cccccc);
+}
+
+.theme--dark .loginPage__help {
+  color: var(--color-text-secondary, #cccccc);
+}
+
+.theme--dark .loginPage__logo-text {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .loginPage__features-title {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .loginPage__feature {
+  color: var(--color-text-secondary, #cccccc);
+}
+
+.theme--dark .loginPage__features {
+  border-top-color: var(--color-border, #404040);
+}
+
+.theme--dark .loginPage__input {
+  background-color: var(--color-bg, #1a1a1a);
+}
+
+.theme--dark .loginPage__input .MuiInputLabel-root {
+  color: var(--color-text-secondary, #cccccc);
+}
+
+.theme--dark .loginPage__input .MuiOutlinedInput-input {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .loginPage__input .MuiOutlinedInput-notchedOutline {
+  border-color: var(--color-border, #404040);
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .loginPage {
+    padding: var(--spacing-sm);
+  }
+  
+  .loginPage__card {
+    padding: 24px;
+  }
+  
+  .loginPage__title {
+    font-size: 24px;
+  }
+  
+  .loginPage__subtitle {
+    font-size: 14px;
+  }
+  
+  .loginPage__logo-icon {
+    width: 56px;
+    height: 56px;
+    font-size: 28px;
+  }
+}
+
+/* Animation */
+.loginPage__card {
+  animation: loginCardSlide 0.5s ease-out;
+}
+
+@keyframes loginCardSlide {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Focus States */
+.loginPage__submit:focus {
+  outline: 2px solid var(--color-primary, #0088cc);
+  outline-offset: 2px;
+}
+
+/* Security Note */
+.loginPage__security-note {
+  margin-top: 16px;
+  padding: 12px;
+  background-color: rgba(33, 150, 243, 0.1);
+  border: 1px solid rgba(33, 150, 243, 0.2);
+  border-radius: var(--border-radius-md);
+  color: var(--color-info, #2196f3);
+  font-size: 12px;
+  text-align: center;
+}
+
+.theme--dark .loginPage__security-note {
+  background-color: rgba(33, 150, 243, 0.2);
+  border-color: rgba(33, 150, 243, 0.3);
+  color: #64b5f6;
+}

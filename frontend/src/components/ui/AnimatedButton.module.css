@@ -1,0 +1,547 @@
+/* AnimatedButton - BEM Style */
+
+.animatedButton {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: 12px 24px;
+  border: none;
+  border-radius: var(--border-radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: none;
+  text-decoration: none;
+  cursor: pointer;
+  transition: var(--transition-normal);
+  overflow: hidden;
+  user-select: none;
+  outline: none;
+  background-color: var(--color-primary, #0088cc);
+  color: white;
+}
+
+.animatedButton:focus {
+  outline: 2px solid var(--color-primary, #0088cc);
+  outline-offset: 2px;
+}
+
+.animatedButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none !important;
+  animation: none !important;
+}
+
+/* Variants */
+.animatedButton--primary {
+  background-color: var(--color-primary, #0088cc);
+  color: white;
+}
+
+.animatedButton--secondary {
+  background-color: var(--color-text-secondary, #666666);
+  color: white;
+}
+
+.animatedButton--success {
+  background-color: var(--color-success, #4caf50);
+  color: white;
+}
+
+.animatedButton--warning {
+  background-color: var(--color-warning, #ff9800);
+  color: white;
+}
+
+.animatedButton--error {
+  background-color: var(--color-error, #f44336);
+  color: white;
+}
+
+.animatedButton--info {
+  background-color: var(--color-info, #2196f3);
+  color: white;
+}
+
+.animatedButton--outline {
+  background-color: transparent;
+  border: 2px solid var(--color-primary, #0088cc);
+  color: var(--color-primary, #0088cc);
+}
+
+.animatedButton--ghost {
+  background-color: transparent;
+  color: var(--color-primary, #0088cc);
+}
+
+/* Size Variants */
+.animatedButton--small {
+  padding: 8px 16px;
+  font-size: 12px;
+  border-radius: var(--border-radius-sm);
+}
+
+.animatedButton--medium {
+  padding: 12px 24px;
+  font-size: 14px;
+}
+
+.animatedButton--large {
+  padding: 16px 32px;
+  font-size: 16px;
+  border-radius: var(--border-radius-lg);
+}
+
+/* Animation Types */
+.animatedButton--hover-lift:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.animatedButton--hover-scale:hover:not(:disabled) {
+  transform: scale(1.05);
+}
+
+.animatedButton--hover-bounce:hover:not(:disabled) {
+  animation: bounce 0.6s ease;
+}
+
+.animatedButton--hover-shake:hover:not(:disabled) {
+  animation: shake 0.5s ease-in-out;
+}
+
+.animatedButton--hover-pulse:hover:not(:disabled) {
+  animation: pulse 1s ease-in-out;
+}
+
+.animatedButton--hover-rotate:hover:not(:disabled) {
+  transform: rotate(5deg);
+}
+
+.animatedButton--hover-glow:hover:not(:disabled) {
+  box-shadow: 0 0 20px rgba(0, 136, 204, 0.6);
+}
+
+.animatedButton--hover-fill {
+  position: relative;
+  overflow: hidden;
+}
+
+.animatedButton--hover-fill::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s ease;
+}
+
+.animatedButton--hover-fill:hover:not(:disabled)::before {
+  left: 100%;
+}
+
+.animatedButton--hover-slide {
+  position: relative;
+  overflow: hidden;
+}
+
+.animatedButton--hover-slide::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+}
+
+.animatedButton--hover-slide:hover:not(:disabled)::before {
+  transform: translateX(0);
+}
+
+/* Loading State */
+.animatedButton--loading {
+  pointer-events: none;
+  color: transparent;
+}
+
+.animatedButton--loading::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: var(--border-radius-full);
+  animation: spin 1s linear infinite;
+  color: white;
+}
+
+.animatedButton--loading.animatedButton--outline::after {
+  color: var(--color-primary, #0088cc);
+}
+
+.animatedButton--loading.animatedButton--ghost::after {
+  color: var(--color-primary, #0088cc);
+}
+
+/* Icon Animations */
+.animatedButton__icon {
+  transition: var(--transition-fast);
+  font-size: 1em;
+}
+
+.animatedButton--icon-rotate:hover:not(:disabled) .animatedButton__icon {
+  transform: rotate(360deg);
+}
+
+.animatedButton--icon-flip:hover:not(:disabled) .animatedButton__icon {
+  transform: scaleX(-1);
+}
+
+.animatedButton--icon-bounce:hover:not(:disabled) .animatedButton__icon {
+  animation: iconBounce 0.6s ease;
+}
+
+.animatedButton--icon-slide:hover:not(:disabled) .animatedButton__icon {
+  transform: translateX(4px);
+}
+
+/* Ripple Effect */
+.animatedButton--ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.animatedButton__ripple {
+  position: absolute;
+  border-radius: var(--border-radius-full);
+  background-color: rgba(255, 255, 255, 0.6);
+  transform: scale(0);
+  animation: ripple 0.6s linear;
+  pointer-events: none;
+}
+
+/* Gradient Animations */
+.animatedButton--gradient {
+  background: linear-gradient(45deg, var(--color-primary, #0088cc), #0077b3, var(--color-primary, #0088cc));
+  background-size: 200% 200%;
+  animation: gradientShift 3s ease infinite;
+}
+
+.animatedButton--gradient-success {
+  background: linear-gradient(45deg, var(--color-success, #4caf50), #45a049, var(--color-success, #4caf50));
+  background-size: 200% 200%;
+  animation: gradientShift 3s ease infinite;
+}
+
+/* Progress Button */
+.animatedButton--progress {
+  position: relative;
+  overflow: hidden;
+}
+
+.animatedButton__progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.2);
+  transition: width 0.3s ease;
+  pointer-events: none;
+}
+
+/* Confirmation States */
+.animatedButton--confirming {
+  background-color: var(--color-warning, #ff9800);
+  transform: scale(1.05);
+  animation: confirmPulse 0.5s ease-in-out;
+}
+
+.animatedButton--confirmed {
+  background-color: var(--color-success, #4caf50);
+  transform: scale(1.1);
+  animation: confirmSuccess 0.8s ease;
+}
+
+.animatedButton--error-state {
+  background-color: var(--color-error, #f44336);
+  animation: errorShake 0.5s ease-in-out;
+}
+
+/* Button Group Animations */
+.animatedButton--stagger {
+  animation: staggerIn 0.5s ease var(--stagger-delay, 0s) both;
+}
+
+/* Floating Action Button */
+.animatedButton--fab {
+  border-radius: var(--border-radius-full);
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  box-shadow: var(--shadow-lg);
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: var(--z-fab);
+}
+
+.animatedButton--fab:hover:not(:disabled) {
+  transform: scale(1.1);
+  box-shadow: var(--shadow-xl);
+}
+
+.animatedButton--fab-small {
+  width: 40px;
+  height: 40px;
+}
+
+.animatedButton--fab-large {
+  width: 72px;
+  height: 72px;
+}
+
+/* Morphing Button */
+.animatedButton--morphing {
+  width: auto;
+  transition: width 0.3s ease, border-radius 0.3s ease;
+}
+
+.animatedButton--morphing.animatedButton--loading {
+  width: 48px;
+  border-radius: var(--border-radius-full);
+}
+
+/* Text Animations */
+.animatedButton__text {
+  position: relative;
+  transition: var(--transition-fast);
+}
+
+.animatedButton--text-slide .animatedButton__text {
+  transition: transform 0.3s ease;
+}
+
+.animatedButton--text-slide:hover:not(:disabled) .animatedButton__text {
+  transform: translateY(-100%);
+}
+
+.animatedButton--text-slide::after {
+  content: attr(data-hover-text);
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  transition: transform 0.3s ease;
+}
+
+.animatedButton--text-slide:hover:not(:disabled)::after {
+  transform: translateY(-100%);
+}
+
+/* Keyframe Animations */
+@keyframes bounce {
+  0%, 20%, 53%, 80%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  40%, 43% {
+    transform: translate3d(0, -8px, 0);
+  }
+  70% {
+    transform: translate3d(0, -4px, 0);
+  }
+  90% {
+    transform: translate3d(0, -2px, 0);
+  }
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-4px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes iconBounce {
+  0%, 20%, 53%, 80%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  40%, 43% {
+    transform: translate3d(0, -4px, 0);
+  }
+  70% {
+    transform: translate3d(0, -2px, 0);
+  }
+}
+
+@keyframes ripple {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes confirmPulse {
+  0%, 100% {
+    transform: scale(1.05);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes confirmSuccess {
+  0% {
+    transform: scale(1.1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes errorShake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-8px);
+  }
+  75% {
+    transform: translateX(8px);
+  }
+}
+
+@keyframes staggerIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Dark Theme Support */
+.theme--dark .animatedButton--outline {
+  border-color: var(--color-primary, #0088cc);
+  color: var(--color-primary, #0088cc);
+}
+
+.theme--dark .animatedButton--ghost {
+  color: var(--color-primary, #0088cc);
+}
+
+.theme--dark .animatedButton:focus {
+  outline-color: var(--color-primary, #0088cc);
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .animatedButton,
+  .animatedButton::before,
+  .animatedButton::after,
+  .animatedButton__icon,
+  .animatedButton__text {
+    animation: none !important;
+    transition: none !important;
+  }
+  
+  .animatedButton:hover:not(:disabled) {
+    transform: none !important;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .animatedButton--fab {
+    bottom: 16px;
+    right: 16px;
+    width: 48px;
+    height: 48px;
+  }
+  
+  .animatedButton {
+    padding: 10px 20px;
+    font-size: 13px;
+  }
+  
+  .animatedButton--small {
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+  
+  .animatedButton--large {
+    padding: 14px 28px;
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .animatedButton {
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+  
+  .animatedButton--fab {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* Touch Devices */
+@media (hover: none) and (pointer: coarse) {
+  .animatedButton:hover:not(:disabled) {
+    transform: none;
+    animation: none;
+  }
+  
+  .animatedButton:active:not(:disabled) {
+    transform: scale(0.95);
+  }
+}

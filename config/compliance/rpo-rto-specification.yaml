@@ -1,0 +1,414 @@
+# RPO/RTO Specification and Compliance Framework
+# Defines Recovery Point Objective and Recovery Time Objective for all systems
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rpo-rto-specification
+  namespace: botrt-production
+  labels:
+    app: botrt
+    component: disaster-recovery
+    compliance: "sox,gdpr,pci-dss"
+data:
+  rpo-rto-spec.yaml: |
+    # BotRT Disaster Recovery Objectives
+    
+    ## Service Level Agreements (SLAs)
+    sla:
+      availability: "99.9%"  # 8.76 hours downtime per year
+      uptime_monthly: "99.5%" # 3.6 hours downtime per month
+      response_time: "2s"     # 95th percentile API response time
+      error_rate: "0.1%"      # Maximum acceptable error rate
+    
+    ## Recovery Time Objectives (RTO)
+    rto:
+      # Critical systems - must be restored first
+      critical:
+        database_primary: 900    # 15 minutes
+        authentication_service: 600  # 10 minutes
+        payment_gateway: 1200    # 20 minutes
+        core_api: 900           # 15 minutes
+        security_services: 300   # 5 minutes
+      
+      # Important systems - restored after critical
+      important:
+        telegram_bot_service: 1800  # 30 minutes
+        notification_service: 2700  # 45 minutes
+        file_upload_service: 3600   # 60 minutes
+        analytics_service: 5400     # 90 minutes
+        admin_interface: 3600       # 60 minutes
+      
+      # Standard systems - restored after important
+      standard:
+        reporting_service: 7200     # 2 hours
+        backup_service: 10800      # 3 hours
+        monitoring_dashboards: 5400 # 90 minutes
+        log_aggregation: 7200      # 2 hours
+        caching_layer: 1800        # 30 minutes
+      
+      # Overall system recovery targets
+      overall:
+        partial_service: 1800       # 30 minutes - Core functionality
+        full_service: 7200         # 2 hours - Complete restoration
+        maximum_acceptable: 14400   # 4 hours - Absolute maximum
+    
+    ## Recovery Point Objectives (RPO)
+    rpo:
+      # Data criticality-based RPO
+      critical_data:
+        user_accounts: 300         # 5 minutes
+        payment_transactions: 60   # 1 minute
+        order_data: 300           # 5 minutes
+        authentication_tokens: 0   # No loss acceptable
+        security_logs: 60         # 1 minute
+        audit_trails: 0           # No loss acceptable
+      
+      important_data:
+        product_catalog: 3600      # 1 hour
+        inventory_levels: 900      # 15 minutes
+        customer_communications: 1800 # 30 minutes
+        store_configurations: 3600 # 1 hour
+        notification_templates: 7200 # 2 hours
+      
+      standard_data:
+        analytics_data: 14400      # 4 hours
+        log_files: 3600           # 1 hour
+        temporary_files: 86400     # 24 hours
+        cache_data: 86400         # 24 hours (acceptable to lose)
+        session_data: 1800        # 30 minutes
+      
+      # Backup frequency requirements
+      backup_frequency:
+        critical_systems: 300      # Every 5 minutes (continuous)
+        important_systems: 3600    # Every hour
+        standard_systems: 86400    # Daily
+        archive_data: 604800       # Weekly
+    
+    ## Compliance Requirements
+    compliance:
+      sox:
+        financial_data_rpo: 60     # 1 minute for financial data
+        audit_log_rpo: 0          # No audit log loss
+        financial_system_rto: 1800 # 30 minutes
+        documentation_required: true
+        quarterly_testing: true
+      
+      gdpr:
+        personal_data_rpo: 300     # 5 minutes
+        data_breach_notification: 3600 # 1 hour to detect
+        right_to_erasure_rto: 86400   # 24 hours
+        data_portability_rto: 259200  # 72 hours
+        consent_management_rpo: 60     # 1 minute
+      
+      pci_dss:
+        payment_data_rpo: 60       # 1 minute
+        cardholder_data_rto: 900   # 15 minutes
+        payment_processing_rto: 600 # 10 minutes
+        security_monitoring_rpo: 0  # Real-time
+        vulnerability_scan_rto: 300 # 5 minutes
+      
+      hipaa:
+        healthcare_data_rpo: 300   # 5 minutes
+        audit_trail_rpo: 0        # No loss
+        breach_notification: 2592000 # 30 days (if applicable)
+        data_integrity_rto: 1800   # 30 minutes
+    
+    ## Testing Requirements
+    testing:
+      frequency:
+        disaster_recovery_drill: 2592000    # Monthly (30 days)
+        backup_restoration_test: 604800     # Weekly
+        partial_recovery_test: 1209600      # Bi-weekly
+        full_system_test: 7776000          # Quarterly (90 days)
+        compliance_audit: 31536000         # Annual
+      
+      validation_criteria:
+        data_integrity: 100        # 100% data integrity required
+        performance_degradation: 20 # Max 20% performance impact
+        security_posture: 100      # 100% security controls active
+        user_experience: 90        # 90% functionality available
+        compliance_score: 95       # 95% compliance requirements met
+      
+      documentation:
+        test_plan_required: true
+        execution_logs_required: true
+        issue_tracking_required: true
+        lessons_learned_required: true
+        improvement_plan_required: true
+    
+    ## Infrastructure Requirements
+    infrastructure:
+      geographic_distribution:
+        primary_region: "us-east-1"
+        secondary_region: "us-west-2"
+        tertiary_region: "eu-west-1"
+        minimum_regions: 2
+        cross_region_replication: true
+      
+      storage_requirements:
+        backup_retention: 2555     # 7 years (SOX requirement)
+        point_in_time_recovery: 2592000 # 30 days
+        snapshot_frequency: 14400  # 4 hours
+        replication_lag: 300       # 5 minutes maximum
+        storage_encryption: true
+        versioning_enabled: true
+      
+      network_requirements:
+        dedicated_backup_network: true
+        bandwidth_reservation: "1Gbps"
+        failover_automation: true
+        health_check_interval: 60  # 1 minute
+        dns_failover_ttl: 60      # 1 minute
+    
+    ## Monitoring and Alerting
+    monitoring:
+      metrics:
+        backup_success_rate: 99.9   # 99.9% backup success
+        recovery_test_success: 95   # 95% test success rate
+        rpo_compliance: 98         # 98% RPO compliance
+        rto_compliance: 95         # 95% RTO compliance
+        data_loss_incidents: 0     # Zero data loss tolerance
+      
+      alerting:
+        backup_failure: "immediate"     # Immediate alert
+        rpo_violation: "immediate"      # Immediate alert
+        rto_risk: "5_minutes"          # Alert if RTO at risk
+        compliance_issue: "immediate"   # Immediate alert
+        test_failure: "1_hour"         # Alert within 1 hour
+      
+      escalation:
+        level_1: "15_minutes"          # First escalation
+        level_2: "30_minutes"          # Second escalation
+        level_3: "60_minutes"          # Executive escalation
+        emergency: "immediate"         # Emergency contacts
+    
+    ## Cost and Resource Planning
+    resources:
+      infrastructure_redundancy: 200  # 200% of primary capacity
+      storage_overhead: 300           # 300% for backups and retention
+      network_bandwidth: 150          # 150% of normal requirements
+      compute_resources: 120          # 120% for recovery operations
+      staff_requirements: 24          # 24/7 on-call coverage
+      
+      budget_allocation:
+        infrastructure: 40    # 40% of DR budget
+        storage: 25          # 25% of DR budget
+        testing: 15          # 15% of DR budget
+        training: 10         # 10% of DR budget
+        tools_and_software: 10 # 10% of DR budget
+    
+    ## Risk Assessment
+    risk_scenarios:
+      natural_disaster:
+        probability: "low"
+        impact: "high"
+        rto_target: 14400      # 4 hours
+        rpo_target: 3600       # 1 hour
+        mitigation: "geographic_distribution"
+      
+      cyber_attack:
+        probability: "medium"
+        impact: "critical"
+        rto_target: 7200       # 2 hours
+        rpo_target: 300        # 5 minutes
+        mitigation: "security_controls,isolated_backups"
+      
+      hardware_failure:
+        probability: "medium"
+        impact: "medium"
+        rto_target: 3600       # 1 hour
+        rpo_target: 900        # 15 minutes
+        mitigation: "redundancy,hot_standby"
+      
+      human_error:
+        probability: "high"
+        impact: "medium"
+        rto_target: 1800       # 30 minutes
+        rpo_target: 300        # 5 minutes
+        mitigation: "automation,validation,training"
+      
+      software_bug:
+        probability: "high"
+        impact: "low"
+        rto_target: 3600       # 1 hour
+        rpo_target: 0          # No data loss
+        mitigation: "testing,rollback_procedures"
+      
+      supply_chain_attack:
+        probability: "low"
+        impact: "critical"
+        rto_target: 28800      # 8 hours
+        rpo_target: 0          # No data loss
+        mitigation: "supply_chain_security,isolation"
+    
+    ## Continuous Improvement
+    improvement:
+      review_frequency: 2592000      # Monthly reviews
+      update_frequency: 7776000      # Quarterly updates
+      benchmark_comparison: true     # Compare against industry
+      lessons_learned_integration: true
+      technology_assessment: 15552000 # Semi-annual tech review
+      
+      key_performance_indicators:
+        mean_time_to_recovery: 3600    # Target: 1 hour
+        mean_time_between_failures: 2592000 # Target: 30 days
+        backup_verification_rate: 100  # 100% verification
+        drill_participation_rate: 95   # 95% staff participation
+        customer_satisfaction: 90      # 90% satisfaction post-incident
+    
+    ## Training and Awareness
+    training:
+      disaster_recovery_training: 7776000   # Quarterly
+      tabletop_exercises: 2592000          # Monthly
+      technical_skills_training: 15552000  # Semi-annual
+      compliance_training: 31536000        # Annual
+      emergency_response_training: 7776000 # Quarterly
+      
+      competency_requirements:
+        incident_commander: "certified"
+        technical_lead: "expert"
+        communications_lead: "trained"
+        business_continuity: "trained"
+        all_staff: "basic_awareness"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rpo-rto-monitoring
+  namespace: botrt-production
+  labels:
+    app: botrt
+    component: disaster-recovery-monitoring
+data:
+  monitoring-rules.yaml: |
+    # Prometheus monitoring rules for RPO/RTO compliance
+    
+    groups:
+    - name: disaster_recovery
+      rules:
+      - alert: BackupRPOViolation
+        expr: time() - backup_last_success_timestamp > 300
+        for: 1m
+        labels:
+          severity: critical
+          component: backup
+          compliance: sox,gdpr,pci
+        annotations:
+          summary: "Backup RPO violation detected"
+          description: "Last successful backup was {{ $value }}s ago, exceeding RPO of 300s"
+          runbook: "https://wiki.botrt.com/runbooks/backup-rpo-violation"
+      
+      - alert: DatabaseReplicationLag
+        expr: database_replication_lag_seconds > 60
+        for: 2m
+        labels:
+          severity: warning
+          component: database
+          compliance: sox,pci
+        annotations:
+          summary: "Database replication lag exceeding RPO"
+          description: "Database replication lag is {{ $value }}s, exceeding RPO of 60s"
+      
+      - alert: DisasterRecoveryTestOverdue
+        expr: time() - disaster_recovery_last_test_timestamp > 2592000
+        for: 1h
+        labels:
+          severity: warning
+          component: testing
+          compliance: sox
+        annotations:
+          summary: "Disaster recovery test overdue"
+          description: "Last DR test was {{ $value }}s ago, monthly testing required"
+      
+      - alert: RTOViolationRisk
+        expr: predict_linear(service_availability[1h], 3600) < 0.95
+        for: 5m
+        labels:
+          severity: warning
+          component: availability
+        annotations:
+          summary: "Service availability trending below RTO requirements"
+          description: "Service availability predicted to drop below 95% within 1 hour"
+      
+      - alert: ComplianceViolation
+        expr: compliance_score < 95
+        for: 1m
+        labels:
+          severity: critical
+          component: compliance
+        annotations:
+          summary: "Compliance score below threshold"
+          description: "Compliance score is {{ $value }}%, minimum required is 95%"
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: rpo-rto-compliance-check
+  namespace: botrt-production
+spec:
+  schedule: "0 */6 * * *"  # Every 6 hours
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: compliance-checker
+            image: botrt/compliance-checker:latest
+            command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Starting RPO/RTO compliance check..."
+              
+              # Check backup compliance
+              LAST_BACKUP=$(date -d "$(cat /var/backup/last-success)" +%s)
+              CURRENT=$(date +%s)
+              BACKUP_AGE=$((CURRENT - LAST_BACKUP))
+              
+              if [ $BACKUP_AGE -gt 300 ]; then
+                echo "CRITICAL: Backup RPO violation - Last backup $BACKUP_AGE seconds ago"
+                curl -X POST $ALERT_WEBHOOK -d '{"alert":"backup_rpo_violation","age":'$BACKUP_AGE'}'
+              fi
+              
+              # Check database replication
+              REPLICATION_LAG=$(psql -h $DB_HOST -t -c "SELECT EXTRACT(EPOCH FROM now() - pg_last_xact_replay_timestamp())")
+              
+              if [ $(echo "$REPLICATION_LAG > 60" | bc) -eq 1 ]; then
+                echo "WARNING: Database replication lag ${REPLICATION_LAG}s exceeds RPO"
+                curl -X POST $ALERT_WEBHOOK -d '{"alert":"replication_lag","lag":'$REPLICATION_LAG'}'
+              fi
+              
+              # Check service availability
+              for service in api payment auth; do
+                STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://$service-service:3000/health)
+                if [ "$STATUS" != "200" ]; then
+                  echo "CRITICAL: Service $service unavailable (HTTP $STATUS)"
+                  curl -X POST $ALERT_WEBHOOK -d '{"alert":"service_unavailable","service":"'$service'","status":'$STATUS'}'
+                fi
+              done
+              
+              echo "RPO/RTO compliance check completed"
+            env:
+            - name: DB_HOST
+              value: "postgresql-primary"
+            - name: ALERT_WEBHOOK
+              valueFrom:
+                secretKeyRef:
+                  name: alert-webhooks
+                  key: compliance-webhook
+            volumeMounts:
+            - name: backup-status
+              mountPath: /var/backup
+              readOnly: true
+          volumes:
+          - name: backup-status
+            persistentVolumeClaim:
+              claimName: backup-metadata-pvc
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            readOnlyRootFilesystem: true

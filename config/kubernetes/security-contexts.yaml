@@ -1,0 +1,438 @@
+# Kubernetes Security Contexts and Pod Security Standards
+# Implements CIS Kubernetes Benchmark and Pod Security Standards
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: security-policies
+  namespace: botrt-production
+  labels:
+    app: botrt
+    component: security
+    security.level: "strict"
+data:
+  # Security Context Configuration
+  security-context.yaml: |
+    # Default Security Context for all BotRT containers
+    securityContext:
+      # Run as non-root user
+      runAsNonRoot: true
+      runAsUser: 1001
+      runAsGroup: 1001
+      
+      # Filesystem security
+      readOnlyRootFilesystem: true
+      allowPrivilegeEscalation: false
+      
+      # Capabilities
+      capabilities:
+        drop:
+          - ALL
+        add: []  # No capabilities required
+      
+      # SELinux/AppArmor
+      seLinuxOptions:
+        level: "s0:c123,c456"
+      appArmorProfile:
+        type: RuntimeDefault
+      
+      # Seccomp
+      seccompProfile:
+        type: RuntimeDefault
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: botrt-backend-secure
+  namespace: botrt-production
+  labels:
+    app: botrt-backend
+    version: v1
+    security.level: "maximum"
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: botrt-backend
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: botrt-backend
+        version: v1
+        security.level: "maximum"
+      annotations:
+        # Pod Security Annotations
+        pod.security.kubernetes.io/enforce: "restricted"
+        pod.security.kubernetes.io/enforce-version: "latest"
+        pod.security.kubernetes.io/audit: "restricted"
+        pod.security.kubernetes.io/warn: "restricted"
+        
+        # Security scanning annotations
+        security.scan.enabled: "true"
+        security.scan.schedule: "daily"
+        
+        # Container runtime annotations
+        container.apparmor.security.beta.kubernetes.io/botrt-backend: "runtime/default"
+        container.seccomp.security.alpha.kubernetes.io/botrt-backend: "runtime/default"
+        
+        # Networking annotations
+        kubernetes.io/ingress.class: "nginx"
+        nginx.ingress.kubernetes.io/ssl-redirect: "true"
+        nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+        
+    spec:
+      # Pod Security Context
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+        fsGroupChangePolicy: "OnRootMismatch"
+        
+        # Seccomp profile
+        seccompProfile:
+          type: RuntimeDefault
+        
+        # Supplemental groups
+        supplementalGroups: []
+        
+        # Sysctls (none allowed for security)
+        sysctls: []
+      
+      # Service Account with minimal permissions
+      serviceAccountName: botrt-backend-sa
+      automountServiceAccountToken: false
+      
+      # DNS and networking security
+      dnsPolicy: ClusterFirst
+      hostNetwork: false
+      hostPID: false
+      hostIPC: false
+      
+      # Node selection and affinity
+      nodeSelector:
+        node.security.level: "high"
+        kubernetes.io/arch: "amd64"
+      
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - botrt-backend
+              topologyKey: kubernetes.io/hostname
+      
+      # Container specifications
+      containers:
+      - name: botrt-backend
+        image: botrt/backend:latest-secure
+        imagePullPolicy: Always
+        
+        # Container Security Context (most restrictive)
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+          runAsGroup: 1001
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          
+          capabilities:
+            drop:
+              - ALL
+            add: []
+          
+          seccompProfile:
+            type: RuntimeDefault
+          
+          appArmorProfile:
+            type: RuntimeDefault
+        
+        # Resource limits (prevent resource exhaustion attacks)
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+            ephemeral-storage: "1Gi"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+            ephemeral-storage: "2Gi"
+        
+        # Ports (non-privileged)
+        ports:
+        - name: http
+          containerPort: 3000
+          protocol: TCP
+        
+        # Environment variables (secure)
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "3000"
+        - name: SECURITY_LEVEL
+          value: "maximum"
+        
+        # Environment from secrets and configmaps
+        envFrom:
+        - secretRef:
+            name: botrt-secrets
+        - configMapRef:
+            name: botrt-config
+        
+        # Volume mounts (read-only where possible)
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+          readOnly: false
+        - name: var-tmp
+          mountPath: /var/tmp
+          readOnly: false
+        - name: logs
+          mountPath: /app/logs
+          readOnly: false
+        - name: uploads
+          mountPath: /app/uploads
+          readOnly: false
+        - name: app-config
+          mountPath: /app/config
+          readOnly: true
+        - name: ssl-certs
+          mountPath: /app/certs
+          readOnly: true
+        
+        # Liveness probe
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+          successThreshold: 1
+        
+        # Readiness probe
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+        
+        # Startup probe
+        startupProbe:
+          httpGet:
+            path: /health/startup
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 30
+          successThreshold: 1
+      
+      # Init containers for security setup
+      initContainers:
+      - name: security-init
+        image: alpine:3.18
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+          runAsGroup: 1001
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Initializing security contexts..."
+          # Verify filesystem permissions
+          if [ ! -w /tmp ]; then
+            echo "Error: /tmp not writable"
+            exit 1
+          fi
+          if [ ! -w /var/tmp ]; then
+            echo "Error: /var/tmp not writable"
+            exit 1
+          fi
+          echo "Security initialization complete"
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: var-tmp
+          mountPath: /var/tmp
+      
+      # Volumes (minimal and secure)
+      volumes:
+      - name: tmp
+        emptyDir:
+          sizeLimit: 100Mi
+      - name: var-tmp
+        emptyDir:
+          sizeLimit: 100Mi
+      - name: logs
+        emptyDir:
+          sizeLimit: 500Mi
+      - name: uploads
+        persistentVolumeClaim:
+          claimName: botrt-uploads-pvc
+      - name: app-config
+        configMap:
+          name: botrt-config
+          defaultMode: 0444
+      - name: ssl-certs
+        secret:
+          secretName: botrt-tls-certs
+          defaultMode: 0400
+      
+      # Image pull secrets
+      imagePullSecrets:
+      - name: botrt-registry-secret
+      
+      # Termination settings
+      terminationGracePeriodSeconds: 30
+      
+      # Restart policy
+      restartPolicy: Always
+
+---
+# Network Policy for additional security
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: botrt-backend-netpol
+  namespace: botrt-production
+spec:
+  podSelector:
+    matchLabels:
+      app: botrt-backend
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  # Ingress rules (restrictive)
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: botrt-production
+    - podSelector:
+        matchLabels:
+          app: botrt-frontend
+    - podSelector:
+        matchLabels:
+          app: nginx-ingress
+    ports:
+    - protocol: TCP
+      port: 3000
+  
+  # Egress rules (minimal required)
+  egress:
+  # DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+  # Database connections
+  - to:
+    - podSelector:
+        matchLabels:
+          app: postgresql
+    ports:
+    - protocol: TCP
+      port: 5432
+  # Redis connections
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis
+    ports:
+    - protocol: TCP
+      port: 6379
+  # Vault connections
+  - to:
+    - podSelector:
+        matchLabels:
+          app: vault
+    ports:
+    - protocol: TCP
+      port: 8200
+  # HTTPS external APIs (limited)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+
+---
+# Pod Disruption Budget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: botrt-backend-pdb
+  namespace: botrt-production
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: botrt-backend
+
+---
+# Service Account with minimal permissions
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: botrt-backend-sa
+  namespace: botrt-production
+  labels:
+    app: botrt-backend
+automountServiceAccountToken: false
+
+---
+# Role with minimal required permissions
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: botrt-backend-role
+  namespace: botrt-production
+rules:
+# No additional permissions required
+- apiGroups: [""]
+  resources: [""]
+  verbs: [""]
+
+---
+# RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: botrt-backend-rolebinding
+  namespace: botrt-production
+subjects:
+- kind: ServiceAccount
+  name: botrt-backend-sa
+  namespace: botrt-production
+roleRef:
+  kind: Role
+  name: botrt-backend-role
+  apiGroup: rbac.authorization.k8s.io

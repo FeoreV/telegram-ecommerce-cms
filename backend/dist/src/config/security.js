@@ -1,0 +1,214 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.securityMetrics = exports.performSecurityHealthCheck = exports.loadSecurityConfig = void 0;
+const logger_1 = require("../utils/logger");
+const SecretManager_1 = require("../utils/SecretManager");
+const validateEnvironment = () => {
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    if (process.env.USE_VAULT === 'true') {
+        const requiredVaultVars = ['VAULT_ADDR', 'VAULT_ROLE_ID', 'VAULT_SECRET_ID'];
+        const missing = requiredVaultVars.filter(envVar => !process.env[envVar]);
+        if (missing.length > 0) {
+            logger_1.logger.error('Missing required Vault environment variables:', { missingVars: missing });
+            throw new Error(`Missing required Vault environment variables: ${missing.join(', ')}`);
+        }
+    }
+    else if (!isDevelopment) {
+        const requiredEnvVars = ['JWT_SECRET', 'JWT_REFRESH_SECRET'];
+        const missing = requiredEnvVars.filter(envVar => !process.env[envVar]);
+        if (missing.length > 0) {
+            logger_1.logger.error('Missing required environment variables for security:', { missingVars: missing });
+            throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+        }
+    }
+    else {
+        const requiredEnvVars = ['JWT_SECRET', 'JWT_REFRESH_SECRET'];
+        const missing = requiredEnvVars.filter(envVar => !process.env[envVar]);
+        if (missing.length > 0) {
+            logger_1.logger.warn('Missing JWT secrets in development mode:', { missingVars: missing });
+            logger_1.logger.warn('SecretManager will generate temporary secrets (insecure for production)');
+        }
+    }
+};
+const loadSecurityConfig = async () => {
+    await SecretManager_1.secretManager.initialize();
+    validateEnvironment();
+    const NODE_ENV = process.env.NODE_ENV || 'development';
+    const isDevelopment = NODE_ENV === 'development';
+    const jwtSecrets = SecretManager_1.secretManager.getJWTSecrets();
+    const config = {
+        jwt: {
+            secret: jwtSecrets.secret,
+            refreshSecret: jwtSecrets.refreshSecret,
+            accessExpiry: jwtSecrets.expiresIn,
+            refreshExpiry: jwtSecrets.refreshExpiresIn,
+            clockSkew: parseInt(process.env.JWT_CLOCK_SKEW || '30'),
+            issuer: process.env.JWT_ISSUER || 'botrt-ecommerce',
+            audience: process.env.JWT_AUDIENCE || 'botrt-admin-panel',
+        },
+        rateLimit: {
+            windowMs: 15 * 60 * 1000,
+            maxRequests: isDevelopment ? 1000 : parseInt(process.env.RATE_LIMIT_MAX || '100'),
+            authMaxRequests: isDevelopment ? 100 : parseInt(process.env.AUTH_RATE_LIMIT_MAX || '5'),
+            uploadMaxRequests: isDevelopment ? 50 : parseInt(process.env.UPLOAD_RATE_LIMIT_MAX || '10'),
+        },
+        cors: {
+            allowedOrigins: [
+                process.env.FRONTEND_URL || 'http://localhost:3000',
+                process.env.ADMIN_PANEL_URL || 'http://localhost:3001',
+                ...(process.env.ADDITIONAL_CORS_ORIGINS?.split(',') || [])
+            ].filter(Boolean),
+            credentials: true,
+        },
+        security: {
+            enableBruteForceProtection: process.env.ENABLE_BRUTE_FORCE_PROTECTION !== 'false',
+            enableSecurityHeaders: process.env.ENABLE_SECURITY_HEADERS !== 'false',
+            enableRequestSanitization: process.env.ENABLE_REQUEST_SANITIZATION !== 'false',
+            adminIPWhitelist: process.env.ADMIN_IP_WHITELIST?.split(',').map(ip => ip.trim()),
+            maxRequestSize: process.env.MAX_REQUEST_SIZE || '10mb',
+            enableSecurityMonitoring: process.env.ENABLE_SECURITY_MONITORING !== 'false',
+        },
+        redis: {
+            url: process.env.REDIS_URL,
+            enabled: !!process.env.REDIS_URL,
+        },
+    };
+    logger_1.logger.info('Security configuration loaded', {
+        environment: NODE_ENV,
+        jwtAccessExpiry: config.jwt.accessExpiry,
+        jwtRefreshExpiry: config.jwt.refreshExpiry,
+        rateLimitMax: config.rateLimit.maxRequests,
+        authRateLimitMax: config.rateLimit.authMaxRequests,
+        corsOrigins: config.cors.allowedOrigins,
+        bruteForceProtection: config.security.enableBruteForceProtection,
+        securityHeaders: config.security.enableSecurityHeaders,
+        requestSanitization: config.security.enableRequestSanitization,
+        adminIPWhitelist: !!config.security.adminIPWhitelist,
+        redisEnabled: config.redis.enabled,
+    });
+    return config;
+};
+exports.loadSecurityConfig = loadSecurityConfig;
+const performSecurityHealthCheck = () => {
+    const checks = [];
+    let overallStatus = 'healthy';
+    try {
+        validateEnvironment();
+        checks.push({
+            name: 'Environment Variables',
+            status: 'pass',
+            message: 'All required environment variables are present'
+        });
+    }
+    catch (error) {
+        checks.push({
+            name: 'Environment Variables',
+            status: 'fail',
+            message: error instanceof Error ? error.message : 'Environment validation failed'
+        });
+        overallStatus = 'critical';
+    }
+    const jwtSecret = process.env.JWT_SECRET;
+    if (jwtSecret && jwtSecret.length >= 32) {
+        checks.push({
+            name: 'JWT Secret Strength',
+            status: 'pass',
+            message: 'JWT secret meets minimum length requirements'
+        });
+    }
+    else {
+        checks.push({
+            name: 'JWT Secret Strength',
+            status: 'warn',
+            message: 'JWT secret is shorter than recommended (32 characters)'
+        });
+        if (overallStatus === 'healthy')
+            overallStatus = 'warning';
+    }
+    if (process.env.NODE_ENV === 'production') {
+        const useHttps = process.env.USE_HTTPS === 'true' || process.env.HTTPS === 'true';
+        if (useHttps) {
+            checks.push({
+                name: 'HTTPS Configuration',
+                status: 'pass',
+                message: 'HTTPS is enabled in production'
+            });
+        }
+        else {
+            checks.push({
+                name: 'HTTPS Configuration',
+                status: 'warn',
+                message: 'HTTPS should be enabled in production'
+            });
+            if (overallStatus === 'healthy')
+                overallStatus = 'warning';
+        }
+    }
+    if (process.env.NODE_ENV === 'production' && !process.env.REDIS_URL) {
+        checks.push({
+            name: 'Redis Configuration',
+            status: 'warn',
+            message: 'Redis is recommended for production session and cache storage'
+        });
+        if (overallStatus === 'healthy')
+            overallStatus = 'warning';
+    }
+    else if (process.env.REDIS_URL) {
+        checks.push({
+            name: 'Redis Configuration',
+            status: 'pass',
+            message: 'Redis is configured'
+        });
+    }
+    return {
+        status: overallStatus,
+        checks
+    };
+};
+exports.performSecurityHealthCheck = performSecurityHealthCheck;
+class SecurityMetricsCollector {
+    constructor() {
+        this.metrics = {
+            rateLimitHits: 0,
+            bruteForceAttempts: 0,
+            invalidTokenAttempts: 0,
+            suspiciousRequests: 0,
+            blacklistedTokens: 0,
+            activeSessionsCount: 0,
+        };
+    }
+    incrementRateLimitHits() {
+        this.metrics.rateLimitHits++;
+    }
+    incrementBruteForceAttempts() {
+        this.metrics.bruteForceAttempts++;
+    }
+    incrementInvalidTokenAttempts() {
+        this.metrics.invalidTokenAttempts++;
+    }
+    incrementSuspiciousRequests() {
+        this.metrics.suspiciousRequests++;
+    }
+    incrementBlacklistedTokens() {
+        this.metrics.blacklistedTokens++;
+    }
+    setActiveSessionsCount(count) {
+        this.metrics.activeSessionsCount = count;
+    }
+    getMetrics() {
+        return { ...this.metrics };
+    }
+    resetMetrics() {
+        this.metrics = {
+            rateLimitHits: 0,
+            bruteForceAttempts: 0,
+            invalidTokenAttempts: 0,
+            suspiciousRequests: 0,
+            blacklistedTokens: 0,
+            activeSessionsCount: 0,
+        };
+    }
+}
+exports.securityMetrics = new SecurityMetricsCollector();
+exports.default = (0, exports.loadSecurityConfig)();
+//# sourceMappingURL=security.js.map

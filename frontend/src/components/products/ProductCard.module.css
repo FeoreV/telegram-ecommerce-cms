@@ -1,0 +1,346 @@
+/* ProductCard Component - BEM Style */
+
+.product {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: var(--color-bg, #ffffff);
+  border: 1px solid var(--color-border, #dee2e6);
+  cursor: pointer;
+}
+
+.product:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.product--compact {
+  flex-direction: row;
+  height: 120px;
+  min-height: 120px;
+  margin-bottom: 8px;
+}
+
+.product--selected {
+  border: 2px solid var(--color-primary, #0088cc);
+  background-color: rgba(0, 136, 204, 0.05);
+}
+
+.product--inactive {
+  opacity: 0.7;
+}
+
+/* Checkbox */
+.product__checkbox {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 4px;
+  z-index: 1;
+  padding: 2px;
+}
+
+.product:hover .product__checkbox,
+.product--selected .product__checkbox {
+  opacity: 1;
+}
+
+/* Media Section */
+.product__media {
+  position: relative;
+  height: 200px;
+  background-size: cover;
+  background-position: center;
+  background-color: var(--color-bg-secondary, #f8f9fa);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.product__media--compact {
+  width: 120px;
+  min-width: 120px;
+  height: 120px;
+}
+
+.product__media-placeholder {
+  font-size: 60px;
+  color: var(--color-text-secondary, #666666);
+}
+
+.product__media-placeholder--compact {
+  font-size: 40px;
+}
+
+/* Actions */
+.product__actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
+.product__action-button {
+  background-color: rgba(255, 255, 255, 0.9);
+  margin-left: 4px;
+}
+
+.product__action-button:hover {
+  background-color: rgba(255, 255, 255, 1);
+}
+
+/* Status Badge */
+.product__status-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+/* Stock Alert */
+.product__stock-alert {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: rgba(255, 0, 0, 0.8);
+  color: white;
+  padding: 4px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+/* Content */
+.product__content {
+  flex: 1;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.product__content--compact {
+  padding: 12px;
+}
+
+.product__header {
+  margin-bottom: 8px;
+}
+
+.product__title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--color-text, #333333);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product__title--compact {
+  font-size: 16px;
+}
+
+.product__description {
+  color: var(--color-text-secondary, #666666);
+  margin-bottom: 8px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.product__description--truncated {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+/* Tags and Metadata */
+.product__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.product__tag {
+  font-size: 12px;
+}
+
+.product__tag--store {
+  background-color: rgba(0, 136, 204, 0.1);
+  color: var(--color-primary, #0088cc);
+}
+
+.product__tag--category {
+  background-color: rgba(76, 175, 80, 0.1);
+  color: #4caf50;
+}
+
+.product__tag--sku {
+  background-color: rgba(255, 152, 0, 0.1);
+  color: #ff9800;
+}
+
+/* Price and Stock */
+.product__price-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.product__price {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-primary, #0088cc);
+}
+
+.product__price--compact {
+  font-size: 18px;
+}
+
+.product__stock-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.product__stock-chip {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.product__stock-chip:hover {
+  filter: brightness(1.1);
+}
+
+.product__stock-warning {
+  color: #ff9800;
+  font-size: 16px;
+}
+
+/* Variants */
+.product__variants {
+  margin-bottom: 12px;
+}
+
+.product__variants-label {
+  font-size: 12px;
+  color: var(--color-text-secondary, #666666);
+  margin-bottom: 4px;
+  display: block;
+}
+
+.product__variants-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.product__variant-chip {
+  font-size: 12px;
+  border: 1px solid var(--color-border, #dee2e6);
+  background-color: transparent;
+}
+
+.product__variant-chip--more {
+  background-color: var(--color-primary, #0088cc);
+  color: white;
+}
+
+/* Action Buttons */
+.product__actions-bottom {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.product__action-primary {
+  flex: 1;
+}
+
+.product__action-secondary {
+  min-width: auto;
+  flex-shrink: 0;
+}
+
+/* Dark Theme Support */
+.theme--dark .product {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .product__media {
+  background-color: var(--color-bg, #1a1a1a);
+}
+
+.theme--dark .product__title {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .product__description {
+  color: var(--color-text-secondary, #cccccc);
+}
+
+.theme--dark .product__action-button {
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+}
+
+.theme--dark .product__action-button:hover {
+  background-color: rgba(0, 0, 0, 0.9);
+}
+
+.theme--dark .product__status-badge {
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
+.theme--dark .product__variant-chip {
+  border-color: var(--color-border, #404040);
+  background-color: var(--color-bg, #1a1a1a);
+  color: var(--color-text, #ffffff);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .product__content {
+    padding: 12px;
+  }
+  
+  .product__title {
+    font-size: 16px;
+  }
+  
+  .product__price {
+    font-size: 18px;
+  }
+  
+  .product__media {
+    height: 160px;
+  }
+  
+  .product__actions-bottom {
+    flex-direction: column;
+  }
+}
+
+/* Animation */
+@keyframes productPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.product--loading {
+  animation: productPulse 1.5s ease-in-out infinite;
+}

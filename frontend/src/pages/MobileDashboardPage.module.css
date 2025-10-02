@@ -1,0 +1,543 @@
+/* MobileDashboardPage - BEM Style */
+
+.mobileDashboard {
+  min-height: 100vh;
+  background-color: var(--color-bg, #ffffff);
+  padding: 0;
+  overflow-x: hidden;
+}
+
+.mobileDashboard__header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: var(--spacing-lg) var(--spacing-md);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-fixed);
+  box-shadow: var(--shadow-md);
+}
+
+.mobileDashboard__headerTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.mobileDashboard__logo {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.mobileDashboard__logoIcon {
+  width: 32px;
+  height: 32px;
+  background-color: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.mobileDashboard__headerActions {
+  display: flex;
+  gap: var(--spacing-xs);
+  align-items: center;
+}
+
+.mobileDashboard__headerButton {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.mobileDashboard__headerButton:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.mobileDashboard__welcome {
+  font-size: 16px;
+  opacity: 0.9;
+}
+
+.mobileDashboard__userName {
+  font-weight: 600;
+}
+
+/* Quick Stats */
+.mobileDashboard__quickStats {
+  padding: var(--spacing-md);
+  background-color: var(--color-bg, #ffffff);
+}
+
+.mobileDashboard__statsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-sm);
+}
+
+.mobileDashboard__statCard {
+  background-color: var(--color-bg, #ffffff);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-md);
+  text-align: center;
+  border: 1px solid var(--color-border, #dee2e6);
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-fast);
+}
+
+.mobileDashboard__statCard:active {
+  transform: scale(0.98);
+  background-color: var(--color-bg-secondary, #f8f9fa);
+}
+
+.mobileDashboard__statIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--border-radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: white;
+  margin: 0 auto var(--spacing-sm);
+}
+
+.mobileDashboard__statIcon--primary {
+  background-color: var(--color-primary, #0088cc);
+}
+
+.mobileDashboard__statIcon--success {
+  background-color: var(--color-success, #4caf50);
+}
+
+.mobileDashboard__statIcon--warning {
+  background-color: var(--color-warning, #ff9800);
+}
+
+.mobileDashboard__statIcon--info {
+  background-color: var(--color-info, #2196f3);
+}
+
+.mobileDashboard__statValue {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text, #333333);
+  margin-bottom: 2px;
+}
+
+.mobileDashboard__statLabel {
+  font-size: 12px;
+  color: var(--color-text-secondary, #666666);
+  font-weight: 500;
+}
+
+/* Quick Actions */
+.mobileDashboard__quickActions {
+  padding: var(--spacing-md);
+  background-color: var(--color-bg-secondary, #f8f9fa);
+}
+
+.mobileDashboard__sectionTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text, #333333);
+  margin-bottom: var(--spacing-md);
+  padding: 0 var(--spacing-sm);
+}
+
+.mobileDashboard__actionsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-sm);
+}
+
+.mobileDashboard__actionCard {
+  background-color: var(--color-bg, #ffffff);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-md);
+  text-align: center;
+  border: 1px solid var(--color-border, #dee2e6);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  text-decoration: none;
+  color: inherit;
+}
+
+.mobileDashboard__actionCard:active {
+  transform: scale(0.95);
+  background-color: var(--color-primary, #0088cc);
+  color: white;
+}
+
+.mobileDashboard__actionIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--border-radius-md);
+  background-color: var(--color-primary, #0088cc);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  margin: 0 auto var(--spacing-sm);
+}
+
+.mobileDashboard__actionCard:active .mobileDashboard__actionIcon {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.mobileDashboard__actionLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text, #333333);
+}
+
+.mobileDashboard__actionCard:active .mobileDashboard__actionLabel {
+  color: white;
+}
+
+/* Recent Activity */
+.mobileDashboard__recentActivity {
+  padding: var(--spacing-md);
+  background-color: var(--color-bg, #ffffff);
+}
+
+.mobileDashboard__activityList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.mobileDashboard__activityItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background-color: var(--color-bg, #ffffff);
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--color-border, #dee2e6);
+  transition: var(--transition-fast);
+}
+
+.mobileDashboard__activityItem:active {
+  background-color: var(--color-bg-secondary, #f8f9fa);
+  transform: scale(0.98);
+}
+
+.mobileDashboard__activityIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--border-radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: white;
+  flex-shrink: 0;
+}
+
+.mobileDashboard__activityIcon--order {
+  background-color: var(--color-success, #4caf50);
+}
+
+.mobileDashboard__activityIcon--product {
+  background-color: var(--color-info, #2196f3);
+}
+
+.mobileDashboard__activityIcon--store {
+  background-color: var(--color-warning, #ff9800);
+}
+
+.mobileDashboard__activityIcon--user {
+  background-color: var(--color-primary, #0088cc);
+}
+
+.mobileDashboard__activityContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.mobileDashboard__activityTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text, #333333);
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobileDashboard__activityMeta {
+  font-size: 12px;
+  color: var(--color-text-secondary, #666666);
+}
+
+.mobileDashboard__activityTime {
+  font-size: 12px;
+  color: var(--color-text-secondary, #666666);
+  flex-shrink: 0;
+}
+
+/* Bottom Navigation */
+.mobileDashboard__bottomNav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: var(--color-bg, #ffffff);
+  border-top: 1px solid var(--color-border, #dee2e6);
+  padding: var(--spacing-sm) 0;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+  z-index: var(--z-fixed);
+}
+
+.mobileDashboard__navList {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.mobileDashboard__navItem {
+  flex: 1;
+  text-align: center;
+}
+
+.mobileDashboard__navButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--spacing-sm);
+  color: var(--color-text-secondary, #666666);
+  transition: var(--transition-fast);
+  width: 100%;
+}
+
+.mobileDashboard__navButton:active {
+  transform: scale(0.95);
+}
+
+.mobileDashboard__navButton--active {
+  color: var(--color-primary, #0088cc);
+}
+
+.mobileDashboard__navIcon {
+  font-size: 20px;
+}
+
+.mobileDashboard__navLabel {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Content with bottom nav padding */
+.mobileDashboard__content {
+  padding-bottom: 80px; /* Space for bottom navigation */
+}
+
+/* Pull to Refresh */
+.mobileDashboard__pullToRefresh {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary, #666666);
+  font-size: 14px;
+  background-color: var(--color-bg-secondary, #f8f9fa);
+  border-bottom: 1px solid var(--color-border, #dee2e6);
+}
+
+.mobileDashboard__pullIcon {
+  margin-right: var(--spacing-sm);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Notification Banner */
+.mobileDashboard__notificationBanner {
+  background-color: var(--color-warning, #ff9800);
+  color: white;
+  padding: var(--spacing-md);
+  margin: var(--spacing-md);
+  border-radius: var(--border-radius-md);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  animation: slideInDown 0.3s ease-out;
+}
+
+.mobileDashboard__notificationIcon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.mobileDashboard__notificationText {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.mobileDashboard__notificationClose {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 18px;
+  padding: 4px;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.mobileDashboard__notificationClose:hover {
+  opacity: 0.7;
+}
+
+/* Loading States */
+.mobileDashboard__loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  color: var(--color-text-secondary, #666666);
+}
+
+.mobileDashboard__loadingText {
+  margin-left: var(--spacing-md);
+}
+
+/* Dark Theme Support */
+.theme--dark .mobileDashboard {
+  background-color: var(--color-bg, #1a1a1a);
+}
+
+.theme--dark .mobileDashboard__sectionTitle {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .mobileDashboard__statCard {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .mobileDashboard__statValue {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .mobileDashboard__quickActions {
+  background-color: var(--color-bg, #1a1a1a);
+}
+
+.theme--dark .mobileDashboard__actionCard {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .mobileDashboard__actionLabel {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .mobileDashboard__recentActivity {
+  background-color: var(--color-bg, #1a1a1a);
+}
+
+.theme--dark .mobileDashboard__activityItem {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .mobileDashboard__activityTitle {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .mobileDashboard__bottomNav {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-top-color: var(--color-border, #404040);
+}
+
+.theme--dark .mobileDashboard__navButton {
+  color: var(--color-text-secondary, #cccccc);
+}
+
+.theme--dark .mobileDashboard__navButton--active {
+  color: var(--color-primary, #0088cc);
+}
+
+.theme--dark .mobileDashboard__pullToRefresh {
+  background-color: var(--color-bg, #1a1a1a);
+  border-bottom-color: var(--color-border, #404040);
+  color: var(--color-text-secondary, #cccccc);
+}
+
+/* Swipe Gestures */
+.mobileDashboard__swipeContainer {
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobileDashboard__swipeContainer::-webkit-scrollbar {
+  display: none;
+}
+
+/* Touch Optimization */
+.mobileDashboard__touchTarget {
+  min-height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Status Bar Padding */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .mobileDashboard__header {
+    padding-top: calc(var(--spacing-lg) + env(safe-area-inset-top));
+  }
+}
+
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .mobileDashboard__bottomNav {
+    padding-bottom: calc(var(--spacing-sm) + env(safe-area-inset-bottom));
+  }
+  
+  .mobileDashboard__content {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom));
+  }
+}
+
+/* Responsive - Ultra Small Screens */
+@media (max-width: 320px) {
+  .mobileDashboard__statsGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .mobileDashboard__actionsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .mobileDashboard__navLabel {
+    display: none;
+  }
+}

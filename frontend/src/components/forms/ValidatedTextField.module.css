@@ -1,0 +1,276 @@
+/* ValidatedTextField - BEM Style */
+
+.validatedTextField {
+  margin-bottom: var(--spacing-md);
+}
+
+.validatedTextField__wrapper {
+  position: relative;
+}
+
+.validatedTextField__field {
+  width: 100%;
+  background-color: var(--color-bg, #ffffff);
+  border-radius: var(--border-radius-md);
+  transition: var(--transition-fast);
+}
+
+.validatedTextField__field .MuiOutlinedInput-root {
+  border-radius: var(--border-radius-md);
+  transition: var(--transition-fast);
+}
+
+.validatedTextField__field .MuiInputLabel-root {
+  color: var(--color-text-secondary, #666666);
+  font-weight: 500;
+}
+
+.validatedTextField__field .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: var(--color-primary, #0088cc);
+}
+
+.validatedTextField__field .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: var(--color-primary, #0088cc);
+  border-width: 2px;
+}
+
+.validatedTextField__field .MuiOutlinedInput-input {
+  color: var(--color-text, #333333);
+  font-weight: 500;
+}
+
+/* Field States */
+.validatedTextField__field--error .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline {
+  border-color: var(--color-error, #f44336);
+}
+
+.validatedTextField__field--error .MuiInputLabel-root {
+  color: var(--color-error, #f44336);
+}
+
+.validatedTextField__field--success .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline {
+  border-color: var(--color-success, #4caf50);
+}
+
+.validatedTextField__field--success .MuiInputLabel-root {
+  color: var(--color-success, #4caf50);
+}
+
+.validatedTextField__field--warning .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline {
+  border-color: var(--color-warning, #ff9800);
+}
+
+.validatedTextField__field--warning .MuiInputLabel-root {
+  color: var(--color-warning, #ff9800);
+}
+
+/* Required Indicator */
+.validatedTextField__required {
+  color: var(--color-error, #f44336);
+  margin-left: 2px;
+  font-weight: 600;
+}
+
+/* Validation Icons */
+.validatedTextField__icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.validatedTextField__icon--error {
+  color: var(--color-error, #f44336);
+}
+
+.validatedTextField__icon--success {
+  color: var(--color-success, #4caf50);
+}
+
+.validatedTextField__icon--warning {
+  color: var(--color-warning, #ff9800);
+}
+
+.validatedTextField__icon--loading {
+  color: var(--color-primary, #0088cc);
+  animation: spin 1s linear infinite;
+}
+
+/* Helper Text */
+.validatedTextField__helperText {
+  font-size: 12px;
+  margin-top: var(--spacing-xs);
+  margin-left: 14px;
+  line-height: 1.4;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-xs);
+}
+
+.validatedTextField__helperText--default {
+  color: var(--color-text-secondary, #666666);
+}
+
+.validatedTextField__helperText--error {
+  color: var(--color-error, #f44336);
+}
+
+.validatedTextField__helperText--success {
+  color: var(--color-success, #4caf50);
+}
+
+.validatedTextField__helperText--warning {
+  color: var(--color-warning, #ff9800);
+}
+
+.validatedTextField__helperIcon {
+  font-size: 14px;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+/* Character Counter */
+.validatedTextField__counter {
+  position: absolute;
+  bottom: -24px;
+  right: 0;
+  font-size: 11px;
+  color: var(--color-text-secondary, #666666);
+  font-family: monospace;
+}
+
+.validatedTextField__counter--warning {
+  color: var(--color-warning, #ff9800);
+}
+
+.validatedTextField__counter--error {
+  color: var(--color-error, #f44336);
+}
+
+/* Suggestions Dropdown */
+.validatedTextField__suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: var(--color-bg, #ffffff);
+  border: 1px solid var(--color-border, #dee2e6);
+  border-top: none;
+  border-radius: 0 0 var(--border-radius-md) var(--border-radius-md);
+  box-shadow: var(--shadow-md);
+  z-index: var(--z-dropdown);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.validatedTextField__suggestion {
+  padding: var(--spacing-sm) var(--spacing-md);
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--color-text, #333333);
+  transition: var(--transition-fast);
+  border-bottom: 1px solid var(--color-border, #dee2e6);
+}
+
+.validatedTextField__suggestion:hover {
+  background-color: var(--color-bg-secondary, #f8f9fa);
+}
+
+.validatedTextField__suggestion:last-child {
+  border-bottom: none;
+}
+
+.validatedTextField__suggestion--highlighted {
+  background-color: rgba(0, 136, 204, 0.1);
+  color: var(--color-primary, #0088cc);
+}
+
+/* Input Variants */
+.validatedTextField__field--outlined {
+  background-color: transparent;
+}
+
+.validatedTextField__field--filled {
+  background-color: var(--color-bg-secondary, #f8f9fa);
+}
+
+.validatedTextField__field--standard {
+  background-color: transparent;
+}
+
+.validatedTextField__field--standard .MuiInput-underline:before {
+  border-bottom-color: var(--color-border, #dee2e6);
+}
+
+.validatedTextField__field--standard .MuiInput-underline:hover:before {
+  border-bottom-color: var(--color-primary, #0088cc);
+}
+
+.validatedTextField__field--standard .MuiInput-underline:after {
+  border-bottom-color: var(--color-primary, #0088cc);
+}
+
+/* Dark Theme Support */
+.theme--dark .validatedTextField__field {
+  background-color: var(--color-bg, #1a1a1a);
+}
+
+.theme--dark .validatedTextField__field .MuiInputLabel-root {
+  color: var(--color-text-secondary, #cccccc);
+}
+
+.theme--dark .validatedTextField__field .MuiOutlinedInput-input {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .validatedTextField__field .MuiOutlinedInput-notchedOutline {
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .validatedTextField__helperText--default {
+  color: var(--color-text-secondary, #cccccc);
+}
+
+.theme--dark .validatedTextField__counter {
+  color: var(--color-text-secondary, #cccccc);
+}
+
+.theme--dark .validatedTextField__suggestions {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .validatedTextField__suggestion {
+  color: var(--color-text, #ffffff);
+  border-bottom-color: var(--color-border, #404040);
+}
+
+.theme--dark .validatedTextField__suggestion:hover {
+  background-color: var(--color-bg, #1a1a1a);
+}
+
+.theme--dark .validatedTextField__field--filled {
+  background-color: var(--color-bg, #1a1a1a);
+}
+
+.theme--dark .validatedTextField__field--standard .MuiInput-underline:before {
+  border-bottom-color: var(--color-border, #404040);
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .validatedTextField__field {
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+  
+  .validatedTextField__suggestions {
+    max-height: 150px;
+  }
+  
+  .validatedTextField__counter {
+    bottom: -20px;
+    font-size: 10px;
+  }
+}

@@ -1,0 +1,22 @@
+[
+  {
+    "fileName": "main-overview.mdc",
+    "description": "Complete system overview focusing on the three-tier architecture (Frontend, Backend, Telegram Bot) and their interactions, with emphasis on the e-commerce workflow"
+  },
+  {
+    "fileName": "data-models-and-relationships.mdc",
+    "description": "Comprehensive documentation of data models including Order, Store, Product, User, and their relationships, with special focus on the variant system and multi-store architecture"
+  },
+  {
+    "fileName": "order-processing-flow.mdc",
+    "description": "Detailed documentation of the order processing algorithm, including the custom order number generation, multi-step verification workflow, and inventory management integration"
+  },
+  {
+    "fileName": "authorization-model.mdc",
+    "description": "Documentation of the hierarchical role-based access control system, store-specific admin privileges, and cross-store authorization mechanisms"
+  },
+  {
+    "fileName": "telegram-integration.mdc",
+    "description": "Technical documentation of the Telegram bot integration, focusing on session management, cart handling, and the custom order flow implementation"
+  }
+]

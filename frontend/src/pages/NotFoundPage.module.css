@@ -1,0 +1,343 @@
+/* NotFoundPage - BEM Style */
+
+.notFoundPage {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: var(--spacing-md);
+}
+
+.notFoundPage__container {
+  max-width: 600px;
+  width: 100%;
+  text-align: center;
+}
+
+.notFoundPage__card {
+  background-color: var(--color-bg, #ffffff);
+  border-radius: var(--border-radius-xl);
+  padding: var(--spacing-xxl);
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--color-border, #dee2e6);
+  animation: bounceIn 0.6s ease-out;
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.notFoundPage__errorCode {
+  font-size: 128px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: var(--spacing-md);
+  line-height: 1;
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.notFoundPage__title {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--color-text, #333333);
+  margin-bottom: var(--spacing-md);
+}
+
+.notFoundPage__message {
+  font-size: 18px;
+  color: var(--color-text-secondary, #666666);
+  line-height: 1.6;
+  margin-bottom: var(--spacing-lg);
+}
+
+.notFoundPage__description {
+  font-size: 16px;
+  color: var(--color-text-secondary, #666666);
+  line-height: 1.5;
+  margin-bottom: var(--spacing-xl);
+}
+
+.notFoundPage__actions {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: var(--spacing-lg);
+}
+
+.notFoundPage__homeButton {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 12px 24px;
+  border-radius: var(--border-radius-md);
+  font-weight: 600;
+  text-transform: none;
+  transition: var(--transition-normal);
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+}
+
+.notFoundPage__homeButton:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+  text-decoration: none;
+}
+
+.notFoundPage__backButton {
+  background-color: transparent;
+  color: var(--color-text-secondary, #666666);
+  padding: 12px 24px;
+  border-radius: var(--border-radius-md);
+  font-weight: 600;
+  text-transform: none;
+  border: 2px solid var(--color-border, #dee2e6);
+  transition: var(--transition-normal);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.notFoundPage__backButton:hover {
+  background-color: var(--color-text-secondary, #666666);
+  color: white;
+  border-color: var(--color-text-secondary, #666666);
+  text-decoration: none;
+}
+
+/* Suggestions */
+.notFoundPage__suggestions {
+  background-color: var(--color-bg-secondary, #f8f9fa);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-lg);
+  margin-top: var(--spacing-lg);
+  border: 1px solid var(--color-border, #dee2e6);
+}
+
+.notFoundPage__suggestionsTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text, #333333);
+  margin-bottom: var(--spacing-md);
+}
+
+.notFoundPage__suggestionsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.notFoundPage__suggestion {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  transition: var(--transition-fast);
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+}
+
+.notFoundPage__suggestion:hover {
+  background-color: rgba(0, 136, 204, 0.1);
+  text-decoration: none;
+}
+
+.notFoundPage__suggestionIcon {
+  color: var(--color-primary, #0088cc);
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.notFoundPage__suggestionText {
+  font-size: 14px;
+  color: var(--color-text, #333333);
+}
+
+/* Search Box */
+.notFoundPage__search {
+  margin-top: var(--spacing-lg);
+  padding: var(--spacing-lg);
+  background-color: var(--color-bg-secondary, #f8f9fa);
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--color-border, #dee2e6);
+}
+
+.notFoundPage__searchTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text, #333333);
+  margin-bottom: var(--spacing-md);
+  text-align: center;
+}
+
+.notFoundPage__searchField {
+  width: 100%;
+  margin-bottom: var(--spacing-md);
+}
+
+.notFoundPage__searchButton {
+  background-color: var(--color-primary, #0088cc);
+  color: white;
+  padding: 10px 20px;
+  border-radius: var(--border-radius-md);
+  font-weight: 600;
+  text-transform: none;
+  transition: var(--transition-normal);
+  width: 100%;
+}
+
+.notFoundPage__searchButton:hover {
+  background-color: #0077b3;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Help Section */
+.notFoundPage__help {
+  margin-top: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  background-color: rgba(33, 150, 243, 0.1);
+  border: 1px solid rgba(33, 150, 243, 0.2);
+  border-radius: var(--border-radius-md);
+  color: var(--color-info, #2196f3);
+}
+
+.notFoundPage__helpTitle {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: var(--spacing-sm);
+}
+
+.notFoundPage__helpText {
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: var(--spacing-md);
+}
+
+.notFoundPage__helpContact {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-info, #2196f3);
+  text-decoration: none;
+}
+
+.notFoundPage__helpContact:hover {
+  text-decoration: underline;
+}
+
+/* Dark Theme Support */
+.theme--dark .notFoundPage__card {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .notFoundPage__title {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .notFoundPage__message {
+  color: var(--color-text-secondary, #cccccc);
+}
+
+.theme--dark .notFoundPage__description {
+  color: var(--color-text-secondary, #cccccc);
+}
+
+.theme--dark .notFoundPage__suggestions {
+  background-color: var(--color-bg, #1a1a1a);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .notFoundPage__suggestionsTitle {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .notFoundPage__suggestionText {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .notFoundPage__search {
+  background-color: var(--color-bg, #1a1a1a);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .notFoundPage__searchTitle {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .notFoundPage__contactButton {
+  color: var(--color-text, #ffffff);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .notFoundPage__contactButton:hover {
+  background-color: var(--color-text, #ffffff);
+  color: var(--color-bg, #1a1a1a);
+  border-color: var(--color-text, #ffffff);
+}
+
+.theme--dark .notFoundPage__backButton {
+  color: var(--color-text, #ffffff);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .notFoundPage__backButton:hover {
+  background-color: var(--color-bg, #1a1a1a);
+}
+
+.theme--dark .notFoundPage__help {
+  background-color: rgba(33, 150, 243, 0.2);
+  border-color: rgba(33, 150, 243, 0.3);
+  color: #64b5f6;
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .notFoundPage__card {
+    padding: var(--spacing-xl);
+  }
+  
+  .notFoundPage__errorCode {
+    font-size: 96px;
+  }
+  
+  .notFoundPage__title {
+    font-size: 28px;
+  }
+  
+  .notFoundPage__message {
+    font-size: 16px;
+  }
+  
+  .notFoundPage__actions {
+    flex-direction: column;
+  }
+  
+  .notFoundPage__homeButton,
+  .notFoundPage__contactButton {
+    width: 100%;
+  }
+}

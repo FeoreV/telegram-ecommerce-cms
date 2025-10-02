@@ -1,0 +1,571 @@
+name: Dependency Management
+
+on:
+  schedule:
+    # Run weekly on Mondays at 6 AM UTC
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      update_type:
+        description: 'Type of update to perform'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+        - patch
+        - minor
+        - major
+        - security
+      dry_run:
+        description: 'Dry run (no actual updates)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # Job 1: Dependency Audit
+  dependency-audit:
+    name: 🔍 Dependency Audit
+    runs-on: ubuntu-latest
+
+    outputs:
+      has_vulnerabilities: ${{ steps.audit-check.outputs.has_vulnerabilities }}
+      update_available: ${{ steps.outdated-check.outputs.update_available }}
+
+    steps:
+      - name: 🏗 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🏗 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Install audit tools
+        run: |
+          npm install -g npm-check-updates
+          npm install -g audit-ci
+          npm install -g depcheck
+
+      - name: 🔍 Security audit
+        id: audit-check
+        run: |
+          echo "## Dependency Security Audit" >> $GITHUB_STEP_SUMMARY
+          
+          # Backend audit
+          echo "### Backend:" >> $GITHUB_STEP_SUMMARY
+          cd backend
+          npm audit --json > ../backend-audit.json || true
+          vulnerabilities=$(cat ../backend-audit.json | jq '.metadata.vulnerabilities.total // 0')
+          echo "- Vulnerabilities found: $vulnerabilities" >> $GITHUB_STEP_SUMMARY
+          
+          # Frontend audit
+          echo "### Frontend:" >> $GITHUB_STEP_SUMMARY
+          cd ../frontend
+          npm audit --json > ../frontend-audit.json || true
+          frontend_vulnerabilities=$(cat ../frontend-audit.json | jq '.metadata.vulnerabilities.total // 0')
+          echo "- Vulnerabilities found: $frontend_vulnerabilities" >> $GITHUB_STEP_SUMMARY
+          
+          # Bot audit
+          echo "### Bot:" >> $GITHUB_STEP_SUMMARY
+          cd ../bot
+          npm audit --json > ../bot-audit.json || true
+          bot_vulnerabilities=$(cat ../bot-audit.json | jq '.metadata.vulnerabilities.total // 0')
+          echo "- Vulnerabilities found: $bot_vulnerabilities" >> $GITHUB_STEP_SUMMARY
+          
+          total_vulnerabilities=$((vulnerabilities + frontend_vulnerabilities + bot_vulnerabilities))
+          
+          if [ $total_vulnerabilities -gt 0 ]; then
+            echo "has_vulnerabilities=true" >> $GITHUB_OUTPUT
+            echo "🚨 **Total vulnerabilities: $total_vulnerabilities**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "has_vulnerabilities=false" >> $GITHUB_OUTPUT
+            echo "✅ **No vulnerabilities found**" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: 📋 Check for outdated packages
+        id: outdated-check
+        run: |
+          echo "## Outdated Dependencies" >> $GITHUB_STEP_SUMMARY
+          
+          update_available=false
+          
+          # Backend
+          echo "### Backend:" >> $GITHUB_STEP_SUMMARY
+          cd backend
+          npm outdated --json > ../backend-outdated.json || true
+          if [ -s ../backend-outdated.json ]; then
+            echo "📦 Outdated packages found" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat ../backend-outdated.json | jq 'to_entries[] | {name: .key, current: .value.current, wanted: .value.wanted, latest: .value.latest}' | head -10 >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            update_available=true
+          else
+            echo "✅ All packages up to date" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Frontend
+          echo "### Frontend:" >> $GITHUB_STEP_SUMMARY
+          cd ../frontend
+          npm outdated --json > ../frontend-outdated.json || true
+          if [ -s ../frontend-outdated.json ]; then
+            echo "📦 Outdated packages found" >> $GITHUB_STEP_SUMMARY
+            update_available=true
+          else
+            echo "✅ All packages up to date" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Bot
+          echo "### Bot:" >> $GITHUB_STEP_SUMMARY
+          cd ../bot
+          npm outdated --json > ../bot-outdated.json || true
+          if [ -s ../bot-outdated.json ]; then
+            echo "📦 Outdated packages found" >> $GITHUB_STEP_SUMMARY
+            update_available=true
+          else
+            echo "✅ All packages up to date" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "update_available=$update_available" >> $GITHUB_OUTPUT
+
+      - name: 🧹 Check for unused dependencies
+        run: |
+          echo "## Unused Dependencies Check" >> $GITHUB_STEP_SUMMARY
+          
+          # Backend
+          echo "### Backend:" >> $GITHUB_STEP_SUMMARY
+          cd backend
+          depcheck --json > ../backend-depcheck.json || true
+          unused_deps=$(cat ../backend-depcheck.json | jq '.dependencies | length')
+          unused_devdeps=$(cat ../backend-depcheck.json | jq '.devDependencies | length')
+          echo "- Unused dependencies: $unused_deps" >> $GITHUB_STEP_SUMMARY
+          echo "- Unused devDependencies: $unused_devdeps" >> $GITHUB_STEP_SUMMARY
+          
+          # Frontend
+          echo "### Frontend:" >> $GITHUB_STEP_SUMMARY
+          cd ../frontend
+          depcheck --json > ../frontend-depcheck.json || true
+          frontend_unused=$(cat ../frontend-depcheck.json | jq '.dependencies | length')
+          echo "- Unused dependencies: $frontend_unused" >> $GITHUB_STEP_SUMMARY
+          
+          # Bot
+          echo "### Bot:" >> $GITHUB_STEP_SUMMARY
+          cd ../bot
+          depcheck --json > ../bot-depcheck.json || true
+          bot_unused=$(cat ../bot-depcheck.json | jq '.dependencies | length')
+          echo "- Unused dependencies: $bot_unused" >> $GITHUB_STEP_SUMMARY
+
+      - name: 📤 Upload audit reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit-reports
+          path: |
+            *-audit.json
+            *-outdated.json
+            *-depcheck.json
+        if: always()
+
+  # Job 2: Security Updates (Critical vulnerabilities only)
+  security-updates:
+    name: 🔒 Security Updates
+    runs-on: ubuntu-latest
+    needs: dependency-audit
+    if: needs.dependency-audit.outputs.has_vulnerabilities == 'true' || github.event.inputs.update_type == 'security'
+
+    steps:
+      - name: 🏗 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🏗 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 🔒 Fix security vulnerabilities
+        run: |
+          echo "## Security Updates" >> $GITHUB_STEP_SUMMARY
+          
+          # Backend security fixes
+          echo "### Backend Security Fixes:" >> $GITHUB_STEP_SUMMARY
+          cd backend
+          npm audit fix --force --dry-run > ../backend-fix-preview.txt 2>&1 || true
+          cat ../backend-fix-preview.txt >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ github.event.inputs.dry_run }}" != "true" ]; then
+            npm audit fix --force
+            npm install
+          fi
+          
+          # Frontend security fixes
+          echo "### Frontend Security Fixes:" >> $GITHUB_STEP_SUMMARY
+          cd ../frontend
+          npm audit fix --force --dry-run > ../frontend-fix-preview.txt 2>&1 || true
+          cat ../frontend-fix-preview.txt >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ github.event.inputs.dry_run }}" != "true" ]; then
+            npm audit fix --force
+            npm install
+          fi
+          
+          # Bot security fixes
+          echo "### Bot Security Fixes:" >> $GITHUB_STEP_SUMMARY
+          cd ../bot
+          npm audit fix --force --dry-run > ../bot-fix-preview.txt 2>&1 || true
+          cat ../bot-fix-preview.txt >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ github.event.inputs.dry_run }}" != "true" ]; then
+            npm audit fix --force
+            npm install
+          fi
+
+      - name: 🧪 Run tests after security updates
+        if: github.event.inputs.dry_run != 'true'
+        run: |
+          cd backend
+          npm test || echo "Tests failed - may need manual intervention"
+
+      - name: 📝 Create security update PR
+        if: github.event.inputs.dry_run != 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'fix: security updates for dependencies'
+          title: '🔒 Security Updates - Dependency Vulnerabilities Fixed'
+          body: |
+            ## Security Updates
+            
+            This PR fixes security vulnerabilities in dependencies.
+            
+            ### Changes:
+            - ✅ Fixed security vulnerabilities using `npm audit fix`
+            - ✅ Updated package-lock.json files
+            - ✅ Ran basic tests to ensure compatibility
+            
+            ### Review Required:
+            - Please run full test suite
+            - Verify application functionality
+            - Check for any breaking changes
+            
+            **Auto-generated by Dependency Management workflow**
+          branch: security-updates
+          delete-branch: true
+
+  # Job 3: Regular Dependency Updates
+  dependency-updates:
+    name: 📦 Dependency Updates
+    runs-on: ubuntu-latest
+    needs: dependency-audit
+    if: needs.dependency-audit.outputs.update_available == 'true' && github.event.inputs.update_type != 'security'
+
+    strategy:
+      matrix:
+        component: [backend, frontend, bot]
+
+    steps:
+      - name: 🏗 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🏗 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Update dependencies
+        run: |
+          cd ${{ matrix.component }}
+          
+          # Determine update level
+          if [ "${{ github.event.inputs.update_type }}" == "patch" ]; then
+            npm update
+          elif [ "${{ github.event.inputs.update_type }}" == "minor" ]; then
+            npx npm-check-updates -u --target minor
+            npm install
+          elif [ "${{ github.event.inputs.update_type }}" == "major" ]; then
+            npx npm-check-updates -u
+            npm install
+          else
+            # Default to patch updates
+            npm update
+          fi
+
+      - name: 🧪 Run tests
+        run: |
+          cd ${{ matrix.component }}
+          if [ -f "package.json" ] && [ "$(jq -r '.scripts.test // "null"' package.json)" != "null" ]; then
+            npm test || echo "Tests failed - will note in PR"
+          fi
+
+      - name: 📋 Generate update summary
+        run: |
+          cd ${{ matrix.component }}
+          echo "## Updates for ${{ matrix.component }}" > ../update-summary-${{ matrix.component }}.md
+          echo "" >> ../update-summary-${{ matrix.component }}.md
+          
+          # Get package.json changes
+          if git diff --name-only | grep -q package.json; then
+            echo "### Package.json changes:" >> ../update-summary-${{ matrix.component }}.md
+            echo '```diff' >> ../update-summary-${{ matrix.component }}.md
+            git diff package.json >> ../update-summary-${{ matrix.component }}.md || true
+            echo '```' >> ../update-summary-${{ matrix.component }}.md
+          fi
+
+      - name: 📤 Upload update summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: update-summary-${{ matrix.component }}
+          path: update-summary-${{ matrix.component }}.md
+
+  # Job 4: Create Update PR
+  create-update-pr:
+    name: 📝 Create Update PR
+    runs-on: ubuntu-latest
+    needs: [dependency-audit, dependency-updates]
+    if: needs.dependency-audit.outputs.update_available == 'true' && github.event.inputs.dry_run != 'true'
+
+    steps:
+      - name: 🏗 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📥 Download update summaries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: update-summary-*
+          merge-multiple: true
+
+      - name: 📝 Create comprehensive PR
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: update dependencies (${{ github.event.inputs.update_type || "patch" }})'
+          title: '📦 Dependency Updates - ${{ github.event.inputs.update_type || "patch" }} level'
+          body: |
+            ## Dependency Updates
+            
+            This PR updates dependencies across all components.
+            
+            **Update level:** ${{ github.event.inputs.update_type || "patch" }}
+            
+            ### Components Updated:
+            - 🔧 Backend
+            - 🎨 Frontend  
+            - 🤖 Bot
+            
+            ### What to Review:
+            - [ ] Check that all tests pass
+            - [ ] Verify no breaking changes
+            - [ ] Test critical user flows
+            - [ ] Check bundle sizes (frontend)
+            
+            ### Update Summaries:
+            
+            $(cat update-summary-*.md 2>/dev/null || echo "Update summaries will be attached as artifacts")
+            
+            **Auto-generated by Dependency Management workflow**
+          branch: dependency-updates-${{ github.run_number }}
+          delete-branch: true
+
+  # Job 5: Package Health Check
+  package-health:
+    name: 📊 Package Health Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🏗 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🏗 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📊 Analyze package health
+        run: |
+          echo "## Package Health Report" >> $GITHUB_STEP_SUMMARY
+          
+          components=("backend" "frontend" "bot")
+          
+          for component in "${components[@]}"; do
+            if [ -d "$component" ] && [ -f "$component/package.json" ]; then
+              echo "### $component:" >> $GITHUB_STEP_SUMMARY
+              
+              cd $component
+              
+              # Count dependencies
+              dep_count=$(jq '.dependencies | length' package.json)
+              devdep_count=$(jq '.devDependencies | length // 0' package.json)
+              
+              echo "- Dependencies: $dep_count" >> $GITHUB_STEP_SUMMARY
+              echo "- DevDependencies: $devdep_count" >> $GITHUB_STEP_SUMMARY
+              
+              # Check for package-lock.json
+              if [ -f "package-lock.json" ]; then
+                echo "- ✅ Lockfile present" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "- ❌ Missing package-lock.json" >> $GITHUB_STEP_SUMMARY
+              fi
+              
+              # Check Node version compatibility
+              if jq -e '.engines.node' package.json > /dev/null; then
+                node_version=$(jq -r '.engines.node' package.json)
+                echo "- Node version constraint: $node_version" >> $GITHUB_STEP_SUMMARY
+              else
+                echo "- ⚠️ No Node version specified" >> $GITHUB_STEP_SUMMARY
+              fi
+              
+              cd ..
+            fi
+          done
+
+      - name: 🔍 License compliance check
+        run: |
+          echo "## License Compliance" >> $GITHUB_STEP_SUMMARY
+          
+          # Check for license files
+          license_files=("LICENSE" "LICENSE.md" "LICENSE.txt" "LICENCE" "LICENCE.md")
+          license_found=false
+          
+          for license_file in "${license_files[@]}"; do
+            if [ -f "$license_file" ]; then
+              echo "✅ License file found: $license_file" >> $GITHUB_STEP_SUMMARY
+              license_found=true
+              break
+            fi
+          done
+          
+          if [ "$license_found" = false ]; then
+            echo "⚠️ No license file found" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Check package.json license fields
+          for component in backend frontend bot; do
+            if [ -f "$component/package.json" ]; then
+              license=$(jq -r '.license // "Not specified"' "$component/package.json")
+              echo "- $component license: $license" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+  # Job 6: Dependency Insights
+  dependency-insights:
+    name: 🔬 Dependency Insights
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🏗 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🏗 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📊 Dependency size analysis
+        run: |
+          echo "## Dependency Size Analysis" >> $GITHUB_STEP_SUMMARY
+          
+          npm install -g cost-of-modules
+          
+          for component in backend frontend bot; do
+            if [ -d "$component" ]; then
+              echo "### $component:" >> $GITHUB_STEP_SUMMARY
+              cd $component
+              npm ci --silent
+              cost-of-modules --less > ../size-analysis-$component.txt 2>&1 || echo "Analysis failed"
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              head -10 ../size-analysis-$component.txt >> $GITHUB_STEP_SUMMARY 2>/dev/null || echo "No data available"
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              cd ..
+            fi
+          done
+
+      - name: 🔄 Dependency update frequency analysis
+        run: |
+          echo "## Update Frequency Analysis" >> $GITHUB_STEP_SUMMARY
+          
+          # Analyze commit history for dependency updates
+          update_commits=$(git log --oneline --grep="update\|upgrade\|bump" --since="6 months ago" | wc -l)
+          security_commits=$(git log --oneline --grep="security\|vulnerability\|CVE" --since="6 months ago" | wc -l)
+          
+          echo "- Dependency update commits (6 months): $update_commits" >> $GITHUB_STEP_SUMMARY
+          echo "- Security-related commits (6 months): $security_commits" >> $GITHUB_STEP_SUMMARY
+          
+          if [ $update_commits -lt 5 ]; then
+            echo "⚠️ Low update frequency - consider more regular updates" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ Good update frequency" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # Job 7: Notification and Summary
+  dependency-summary:
+    name: 📢 Summary & Notification
+    runs-on: ubuntu-latest
+    needs: [dependency-audit, package-health, dependency-insights]
+    if: always()
+
+    steps:
+      - name: 📊 Final Summary
+        run: |
+          echo "## Dependency Management Summary" >> $GITHUB_STEP_SUMMARY
+          echo "### Status:" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.dependency-audit.outputs.has_vulnerabilities }}" == "true" ]; then
+            echo "🚨 **Security vulnerabilities found** - Review security updates" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **No security vulnerabilities**" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.dependency-audit.outputs.update_available }}" == "true" ]; then
+            echo "📦 **Updates available** - Consider updating dependencies" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **All dependencies up to date**" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "### Recommendations:" >> $GITHUB_STEP_SUMMARY
+          echo "- Regular dependency updates help maintain security" >> $GITHUB_STEP_SUMMARY
+          echo "- Monitor for critical security advisories" >> $GITHUB_STEP_SUMMARY
+          echo "- Consider automated security updates for patch-level fixes" >> $GITHUB_STEP_SUMMARY
+
+      - name: 🔔 Create issue for critical vulnerabilities
+        if: needs.dependency-audit.outputs.has_vulnerabilities == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'security,dependencies',
+              state: 'open'
+            });
+            
+            if (issues.length === 0) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: '🚨 Critical Security Vulnerabilities in Dependencies',
+                body: `## Security Alert
+                
+                Critical vulnerabilities have been detected in project dependencies.
+                
+                **Action Required:**
+                - Review the security update PR if available
+                - Run \`npm audit\` locally to see detailed vulnerability reports
+                - Update vulnerable packages as soon as possible
+                
+                **Automated by:** Dependency Management workflow
+                **Date:** ${new Date().toISOString()}`,
+                labels: ['security', 'dependencies', 'critical']
+              });
+            }

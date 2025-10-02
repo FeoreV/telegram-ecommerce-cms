@@ -1,0 +1,456 @@
+/* RevenueChart - BEM Style */
+
+.revenueChart {
+  background-color: var(--color-bg, #ffffff);
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--color-border, #dee2e6);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.revenueChart__header {
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border, #dee2e6);
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+  color: white;
+  position: relative;
+}
+
+.revenueChart__headerContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+}
+
+.revenueChart__titleSection {
+  flex: 1;
+}
+
+.revenueChart__title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: var(--spacing-xs);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.revenueChart__titleIcon {
+  background-color: rgba(255, 255, 255, 0.2);
+  padding: 6px;
+  border-radius: var(--border-radius-sm);
+  font-size: 20px;
+}
+
+.revenueChart__subtitle {
+  font-size: 14px;
+  opacity: 0.9;
+  line-height: 1.4;
+}
+
+.revenueChart__summary {
+  text-align: right;
+  min-width: 120px;
+}
+
+.revenueChart__totalAmount {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: var(--spacing-xs);
+}
+
+.revenueChart__totalLabel {
+  font-size: 12px;
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.revenueChart__change {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: var(--spacing-xs);
+}
+
+.revenueChart__change--positive {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.revenueChart__change--negative {
+  color: rgba(255, 193, 193, 0.9);
+}
+
+.revenueChart__change--neutral {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Controls */
+.revenueChart__controls {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border, #dee2e6);
+  background-color: var(--color-bg-secondary, #f8f9fa);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.revenueChart__controlsLeft {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.revenueChart__controlsRight {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+.revenueChart__periodButtons {
+  display: flex;
+  background-color: var(--color-bg, #ffffff);
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--color-border, #dee2e6);
+  overflow: hidden;
+}
+
+.revenueChart__periodButton {
+  padding: 6px 12px;
+  background: none;
+  border: none;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary, #666666);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.revenueChart__periodButton:hover {
+  background-color: rgba(0, 136, 204, 0.1);
+  color: var(--color-primary, #0088cc);
+}
+
+.revenueChart__periodButton--active {
+  background-color: var(--color-primary, #0088cc);
+  color: white;
+}
+
+.revenueChart__viewToggle {
+  display: flex;
+  background-color: var(--color-bg, #ffffff);
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--color-border, #dee2e6);
+  overflow: hidden;
+}
+
+.revenueChart__viewButton {
+  padding: 6px 10px;
+  background: none;
+  border: none;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary, #666666);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.revenueChart__viewButton:hover {
+  background-color: rgba(0, 136, 204, 0.1);
+  color: var(--color-primary, #0088cc);
+}
+
+.revenueChart__viewButton--active {
+  background-color: var(--color-primary, #0088cc);
+  color: white;
+}
+
+.revenueChart__exportButton {
+  padding: 6px 12px;
+  background-color: var(--color-success, #4caf50);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.revenueChart__exportButton:hover {
+  background-color: #45a049;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Chart Area */
+.revenueChart__chartArea {
+  position: relative;
+}
+
+.revenueChart__chartCanvas {
+  width: 100%;
+  height: 100%;
+  background-color: transparent;
+}
+
+.revenueChart__tooltip {
+  position: absolute;
+  background-color: var(--color-bg, #ffffff);
+  border: 1px solid var(--color-border, #dee2e6);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-sm);
+  font-size: 12px;
+  color: var(--color-text, #333333);
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+  z-index: var(--z-tooltip);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.revenueChart__tooltip--visible {
+  opacity: 1;
+}
+
+.revenueChart__tooltipTitle {
+  font-weight: 600;
+  margin-bottom: var(--spacing-xs);
+}
+
+.revenueChart__tooltipValue {
+  color: var(--color-primary, #0088cc);
+  font-weight: 600;
+}
+
+/* Data Table */
+.revenueChart__dataTable {
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--color-border, #dee2e6);
+}
+
+.revenueChart__tableHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.revenueChart__tableTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text, #333333);
+}
+
+.revenueChart__tableToggle {
+  background: none;
+  border: none;
+  color: var(--color-primary, #0088cc);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--border-radius-sm);
+  transition: var(--transition-fast);
+}
+
+.revenueChart__tableToggle:hover {
+  background-color: rgba(0, 136, 204, 0.1);
+}
+
+.revenueChart__tableContent {
+  overflow-x: auto;
+  border: 1px solid var(--color-border, #dee2e6);
+  border-radius: var(--border-radius-sm);
+}
+
+.revenueChart__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.revenueChart__tableHead {
+  background-color: var(--color-bg-secondary, #f8f9fa);
+}
+
+.revenueChart__tableHeaderCell {
+  padding: var(--spacing-sm) var(--spacing-md);
+  text-align: left;
+  font-weight: 600;
+  color: var(--color-text, #333333);
+  border-bottom: 1px solid var(--color-border, #dee2e6);
+}
+
+.revenueChart__tableRow {
+  transition: var(--transition-fast);
+}
+
+.revenueChart__tableRow:hover {
+  background-color: var(--color-bg-secondary, #f8f9fa);
+}
+
+.revenueChart__tableCell {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 1px solid var(--color-border, #dee2e6);
+  color: var(--color-text, #333333);
+}
+
+.revenueChart__tableCellAmount {
+  font-weight: 600;
+  color: var(--color-success, #4caf50);
+}
+
+/* Empty State */
+.revenueChart__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  color: var(--color-text-secondary, #666666);
+  text-align: center;
+}
+
+.revenueChart__emptyIcon {
+  font-size: 48px;
+  margin-bottom: var(--spacing-md);
+  opacity: 0.5;
+}
+
+.revenueChart__emptyTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text, #333333);
+  margin-bottom: var(--spacing-sm);
+}
+
+.revenueChart__emptyDescription {
+  font-size: 14px;
+  color: var(--color-text-secondary, #666666);
+  line-height: 1.4;
+}
+
+/* Dark Theme Support */
+.theme--dark .revenueChart {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .revenueChart__controls {
+  background-color: var(--color-bg, #1a1a1a);
+  border-bottom-color: var(--color-border, #404040);
+}
+
+.theme--dark .revenueChart__periodButtons {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .revenueChart__periodButton {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .revenueChart__viewToggle {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-color: var(--color-border, #404040);
+}
+
+.theme--dark .revenueChart__viewButton {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .revenueChart__tooltip {
+  background-color: var(--color-bg-secondary, #2d2d2d);
+  border-color: var(--color-border, #404040);
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .revenueChart__tableHead {
+  background-color: var(--color-bg, #1a1a1a);
+}
+
+.theme--dark .revenueChart__tableHeaderCell {
+  color: var(--color-text, #ffffff);
+  border-bottom-color: var(--color-border, #404040);
+}
+
+.theme--dark .revenueChart__tableRow:hover {
+  background-color: var(--color-bg, #1a1a1a);
+}
+
+.theme--dark .revenueChart__tableCell {
+  border-bottom-color: var(--color-border, #404040);
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .revenueChart__tableTitle {
+  color: var(--color-text, #ffffff);
+}
+
+.theme--dark .revenueChart__emptyTitle {
+  color: var(--color-text, #ffffff);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .revenueChart__header {
+    padding: var(--spacing-md);
+  }
+  
+  .revenueChart__headerContent {
+    flex-direction: column;
+    text-align: center;
+    gap: var(--spacing-md);
+  }
+  
+  .revenueChart__summary {
+    text-align: center;
+  }
+  
+  .revenueChart__controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .revenueChart__controlsLeft,
+  .revenueChart__controlsRight {
+    justify-content: center;
+  }
+  
+  .revenueChart__chartContainer {
+    height: 300px;
+  }
+}
+
+@media (max-width: 480px) {
+  .revenueChart__content {
+    padding: var(--spacing-md);
+  }
+  
+  .revenueChart__chartContainer {
+    height: 250px;
+  }
+  
+  .revenueChart__totalAmount {
+    font-size: 24px;
+  }
+  
+  .revenueChart__periodButtons,
+  .revenueChart__viewToggle {
+    width: 100%;
+  }
+  
+  .revenueChart__periodButton,
+  .revenueChart__viewButton {
+    flex: 1;
+  }
+}
