@@ -150,14 +150,14 @@ docker-compose -f config/vault/docker-compose.vault.yml up -d
 
 #### [services/](services/README.md)
 PM2 process management:
-- `ecosystem.config.js` - PM2 configuration
+- `ecosystem.config.cjs` - PM2 configuration
 - Multi-process setup
 - Clustering
 - Auto-restart
 
 **Usage:**
 ```bash
-pm2 start config/services/ecosystem.config.js --env production
+pm2 start config/services/ecosystem.config.cjs --env production
 ```
 
 ---

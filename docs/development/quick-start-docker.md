@@ -10,7 +10,7 @@ cp config/environments/env.example .env
 ### 2. Отредактируйте критические настройки в `.env`:
 ```bash
 TELEGRAM_BOT_TOKEN=your-bot-token-from-botfather
-SUPER_ADMIN_TELEGRAM_ID=123456789
+# SUPER_ADMIN_TELEGRAM_ID removed for security
 JWT_SECRET=your-secret-key-change-me
 ```
 

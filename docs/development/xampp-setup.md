@@ -56,7 +56,7 @@ NODE_ENV="development"
 
 # Telegram Bot
 TELEGRAM_BOT_TOKEN="your-bot-token-here"
-SUPER_ADMIN_TELEGRAM_ID="your-telegram-id"
+# SUPER_ADMIN_TELEGRAM_ID removed for security
 
 # AdminJS Configuration
 ADMIN_COOKIE_SECRET="your-admin-cookie-secret"

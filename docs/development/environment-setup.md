@@ -15,7 +15,7 @@ cp config/environments/env.example .env
 TELEGRAM_BOT_TOKEN=1234567890:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
 
 # Ваш Telegram ID (получить у @userinfobot)
-SUPER_ADMIN_TELEGRAM_ID=123456789
+# SUPER_ADMIN_TELEGRAM_ID removed for security - use AdminJS to manage roles
 ```
 
 #### 🔐 Безопасность

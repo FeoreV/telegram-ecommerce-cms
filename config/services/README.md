@@ -4,7 +4,7 @@ PM2 ecosystem configuration for process management.
 
 ## 📁 File
 
-### `ecosystem.config.js`
+### `ecosystem.config.cjs`
 **Purpose:** PM2 process manager configuration
 
 **Manages:**
@@ -18,16 +18,16 @@ PM2 ecosystem configuration for process management.
 **Usage:**
 ```bash
 # Start all services
-pm2 start config/services/ecosystem.config.js
+pm2 start config/services/ecosystem.config.cjs
 
 # Start specific service
-pm2 start config/services/ecosystem.config.js --only backend
+pm2 start config/services/ecosystem.config.cjs --only backend
 
 # Production mode
-pm2 start config/services/ecosystem.config.js --env production
+pm2 start config/services/ecosystem.config.cjs --env production
 
 # Cluster mode
-pm2 start config/services/ecosystem.config.js --instances max
+pm2 start config/services/ecosystem.config.cjs --instances max
 ```
 
 ## 🔧 Configuration

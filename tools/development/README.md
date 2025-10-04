@@ -235,7 +235,7 @@ FRONTEND_URL=http://localhost:3000
 
 # Bot (get from @BotFather)
 TELEGRAM_BOT_TOKEN=your_dev_bot_token
-SUPER_ADMIN_TELEGRAM_ID=your_telegram_id
+# SUPER_ADMIN_TELEGRAM_ID removed for security - manage admins via AdminJS
 
 # Security (dev keys)
 JWT_SECRET=dev-secret-key

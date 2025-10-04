@@ -37,7 +37,7 @@ chmod +x setup-dev.sh
 Отредактируйте `.env` в корне проекта:
 ```env
 TELEGRAM_BOT_TOKEN=ваш-токен-бота
-SUPER_ADMIN_TELEGRAM_ID=ваш-telegram-id
+# SUPER_ADMIN_TELEGRAM_ID removed for security
 ```
 
 ### 4. Настройка базы данных

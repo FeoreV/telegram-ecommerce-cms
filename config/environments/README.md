@@ -133,7 +133,6 @@ cp config/environments/env.example .env
 
 # 2. Minimal required changes
 # - TELEGRAM_BOT_TOKEN (from @BotFather)
-# - SUPER_ADMIN_TELEGRAM_ID (your Telegram ID)
 # - JWT_SECRET (any strong random string for dev)
 
 # 3. Start development
@@ -221,7 +220,6 @@ node tools/deployment/validate-env.js .env.production
 
 ### Critical (Must Change)
 - [ ] `TELEGRAM_BOT_TOKEN` - From @BotFather
-- [ ] `SUPER_ADMIN_TELEGRAM_ID` - Your Telegram ID
 - [ ] `JWT_SECRET` - Strong random (64+ chars)
 - [ ] `JWT_REFRESH_SECRET` - Different from JWT_SECRET
 - [ ] `DATABASE_URL` - Production database connection

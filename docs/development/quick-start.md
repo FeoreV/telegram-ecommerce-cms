@@ -61,7 +61,7 @@ nano .env
 DATABASE_URL="mysql://root:@localhost:3306/telegram_ecommerce"
 JWT_SECRET="your-secret-key"
 TELEGRAM_BOT_TOKEN="YOUR_BOT_TOKEN_HERE"
-SUPER_ADMIN_TELEGRAM_ID="YOUR_TELEGRAM_ID_HERE"
+# SUPER_ADMIN_TELEGRAM_ID removed for security - use AdminJS panel
 ```
 
 ### 5. Настройка базы данных

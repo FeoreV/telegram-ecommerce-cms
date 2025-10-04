@@ -61,7 +61,7 @@
 #### Конфигурации:
 - `env*.example` → `config/environments/`
 - `docker-compose*.yml` → `config/docker/`
-- `ecosystem.config.js` → `config/services/`
+- `ecosystem.config.cjs` → `config/services/`
 
 #### Документация:
 - `*.md` (корень) → `docs/{category}/`
