@@ -1,6 +1,6 @@
+import * as crypto from 'crypto';
 import { getVaultService } from '../services/VaultService';
 import { logger } from './logger';
-import * as crypto from 'crypto';
 
 // Internal interfaces for vault secrets
 interface VaultSecret {
@@ -64,6 +64,7 @@ export class SecretManager {
   private static instance: SecretManager;
   private secrets: ApplicationSecrets | null = null;
   private useVault: boolean;
+  private initialized: boolean = false;
 
   private constructor() {
     this.useVault = process.env.USE_VAULT === 'true';
@@ -79,7 +80,12 @@ export class SecretManager {
   /**
    * Initialize secrets from Vault or environment variables
    */
-  async initialize(): Promise<void> {
+  async initialize(force: boolean = false): Promise<void> {
+    // Skip if already initialized unless forced
+    if (this.initialized && !force) {
+      return;
+    }
+
     if (this.useVault) {
       await this.loadSecretsFromVault();
     } else {
@@ -88,6 +94,7 @@ export class SecretManager {
 
     // Validate critical secrets
     this.validateSecrets();
+    this.initialized = true;
   }
 
   /**
@@ -96,7 +103,7 @@ export class SecretManager {
   private async loadSecretsFromVault(): Promise<void> {
     try {
       const vault = getVaultService();
-      
+
       // Load secrets from different Vault paths
       const [jwtSecrets, dbSecrets, telegramSecrets, adminSecrets, smtpSecrets, encryptionSecrets, redisSecrets] = await Promise.all([
         vault.getSecret('app/jwt'),
@@ -158,10 +165,30 @@ export class SecretManager {
    * Load secrets from environment variables (fallback)
    */
   private loadSecretsFromEnv(): void {
+    // SECURITY: Generate random secrets even in development mode
+    // This prevents accidentally using weak default secrets in production
+    const generateJWTSecret = () => {
+      if (!process.env.JWT_SECRET) {
+        const secret = crypto.randomBytes(64).toString('base64');
+        logger.warn('JWT_SECRET not set - generated random secret (will change on restart)');
+        return secret;
+      }
+      return process.env.JWT_SECRET;
+    };
+
+    const generateJWTRefreshSecret = () => {
+      if (!process.env.JWT_REFRESH_SECRET) {
+        const secret = crypto.randomBytes(64).toString('base64');
+        logger.warn('JWT_REFRESH_SECRET not set - generated random secret (will change on restart)');
+        return secret;
+      }
+      return process.env.JWT_REFRESH_SECRET;
+    };
+
     this.secrets = {
       jwt: {
-        secret: process.env.JWT_SECRET || 'default-jwt-secret',
-        refreshSecret: process.env.JWT_REFRESH_SECRET || 'default-refresh-secret',
+        secret: generateJWTSecret(),
+        refreshSecret: generateJWTRefreshSecret(),
         expiresIn: process.env.JWT_EXPIRES_IN || '15m',
         refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
       },
@@ -170,12 +197,27 @@ export class SecretManager {
       },
       telegram: {
         botToken: process.env.TELEGRAM_BOT_TOKEN || (process.env.NODE_ENV === 'development' ? 'dev-token' : ''),
-        webhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET,
+        webhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET || (() => {
+          const secret = crypto.randomBytes(32).toString('hex');
+          logger.warn('TELEGRAM_WEBHOOK_SECRET not set - generated random secret');
+          return secret;
+        })(),
       },
       admin: {
-        defaultPassword: process.env.ADMIN_DEFAULT_PASSWORD || 'admin123',
-        cookieSecret: process.env.ADMIN_COOKIE_SECRET || 'default-cookie-secret',
-        sessionSecret: process.env.ADMIN_SESSION_SECRET || 'default-session-secret',
+        defaultPassword: process.env.ADMIN_DEFAULT_PASSWORD || (() => {
+          logger.warn('SECURITY WARNING: ADMIN_DEFAULT_PASSWORD not set - admin authentication will fail');
+          return '';
+        })(),
+        cookieSecret: process.env.ADMIN_COOKIE_SECRET || (() => {
+          const secret = crypto.randomBytes(32).toString('hex');
+          logger.warn('ADMIN_COOKIE_SECRET not set - generated random secret (will change on restart)');
+          return secret;
+        })(),
+        sessionSecret: process.env.ADMIN_SESSION_SECRET || (() => {
+          const secret = crypto.randomBytes(32).toString('hex');
+          logger.warn('ADMIN_SESSION_SECRET not set - generated random secret (will change on restart)');
+          return secret;
+        })(),
       },
       smtp: {
         host: process.env.SMTP_HOST,
@@ -186,8 +228,16 @@ export class SecretManager {
         from: process.env.SMTP_FROM,
       },
       encryption: {
-        masterKey: process.env.ENCRYPTION_MASTER_KEY || this.generateKey(),
-        dataEncryptionKey: process.env.DATA_ENCRYPTION_KEY || this.generateKey(),
+        masterKey: process.env.ENCRYPTION_MASTER_KEY || (() => {
+          const key = this.generateKey();
+          logger.warn('ENCRYPTION_MASTER_KEY not set - generated random key (will change on restart)');
+          return key;
+        })(),
+        dataEncryptionKey: process.env.DATA_ENCRYPTION_KEY || (() => {
+          const key = this.generateKey();
+          logger.warn('DATA_ENCRYPTION_KEY not set - generated random key (will change on restart)');
+          return key;
+        })(),
       },
       redis: {
         url: process.env.REDIS_URL,
@@ -196,6 +246,8 @@ export class SecretManager {
     };
 
     logger.info('Loaded secrets from environment variables');
+    logger.warn('⚠️  Some secrets were auto-generated and will change on restart');
+    logger.warn('⚠️  Set all required secrets in .env file for persistent configuration');
   }
 
   /**
@@ -207,7 +259,7 @@ export class SecretManager {
     }
 
     const isDevelopment = process.env.NODE_ENV === 'development';
-    
+
     const requiredSecrets = [
       'jwt.secret',
       'jwt.refreshSecret',
@@ -295,10 +347,10 @@ export class SecretManager {
    * Get nested value from object using dot notation
    */
   private getNestedValue(obj: Record<string, unknown>, path: string): unknown {
-    return path.split('.').reduce((current: unknown, key: string) => 
-      current && typeof current === 'object' && current !== null 
-        ? (current as Record<string, unknown>)[key] 
-        : undefined, 
+    return path.split('.').reduce((current: unknown, key: string) =>
+      current && typeof current === 'object' && current !== null
+        ? (current as Record<string, unknown>)[key]
+        : undefined,
       obj
     );
   }
@@ -377,8 +429,8 @@ export class SecretManager {
       throw new Error('Secret rotation is only available with Vault');
     }
 
-    // Reload secrets from Vault
-    await this.loadSecretsFromVault();
+    // Force reload secrets from Vault
+    await this.initialize(true);
     logger.info('Secrets rotated successfully');
   }
 }

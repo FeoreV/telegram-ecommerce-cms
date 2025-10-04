@@ -58,15 +58,32 @@ exports.userSchemas = {
         path: ["confirmPassword"]
     }),
     telegramAuth: zod_1.z.object({
-        id: zod_1.z.number().positive('Invalid Telegram ID'),
-        first_name: exports.commonSchemas.shortText.optional(),
-        last_name: exports.commonSchemas.shortText.optional(),
-        username: exports.commonSchemas.username.optional(),
-        photo_url: exports.commonSchemas.url.optional(),
-        auth_date: zod_1.z.number().positive('Invalid auth date'),
-        hash: zod_1.z.string().min(1, 'Hash is required')
+        telegramId: zod_1.z.string()
+            .regex(/^\d+$/, 'Invalid Telegram ID format')
+            .min(1, 'Telegram ID is required'),
+        username: zod_1.z.string()
+            .max(32, 'Username must not exceed 32 characters')
+            .optional(),
+        firstName: zod_1.z.string()
+            .max(64, 'First name must not exceed 64 characters')
+            .optional(),
+        lastName: zod_1.z.string()
+            .max(64, 'Last name must not exceed 64 characters')
+            .optional(),
+        photoUrl: exports.commonSchemas.url.optional(),
+        authDate: zod_1.z.string()
+            .regex(/^\d+$/, 'Invalid auth date format')
+            .refine((val) => {
+            const timestamp = parseInt(val);
+            return timestamp > 0 && timestamp <= Math.floor(Date.now() / 1000) + 60;
+        }, 'Invalid auth date'),
+        hash: zod_1.z.string()
+            .length(64, 'Invalid hash length - must be 64 characters')
+            .regex(/^[a-f0-9]{64}$/, 'Hash must be a valid hex string'),
+        sessionId: zod_1.z.string().uuid().optional()
     })
 };
+;
 exports.storeSchemas = {
     create: zod_1.z.object({
         name: exports.commonSchemas.shortText.min(1, 'Store name is required'),

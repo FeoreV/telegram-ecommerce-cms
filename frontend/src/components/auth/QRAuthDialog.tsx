@@ -1,39 +1,36 @@
-import React, { useState, useEffect, useCallback } from 'react'
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Box,
-  Typography,
-  CircularProgress,
-  Alert,
-  Paper,
-  Chip,
-  IconButton,
-  Tooltip,
-  Link,
-} from '@mui/material'
-import {
-  QrCode,
-  Refresh,
-  Close,
-  CheckCircle,
-  Timer,
-  Telegram,
-  ContentCopy,
+    Close,
+    ContentCopy,
+    QrCode,
+    Refresh,
+    Telegram,
+    Timer,
 } from '@mui/icons-material'
+import {
+    Alert,
+    Box,
+    Button,
+    Chip,
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    IconButton,
+    Link,
+    Paper,
+    Tooltip,
+    Typography,
+} from '@mui/material'
 import { QRCodeSVG } from 'qrcode.react'
-import { format } from 'date-fns'
-import { ru } from 'date-fns/locale'
-import { authService } from '../../services/authService'
+import React, { useCallback, useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
+import { authService } from '../../services/authService'
 
 interface QRAuthDialogProps {
   open: boolean
   onClose: () => void
-  onSuccess: (token: string, user: any) => void
+  onSuccess: (token: string, user: unknown) => void
   title?: string
   description?: string
 }
@@ -59,32 +56,6 @@ const QRAuthDialog: React.FC<QRAuthDialogProps> = ({
   const [checkInterval, setCheckInterval] = useState<NodeJS.Timeout | null>(null)
   const [countdownInterval, setCountdownInterval] = useState<NodeJS.Timeout | null>(null)
 
-  // Generate QR code when dialog opens
-  useEffect(() => {
-    if (open && !qrData && !loading) {
-      generateQR()
-    }
-  }, [open])
-
-  // Cleanup intervals when dialog closes
-  useEffect(() => {
-    if (!open) {
-      cleanup()
-    }
-  }, [open])
-
-  // Start countdown and check interval when QR data is available
-  useEffect(() => {
-    if (qrData && open) {
-      startCountdown()
-      startStatusCheck()
-    }
-    
-    return () => {
-      cleanup()
-    }
-  }, [qrData, open])
-
   const cleanup = useCallback(() => {
     if (checkInterval) {
       clearInterval(checkInterval)
@@ -94,25 +65,26 @@ const QRAuthDialog: React.FC<QRAuthDialogProps> = ({
       clearInterval(countdownInterval)
       setCountdownInterval(null)
     }
-  }, [checkInterval, countdownInterval])
+  }, [checkInterval, countdownInterval, setCheckInterval, setCountdownInterval])
 
-  const generateQR = async () => {
+  const generateQR = useCallback(async () => {
     setLoading(true)
     setError(null)
-    
+
     try {
       const response = await authService.generateQRAuth()
       setQrData(response)
       setTimeLeft(response.expiresIn)
-    } catch (error: any) {
-      setError(error.response?.data?.message || 'Ошибка генерации QR кода')
+    } catch (error: unknown) {
+      const errorMessage = (error as any).response?.data?.message || 'Ошибка генерации QR кода';
+      setError(errorMessage)
       toast.error('Не удалось создать QR код для входа')
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  const startCountdown = () => {
+  const startCountdown = useCallback(() => {
     const interval = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
@@ -123,20 +95,20 @@ const QRAuthDialog: React.FC<QRAuthDialogProps> = ({
         return prev - 1
       })
     }, 1000)
-    
-    setCountdownInterval(interval)
-  }
 
-  const startStatusCheck = () => {
+    setCountdownInterval(interval)
+  }, [cleanup, setCountdownInterval])
+
+  const startStatusCheck = useCallback(() => {
     if (!qrData) return
-    
+
     const interval = setInterval(async () => {
       if (!qrData.sessionId) return
-      
+
       setChecking(true)
       try {
         const status = await authService.checkQRAuth(qrData.sessionId)
-        
+
         if (status.completed && status.telegramId) {
           // Authentication completed, now perform login
           const loginResponse = await authService.login(
@@ -146,13 +118,13 @@ const QRAuthDialog: React.FC<QRAuthDialogProps> = ({
             undefined,
             { sessionId: qrData.sessionId }
           )
-          
+
           cleanup()
           toast.success('Успешный вход через QR код!')
           onSuccess(loginResponse.accessToken, loginResponse.user)
         }
-      } catch (error: any) {
-        if (error.response?.status === 404 || error.response?.status === 410) {
+      } catch (error: unknown) {
+        if ((error as any).response?.status === 404 || (error as any).response?.status === 410) {
           // Session expired or not found
           cleanup()
           setError('Сессия истекла или не найдена')
@@ -161,9 +133,35 @@ const QRAuthDialog: React.FC<QRAuthDialogProps> = ({
         setChecking(false)
       }
     }, 2000) // Check every 2 seconds
-    
+
     setCheckInterval(interval)
-  }
+  }, [cleanup, onSuccess, qrData, setCheckInterval])
+
+  // Generate QR code when dialog opens
+  useEffect(() => {
+    if (open && !qrData && !loading) {
+      generateQR()
+    }
+  }, [open, loading, qrData, generateQR])
+
+  // Cleanup intervals when dialog closes
+  useEffect(() => {
+    if (!open) {
+      cleanup()
+    }
+  }, [open, cleanup])
+
+  // Start countdown and check interval when QR data is available
+  useEffect(() => {
+    if (qrData && open) {
+      startCountdown()
+      startStatusCheck()
+    }
+
+    return () => {
+      cleanup()
+    }
+  }, [qrData, open, cleanup, startCountdown, startStatusCheck])
 
   const handleRefresh = () => {
     cleanup()
@@ -249,7 +247,7 @@ const QRAuthDialog: React.FC<QRAuthDialogProps> = ({
                   size="small"
                 />
               )}
-              
+
               {checking && (
                 <Chip
                   icon={<CircularProgress size={16} />}
@@ -279,7 +277,7 @@ const QRAuthDialog: React.FC<QRAuthDialogProps> = ({
                   Открыть в Telegram
                 </Button>
               </Link>
-              
+
               <Tooltip title="Скопировать ссылку">
                 <IconButton onClick={handleCopyLink} size="small">
                   <ContentCopy />
@@ -293,7 +291,7 @@ const QRAuthDialog: React.FC<QRAuthDialogProps> = ({
               </Typography>
               <Typography variant="body2" component="ol" sx={{ pl: 2, mb: 0 }}>
                 <li>Отсканируйте QR код камерой телефона</li>
-                <li>Или нажмите "Открыть в Telegram"</li>
+                <li>Или нажмите &quot;Открыть в Telegram&quot;</li>
                 <li>Подтвердите вход в нашем боте</li>
                 <li>Вы будете автоматически авторизованы</li>
               </Typography>
@@ -306,10 +304,10 @@ const QRAuthDialog: React.FC<QRAuthDialogProps> = ({
         <Button onClick={handleClose}>
           Отмена
         </Button>
-        
+
         {qrData && (
-          <Button 
-            onClick={handleRefresh} 
+          <Button
+            onClick={handleRefresh}
             startIcon={<Refresh />}
             disabled={loading}
           >

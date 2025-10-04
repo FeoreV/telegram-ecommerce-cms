@@ -1,37 +1,34 @@
-import React, { useState, useRef, useCallback } from 'react'
-import { Responsive, WidthProvider } from 'react-grid-layout'
 import {
-  Box,
-  IconButton,
-  Typography,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  ListItemButton,
-  Checkbox,
-  Switch,
-  FormControlLabel,
-  Divider,
-  Alert,
-  Tooltip,
-  Fab,
-} from '@mui/material'
-import {
-  Settings,
-  Add,
-  Restore,
-  Save,
-  Visibility,
-  VisibilityOff,
-  GridView,
-  Lock,
-  LockOpen,
+    Add,
+    GridView,
+    Lock,
+    LockOpen,
+    Restore,
+    Save,
+    Settings,
+    Visibility,
 } from '@mui/icons-material'
+import {
+    Alert,
+    Box,
+    Button,
+    Dialog,
+    DialogContent,
+    DialogTitle,
+    Divider,
+    Fab,
+    FormControlLabel,
+    IconButton,
+    List,
+    ListItem,
+    ListItemButton,
+    ListItemIcon,
+    ListItemText,
+    Switch,
+    Typography,
+} from '@mui/material'
+import React, { useCallback, useRef, useState } from 'react'
+import { Responsive, WidthProvider } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
 
@@ -230,11 +227,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
       {/* No Widgets Message */}
       {visibleWidgets.length === 0 && (
-        <Box 
-          display="flex" 
+        <Box
+          display="flex"
           flexDirection="column"
-          alignItems="center" 
-          justifyContent="center" 
+          alignItems="center"
+          justifyContent="center"
           minHeight={400}
           color="text.secondary"
         >
@@ -273,7 +270,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           <Typography variant="subtitle2" gutterBottom>
             Видимость виджетов
           </Typography>
-          
+
           <List>
             {widgets.map((widget) => (
               <ListItem key={widget.id}>

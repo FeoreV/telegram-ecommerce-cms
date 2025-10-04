@@ -2,8 +2,9 @@ import { spawn } from 'child_process';
 import fs from 'fs/promises';
 import path from 'path';
 import { prisma } from '../lib/prisma';
+import { AuditAction, AuditLogService } from '../middleware/auditLog';
+import { sanitizeForLog } from '../utils/inputSanitizer';
 import { logger } from '../utils/logger';
-import { AuditLogService, AuditAction } from '../middleware/auditLog';
 import { NotificationService } from './notificationService';
 
 export interface BackupOptions {
@@ -30,6 +31,27 @@ export class BackupService {
   private static backupsDir = path.join(process.cwd(), 'backups');
   private static uploadsDir = path.join(process.cwd(), 'uploads');
 
+  /**
+   * Sanitize filename to prevent path traversal attacks
+   */
+  private static sanitizeFilename(filename: string): string {
+    // Remove any path separators and only keep the basename
+    const basename = path.basename(filename);
+    // Remove any non-alphanumeric characters except dots, dashes, and underscores
+    return basename.replace(/[^a-zA-Z0-9._-]/g, '_');
+  }
+
+  /**
+   * Validate that a path is within the allowed directory
+   */
+  private static validatePath(filePath: string, allowedDir: string): void {
+    const resolvedPath = path.resolve(filePath);
+    const resolvedDir = path.resolve(allowedDir);
+    if (!resolvedPath.startsWith(resolvedDir)) {
+      throw new Error('Invalid file path: Path traversal detected');
+    }
+  }
+
   static async initialize() {
     // Ensure backups directory exists
     try {
@@ -52,7 +74,7 @@ export class BackupService {
     const filename = `${backupId}_${timestamp}.json`;
     const backupPath = path.join(this.backupsDir, filename);
 
-    logger.info(`Creating backup: ${backupId}`, { adminId, options, type });
+    logger.info('Creating backup', { backupId: sanitizeForLog(backupId), adminId, options, type });
 
     try {
       // Get database statistics
@@ -80,6 +102,9 @@ export class BackupService {
         data.uploads = await this.exportUploads();
       }
 
+      // Validate backup path to prevent path traversal
+      this.validatePath(backupPath, this.backupsDir);
+
       // Write backup file
       const backupContent = JSON.stringify(data, null, 2);
       await fs.writeFile(backupPath, backupContent);
@@ -106,7 +131,7 @@ export class BackupService {
         },
       });
 
-      logger.info(`Backup created successfully: ${backupId}`, {
+      logger.info('Backup created successfully', { backupId: sanitizeForLog(backupId),
         filename,
         size: backupInfo.size,
         recordCounts,
@@ -114,7 +139,7 @@ export class BackupService {
 
       return backupInfo;
     } catch (error) {
-      logger.error(`Backup creation failed: ${backupId}`, error);
+      logger.error('Backup creation failed', { backupId: sanitizeForLog(backupId), error });
 
       // Cleanup failed backup file
       try {
@@ -146,7 +171,7 @@ export class BackupService {
       // Export all main tables
       const tables = [
         'users',
-        'stores', 
+        'stores',
         'storeAdmins',
         'categories',
         'products',
@@ -162,8 +187,8 @@ export class BackupService {
       }
 
       for (const table of tables) {
-        logger.info(`Exporting table: ${table}`);
-        
+        logger.info('Exporting table', { table: sanitizeForLog(table) });
+
         // Use Prisma to get data safely
         switch (table) {
           case 'users':
@@ -210,14 +235,14 @@ export class BackupService {
   private static async exportUploads(): Promise<any> {
     try {
       const uploads: any = {};
-      
+
       // Check if uploads directory exists
       try {
         const uploadStats = await fs.stat(this.uploadsDir);
         if (uploadStats.isDirectory()) {
           // Get list of upload files
           const files = await fs.readdir(this.uploadsDir, { withFileTypes: true });
-          
+
           for (const file of files) {
             if (file.isFile()) {
               const filePath = path.join(this.uploadsDir, file.name);
@@ -243,9 +268,16 @@ export class BackupService {
 
   // Compress backup file
   private static async compressBackup(backupPath: string): Promise<void> {
+    // Validate and sanitize path to prevent command injection (CWE-94, CWE-78)
+    const { sanitizeFilePath, prepareSafeCommand } = await import('../utils/commandSanitizer.js');
+    const safePath = sanitizeFilePath(backupPath);
+
+    // Validate command and arguments
+    const { command, args } = prepareSafeCommand('gzip', ['-f', safePath]);
+
     return new Promise((resolve, reject) => {
-      const gzip = spawn('gzip', ['-f', backupPath]);
-      
+      const gzip = spawn(command, args);
+
       gzip.on('close', (code) => {
         if (code === 0) {
           logger.info('Backup compressed successfully');
@@ -265,16 +297,21 @@ export class BackupService {
   static async restoreFromBackup(
     backupFilename: string,
     adminId: string,
-    options: { 
+    options: {
       restoreUploads?: boolean;
       skipExisting?: boolean;
     } = {}
   ): Promise<void> {
-    const backupPath = path.join(this.backupsDir, backupFilename);
-    
-    logger.info(`Starting restore from backup: ${backupFilename}`, { adminId, options });
+    // SECURITY FIX: Sanitize filename to prevent path traversal (CWE-22)
+    const sanitizedFilename = this.sanitizeFilename(backupFilename);
+    const backupPath = path.join(this.backupsDir, sanitizedFilename);
+
+    logger.info('Starting restore from backup', { filename: sanitizeForLog(sanitizedFilename), adminId, options });
 
     try {
+      // SECURITY FIX: Validate backup path to prevent path traversal (CWE-22)
+      this.validatePath(backupPath, this.backupsDir);
+
       // Verify backup file exists
       await fs.access(backupPath);
 
@@ -296,7 +333,7 @@ export class BackupService {
           // Restore tables in correct order (dependencies first)
           const restoreOrder = [
             'users',
-            'categories', 
+            'categories',
             'stores',
             'storeAdmins',
             'products',
@@ -337,13 +374,13 @@ export class BackupService {
         },
       });
 
-      logger.info(`Restore completed successfully: ${backupFilename}`);
+      logger.info('Restore completed successfully', { filename: sanitizeForLog(backupFilename) });
     } catch (error) {
-      logger.error(`Restore failed: ${backupFilename}`, error);
+      logger.error('Restore failed', { filename: sanitizeForLog(backupFilename), error });
 
       // Notify about restore failure
       await NotificationService.notifySystemError(
-        `Database restore failed: ${backupFilename}`,
+        `Database restore failed: ${sanitizeForLog(backupFilename)}`,
         { error: error instanceof Error ? error.message : 'Unknown error', adminId }
       );
 
@@ -359,11 +396,11 @@ export class BackupService {
     options: { skipExisting?: boolean } = {}
   ): Promise<void> {
     if (!data || data.length === 0) {
-      logger.info(`No data to restore for table: ${tableName}`);
+      logger.info('No data to restore for table', { table: sanitizeForLog(tableName) });
       return;
     }
 
-    logger.info(`Restoring table: ${tableName} (${data.length} records)`);
+    logger.info('Restoring table', { table: sanitizeForLog(tableName), records: data.length });
 
     try {
       for (const record of data) {
@@ -379,7 +416,7 @@ export class BackupService {
         await this.insertRecord(tx, tableName, record);
       }
     } catch (error) {
-      logger.error(`Failed to restore table ${tableName}:`, error);
+      logger.error('Failed to restore table', { table: sanitizeForLog(tableName), error });
       throw error;
     }
   }
@@ -446,12 +483,17 @@ export class BackupService {
       await fs.mkdir(this.uploadsDir, { recursive: true });
 
       for (const [filename, fileData] of Object.entries(uploadsData)) {
-        const filePath = path.join(this.uploadsDir, filename);
+        const sanitizedFilename = this.sanitizeFilename(filename);
+        const filePath = path.join(this.uploadsDir, sanitizedFilename);
+
+        // Validate file path to prevent path traversal
+        this.validatePath(filePath, this.uploadsDir);
+
         const content = Buffer.from((fileData as any).content, 'base64');
         await fs.writeFile(filePath, content);
       }
 
-      logger.info(`Restored ${Object.keys(uploadsData).length} upload files`);
+      logger.info('Restored upload files', { count: Object.keys(uploadsData).length });
     } catch (error) {
       logger.error('Failed to restore uploads:', error);
       throw error;
@@ -498,7 +540,7 @@ export class BackupService {
         if (filename.endsWith('.json') || filename.endsWith('.gz')) {
           const filePath = path.join(this.backupsDir, filename);
           const stats = await fs.stat(filePath);
-          
+
           // Try to extract backup info from filename
           const match = filename.match(/backup_(\d+)_/);
           const timestamp = match ? new Date(parseInt(match[1])) : stats.birthtime;
@@ -528,11 +570,16 @@ export class BackupService {
 
   // Delete backup
   static async deleteBackup(filename: string, adminId: string): Promise<void> {
-    const backupPath = path.join(this.backupsDir, filename);
-    
+    // SECURITY FIX: Sanitize filename to prevent path traversal (CWE-22)
+    const sanitizedFilename = this.sanitizeFilename(filename);
+    const backupPath = path.join(this.backupsDir, sanitizedFilename);
+
+    // SECURITY FIX: Validate path to prevent directory traversal
+    this.validatePath(backupPath, this.backupsDir);
+
     try {
       await fs.unlink(backupPath);
-      
+
       // Audit log
       await AuditLogService.log(adminId, {
         action: AuditAction.BULK_DELETE,
@@ -542,9 +589,9 @@ export class BackupService {
         },
       });
 
-      logger.info(`Backup deleted: ${filename}`, { adminId });
+      logger.info('Backup deleted', { filename: sanitizeForLog(filename), adminId });
     } catch (error) {
-      logger.error(`Failed to delete backup: ${filename}`, error);
+      logger.error('Failed to delete backup', { filename: sanitizeForLog(filename), error });
       throw error;
     }
   }
@@ -554,7 +601,7 @@ export class BackupService {
     // This would integrate with a job scheduler like node-cron
     // For now, we'll just log the intent
     logger.info('Backup scheduling requested', { cronExpression, options });
-    
+
     // Implementation would depend on chosen scheduler
     // Example: cron.schedule(cronExpression, () => this.createBackup('system', options, 'scheduled'));
   }

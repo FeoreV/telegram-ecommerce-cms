@@ -1,6 +1,7 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { getVaultService } from '../services/VaultService';
 import { logger } from '../utils/logger';
+import { sanitizeObjectForLog } from '../utils/sanitizer';
 
 export interface VaultHealthStatus {
   vault: {
@@ -36,19 +37,20 @@ class VaultHealthChecker {
     // Check every 60 seconds
     this.checkInterval = setInterval(() => {
       this.performHealthCheck().catch(error => {
-        logger.error('Vault health check failed:', error);
+        const sanitizedError = error instanceof Error ? error.message.replace(/[\r\n]/g, ' ') : String(error).replace(/[\r\n]/g, ' ');
+        logger.error('Vault health check failed:', { error: sanitizedError });
       });
     }, 60000);
 
     // Initial check
     this.performHealthCheck().catch(error => {
-      logger.error('Initial Vault health check failed:', error);
+      logger.error('Initial Vault health check failed:', sanitizeObjectForLog(error));
     });
   }
 
   private async performHealthCheck(): Promise<VaultHealthStatus> {
     const useVault = process.env.USE_VAULT === 'true';
-    
+
     const status: VaultHealthStatus = {
       vault: {
         enabled: useVault,
@@ -66,7 +68,7 @@ class VaultHealthChecker {
         const vault = getVaultService();
         const isHealthy = await vault.healthCheck();
         status.vault.connected = isHealthy;
-        
+
         if (!isHealthy) {
           status.vault.error = 'Vault health check failed';
         }
@@ -110,7 +112,7 @@ export const vaultHealthMiddleware = async (
 ): Promise<void> => {
   try {
     const healthStatus = await vaultHealthChecker.getHealthStatus();
-    
+
     // Add health status to response headers for debugging
     res.setHeader('X-Vault-Enabled', healthStatus.vault.enabled.toString());
     res.setHeader('X-Vault-Connected', healthStatus.vault.connected.toString());
@@ -140,9 +142,9 @@ export const vaultHealthEndpoint = async (
 ): Promise<void> => {
   try {
     const healthStatus = await vaultHealthChecker.getHealthStatus();
-    
+
     const statusCode = healthStatus.vault.enabled && !healthStatus.vault.connected ? 503 : 200;
-    
+
     res.status(statusCode).json({
       status: statusCode === 200 ? 'healthy' : 'degraded',
       vault: healthStatus.vault,

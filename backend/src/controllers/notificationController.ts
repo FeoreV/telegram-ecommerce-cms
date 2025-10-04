@@ -1,8 +1,12 @@
 import { Response } from 'express';
 import { prisma } from '../lib/prisma';
-import { AppError, asyncHandler } from '../middleware/errorHandler';
 import { AuthenticatedRequest } from '../middleware/auth';
+import { AppError, asyncHandler } from '../middleware/errorHandler';
+// SECURITY FIX: Import sanitization and validation utilities
 import { Prisma } from '@prisma/client';
+import { logger } from '../utils/logger';
+import { sanitizeObjectForLog } from '../utils/sanitizer';
+import { validateJson } from '../utils/validator';
 
 // Get user notifications
 export const getNotifications = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
@@ -73,12 +77,34 @@ export const getNotifications = asyncHandler(async (req: AuthenticatedRequest, r
     }),
   ]);
 
+  // SECURITY FIX: Sanitize notification data before sending to client (CWE-79)
   res.json({
-    notifications: notifications.map(notification => ({
-      ...notification,
-      channels: JSON.parse(notification.channels) as string[],
-      data: notification.data ? JSON.parse(notification.data) as Record<string, any> : null,
-    })),
+    notifications: notifications.map(notification => {
+      let channels: string[] = [];
+      let data: Record<string, any> | null = null;
+
+      try {
+        if (notification.channels && validateJson(notification.channels)) {
+          channels = JSON.parse(notification.channels) as string[];
+        }
+        if (notification.data && validateJson(notification.data)) {
+          data = JSON.parse(notification.data) as Record<string, any>;
+          // Sanitize data to prevent XSS
+          data = sanitizeObjectForLog(data) as Record<string, any>;
+        }
+      } catch (error) {
+        logger.error('Failed to parse notification data', {
+          notificationId: notification.id,
+          error
+        });
+      }
+
+      return {
+        ...notification,
+        channels,
+        data,
+      };
+    }),
     pagination: {
       page: Number(page),
       limit: Number(limit),
@@ -116,11 +142,46 @@ export const markNotificationAsRead = asyncHandler(async (req: AuthenticatedRequ
     },
   });
 
+  // SECURITY FIX: Safely parse JSON data with validation and sanitization (CWE-79, CWE-502)
+  let channels: string[] = [];
+  let data: Record<string, any> | null = null;
+
+  try {
+    if (updatedNotification.channels && validateJson(updatedNotification.channels)) {
+      channels = JSON.parse(updatedNotification.channels) as string[];
+      // Sanitize channel names to prevent XSS
+      channels = channels.map(ch => sanitizeObjectForLog({ ch }) as any).map((obj: any) => obj.ch);
+    }
+
+    if (updatedNotification.data && validateJson(updatedNotification.data)) {
+      data = JSON.parse(updatedNotification.data) as Record<string, any>;
+      // Sanitize data for safe output to prevent XSS
+      data = sanitizeObjectForLog(data) as Record<string, any>;
+    }
+  } catch (error) {
+    logger.error('Failed to parse notification data', {
+      notificationId: updatedNotification.id,
+      error
+    });
+    channels = [];
+    data = null;
+  }
+
+  // SECURITY FIX: Return sanitized notification data
   res.json({
     notification: {
-      ...updatedNotification,
-      channels: JSON.parse(updatedNotification.channels) as string[],
-      data: updatedNotification.data ? JSON.parse(updatedNotification.data) as Record<string, any> : null,
+      id: updatedNotification.id,
+      userId: updatedNotification.userId,
+      title: updatedNotification.title,
+      message: updatedNotification.message,
+      type: updatedNotification.type,
+      priority: updatedNotification.priority,
+      storeId: updatedNotification.storeId,
+      orderId: updatedNotification.orderId,
+      readAt: updatedNotification.readAt,
+      createdAt: updatedNotification.createdAt,
+      channels,
+      data,
     },
     message: 'Notification marked as read',
   });

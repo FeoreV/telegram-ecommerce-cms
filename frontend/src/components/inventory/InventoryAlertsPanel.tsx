@@ -1,53 +1,49 @@
-import React, { useState, useEffect } from 'react'
 import {
-  Paper,
-  Typography,
-  Box,
-  Chip,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  ListItemSecondaryAction,
-  IconButton,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Alert,
-  Avatar,
-  Badge,
-  Tooltip,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Divider,
-  Card,
-  CardContent,
-  Grid,
-  LinearProgress,
-} from '@mui/material'
-import {
-  Warning,
-  Error,
-  Inventory,
-  Edit,
-  Settings,
-  Refresh,
-  TrendingDown,
-  ShoppingCart,
-  Store as StoreIcon,
-  Timeline,
-  NotificationsActive,
-  FilterList,
+    Edit,
+    Error,
+    Inventory,
+    NotificationsActive,
+    Refresh,
+    Settings,
+    ShoppingCart,
+    Store as StoreIcon,
+    TrendingDown,
+    Warning
 } from '@mui/icons-material'
-import { format } from 'date-fns'
-import { ru } from 'date-fns/locale'
-import { useSocket } from '../../contexts/SocketContext'
+import {
+    Alert,
+    Avatar,
+    Badge,
+    Box,
+    Button,
+    Card,
+    CardContent,
+    Chip,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    Divider,
+    FormControl,
+    Grid,
+    IconButton,
+    InputLabel,
+    LinearProgress,
+    List,
+    ListItem,
+    ListItemIcon,
+    ListItemSecondaryAction,
+    ListItemText,
+    MenuItem,
+    Paper,
+    Select,
+    TextField,
+    Tooltip,
+    Typography,
+} from '@mui/material'
+import React, { useCallback, useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
+import { useSocket } from '../../contexts/SocketContext'
 
 interface InventoryAlert {
   type: 'LOW_STOCK' | 'OUT_OF_STOCK'
@@ -87,27 +83,7 @@ interface AlertsSummary {
   lowStock: number
 }
 
-interface InventoryService {
-  getInventoryAlerts: (filters: any) => Promise<{ alerts: InventoryAlert[]; summary: AlertsSummary }>
-  updateStock: (data: any) => Promise<any>
-  setStockAlertsConfig: (data: any) => Promise<any>
-}
-
-// Mock service - replace with actual API calls
-const inventoryService: InventoryService = {
-  getInventoryAlerts: async (filters) => {
-    // Mock implementation
-    return { alerts: [], summary: { total: 0, critical: 0, high: 0, medium: 0, outOfStock: 0, lowStock: 0 } }
-  },
-  updateStock: async (data) => {
-    // Mock implementation
-    return {}
-  },
-  setStockAlertsConfig: async (data) => {
-    // Mock implementation
-    return {}
-  }
-}
+import { inventoryService } from '../../services/inventoryService'
 
 interface InventoryAlertsPanelProps {
   storeId?: string
@@ -135,9 +111,31 @@ const InventoryAlertsPanel: React.FC<InventoryAlertsPanelProps> = ({
     type: 'all'
   })
 
+  const loadAlerts = useCallback(async () => {
+    try {
+      const filterParams: any = {}
+      if (storeId) filterParams.storeId = storeId
+      if (filters.severity !== 'all') filterParams.severity = filters.severity.toUpperCase()
+
+      const response = await inventoryService.getInventoryAlerts(filterParams)
+
+      let filteredAlerts = response.alerts
+      if (filters.type !== 'all') {
+        filteredAlerts = response.alerts.filter(alert => alert.type === filters.type)
+      }
+
+      setAlerts(filteredAlerts)
+      setSummary(response.summary)
+    } catch (error: any) {
+      toast.error('Ошибка при загрузке предупреждений')
+    } finally {
+      setLoading(false)
+    }
+  }, [storeId, filters])
+
   useEffect(() => {
     loadAlerts()
-  }, [storeId, filters])
+  }, [storeId, filters, loadAlerts])
 
   // Listen for real-time inventory updates
   useEffect(() => {
@@ -152,11 +150,11 @@ const InventoryAlertsPanel: React.FC<InventoryAlertsPanelProps> = ({
       const alertMessage = data.type === 'out_of_stock'
         ? `🚨 Товар "${data.productName}" закончился`
         : `⚠️ Низкий остаток: ${data.productName} (${data.stock} шт.)`
-      
+
       toast.warning(alertMessage, {
         autoClose: data.severity === 'critical' ? false : 8000
       })
-      
+
       loadAlerts() // Refresh alerts
     }
 
@@ -167,29 +165,7 @@ const InventoryAlertsPanel: React.FC<InventoryAlertsPanelProps> = ({
       socket.off('inventory:stock_updated', handleStockUpdate)
       socket.off('inventory:alert', handleInventoryAlert)
     }
-  }, [socket])
-
-  const loadAlerts = async () => {
-    try {
-      const filterParams: any = {}
-      if (storeId) filterParams.storeId = storeId
-      if (filters.severity !== 'all') filterParams.severity = filters.severity.toUpperCase()
-
-      const response = await inventoryService.getInventoryAlerts(filterParams)
-      
-      let filteredAlerts = response.alerts
-      if (filters.type !== 'all') {
-        filteredAlerts = response.alerts.filter(alert => alert.type === filters.type)
-      }
-      
-      setAlerts(filteredAlerts)
-      setSummary(response.summary)
-    } catch (error: any) {
-      toast.error('Ошибка при загрузке предупреждений')
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [socket, loadAlerts])
 
   const handleStockUpdate = async () => {
     if (!stockUpdateDialog.alert || !newStock) return
@@ -353,7 +329,7 @@ const InventoryAlertsPanel: React.FC<InventoryAlertsPanelProps> = ({
                 <MenuItem value="medium">Средние</MenuItem>
               </Select>
             </FormControl>
-            
+
             <Button
               variant="outlined"
               startIcon={<Refresh />}
@@ -362,7 +338,7 @@ const InventoryAlertsPanel: React.FC<InventoryAlertsPanelProps> = ({
             >
               Обновить
             </Button>
-            
+
             {showSettings && (
               <Button
                 variant="outlined"
@@ -389,7 +365,7 @@ const InventoryAlertsPanel: React.FC<InventoryAlertsPanelProps> = ({
                   <ListItemIcon>
                     {getSeverityIcon(alert.severity)}
                   </ListItemIcon>
-                  
+
                   <ListItemText
                     primary={
                       <Box display="flex" alignItems="center" gap={1} mb={1}>
@@ -417,7 +393,7 @@ const InventoryAlertsPanel: React.FC<InventoryAlertsPanelProps> = ({
                         <Typography variant="caption" color="primary">
                           💡 {alert.recommendedAction}
                         </Typography>
-                        
+
                         {alert.variants && alert.variants.length > 0 && (
                           <Box mt={1}>
                             <Typography variant="caption" color="text.secondary">
@@ -441,7 +417,7 @@ const InventoryAlertsPanel: React.FC<InventoryAlertsPanelProps> = ({
                             </Box>
                           </Box>
                         )}
-                        
+
                         {alert.recentSales !== undefined && (
                           <Box display="flex" alignItems="center" gap={1} mt={1}>
                             <ShoppingCart fontSize="small" />
@@ -453,7 +429,7 @@ const InventoryAlertsPanel: React.FC<InventoryAlertsPanelProps> = ({
                       </Box>
                     }
                   />
-                  
+
                   <ListItemSecondaryAction>
                     <Tooltip title="Обновить запасы">
                       <IconButton
@@ -469,7 +445,7 @@ const InventoryAlertsPanel: React.FC<InventoryAlertsPanelProps> = ({
                     </Tooltip>
                   </ListItemSecondaryAction>
                 </ListItem>
-                
+
                 {index < alerts.length - 1 && <Divider />}
               </React.Fragment>
             ))}

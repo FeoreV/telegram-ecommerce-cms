@@ -2,14 +2,15 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const express_validator_1 = require("express-validator");
-const validation_1 = require("../middleware/validation");
-const permissions_1 = require("../middleware/permissions");
 const adminController_1 = require("../controllers/adminController");
+const csrfProtection_1 = require("../middleware/csrfProtection");
+const permissions_1 = require("../middleware/permissions");
+const validation_1 = require("../middleware/validation");
 const router = (0, express_1.Router)();
 router.get('/dashboard', (0, permissions_1.requirePermission)(permissions_1.Permission.ANALYTICS_VIEW), [(0, express_validator_1.query)('timeRange').optional().isIn(['24h', '7d', '30d'])], validation_1.validate, adminController_1.getDashboardStats);
 router.get('/logs', (0, permissions_1.requirePermission)(permissions_1.Permission.SYSTEM_LOGS), adminController_1.getAdminLogs);
 router.get('/users', (0, permissions_1.requirePermission)(permissions_1.Permission.USER_VIEW), adminController_1.getUsers);
-router.patch('/users/:userId/status', (0, permissions_1.requirePermission)(permissions_1.Permission.USER_UPDATE), [
+router.patch('/users/:userId/status', csrfProtection_1.csrfProtection, (0, permissions_1.requirePermission)(permissions_1.Permission.USER_UPDATE), [
     (0, express_validator_1.param)('userId').isString().withMessage('Valid user ID required'),
     (0, express_validator_1.body)('isActive').isBoolean().withMessage('isActive must be boolean'),
 ], validation_1.validate, adminController_1.updateUserStatus);

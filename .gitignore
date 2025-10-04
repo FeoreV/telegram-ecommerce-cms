@@ -1,11 +1,17 @@
-# Dependencies
+# ===========================================
+# Dependencies & Package Managers
+# ===========================================
 node_modules/
 **/node_modules/
 .pnp
 .pnp.js
 .yarn/
+.pnpm-store/
+.pnpm-debug.log
 
-# Build outputs
+# ===========================================
+# Build Outputs & Compiled Files
+# ===========================================
 dist/
 **/dist/
 build/
@@ -16,16 +22,34 @@ coverage/
 .nuxt/
 .turbo/
 
-# Environment files
+# TypeScript build artifacts
+*.tsbuildinfo
+*.js.map
+*.d.ts.map
+
+# ===========================================
+# Environment & Security Files
+# ===========================================
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env.keys
+.env.security
 **/.env
 **/.env.local
+**/.env.keys
+**/.env.security
 
+# Vault and secrets
+**/vault-*.json
+**/secrets-*.json
+vault_data/
+
+# ===========================================
 # Logs
+# ===========================================
 logs/
 **/logs/
 *.log
@@ -34,15 +58,82 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+builderrors.log
+security-audit*.log
+lint.log
 
-# OS files
+# ===========================================
+# Database Files
+# ===========================================
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+prisma/dev.db
+**/prisma/dev.db
+prisma/migrations/**/migration.sql.bak
+
+# ===========================================
+# Uploads & User Content
+# ===========================================
+uploads/*
+!uploads/.gitkeep
+**/uploads/*
+!**/uploads/.gitkeep
+**/payment-proofs/*
+!**/payment-proofs/.gitkeep
+
+# Storage directories
+storage/uploads/*
+!storage/uploads/.gitkeep
+storage/logs/*
+!storage/logs/.gitkeep
+storage/backups/*
+!storage/backups/.gitkeep
+storage/secure/*
+!storage/secure/.gitkeep
+
+# Backend specific
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/backups/*
+!backend/backups/.gitkeep
+backend/storage/secure/*
+!backend/storage/secure/.gitkeep
+
+# ===========================================
+# Cache & Temporary Files
+# ===========================================
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+
+# ===========================================
+# OS Generated Files
+# ===========================================
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+Desktop.ini
 *.swp
 *.swo
 *~
 
-# IDE files
+# ===========================================
+# IDE & Editor Files
+# ===========================================
 .vscode/
 !.vscode/settings.json
 !.vscode/tasks.json
@@ -52,55 +143,66 @@ Thumbs.db
 *.sublime-project
 *.sublime-workspace
 *.iml
+.project
+.classpath
+.settings/
+*.code-workspace
 
+# ===========================================
 # Testing
+# ===========================================
 coverage/
 *.coverage
 .nyc_output/
 .jest-cache/
+cypress/videos/
+cypress/screenshots/
+.cypress/
 
-# Database
-*.db
-*.sqlite
-*.sqlite3
-prisma/migrations/**/migration.sql.bak
-
-# Cache
-.cache/
-.parcel-cache/
-.eslintcache
-.stylelintcache
-
-# Temporary files
-tmp/
-temp/
-*.tmp
-*.bak
-*.backup
-
-# Docker
-.dockerignore
+# ===========================================
+# Docker & Container Files
+# ===========================================
 docker-compose.override.yml
+.docker/
 
-# Uploads & Storage
-uploads/*
-!uploads/.gitkeep
-storage/uploads/*
-!storage/uploads/.gitkeep
-storage/logs/*
-!storage/logs/.gitkeep
-storage/backups/*
-!storage/backups/.gitkeep
-
-# Build errors
-builderrors.log
-
-# Monitoring & Metrics
+# ===========================================
+# Monitoring & Metrics Data
+# ===========================================
 prometheus_data/
 grafana_data/
+alertmanager_data/
 
-# Package manager
-.pnpm-store/
-.pnpm-debug.log
-node_modules
-node_modules
+# ===========================================
+# Temporary Reports & Documentation
+# ===========================================
+*_REPORT.md
+*_SUMMARY.md
+*_FIXES*.md
+*_CHECKLIST.md
+SECURITY_*.md
+!SECURITY.md
+START_HERE_*.md
+README_*.md
+!README.md
+BEFORE_AFTER.md
+CLEANUP_SUMMARY.md
+DEMO_DATA_REMOVAL_SUMMARY.md
+
+# ===========================================
+# SSL/TLS Certificates & Keys
+# ===========================================
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+!config/tls/*.sh
+
+# ===========================================
+# Exceptions (files to keep)
+# ===========================================
+!LICENSE.txt
+!.gitkeep
+!.gitattributes
+!patches/**/*

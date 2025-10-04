@@ -1,57 +1,52 @@
-import React, { useState, useRef } from 'react'
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Box,
-  Typography,
-  Tabs,
-  Tab,
-  Grid,
-  Card,
-  CardContent,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  Alert,
-  LinearProgress,
-  Chip,
-  Divider,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  FormControlLabel,
-  Checkbox,
-  TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  IconButton,
-} from '@mui/material'
-import {
-  CloudDownload,
-  CloudUpload,
-  InsertDriveFile,
-  TableChart,
-  Warning,
-  CheckCircle,
-  Error,
-  Info,
-  Delete,
-  Visibility,
-  Close,
+    CheckCircle,
+    Close,
+    CloudDownload,
+    CloudUpload,
+    Error,
+    InsertDriveFile,
+    TableChart,
+    Warning
 } from '@mui/icons-material'
-import { Product, Store, Category } from '../../types'
-import { productService } from '../../services/productService'
+import {
+    Alert,
+    Box,
+    Button,
+    Card,
+    CardContent,
+    Checkbox,
+    Chip,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    FormControl,
+    FormControlLabel,
+    Grid,
+    IconButton,
+    InputLabel,
+    LinearProgress,
+    List,
+    ListItem,
+    ListItemIcon,
+    ListItemText,
+    MenuItem,
+    Paper,
+    Select,
+    Tab,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Tabs,
+    Typography
+} from '@mui/material'
+import React, { useRef, useState } from 'react'
 import { toast } from 'react-toastify'
+import { productService } from '../../services/productService'
+import { Category, Product, Store } from '../../types'
 
 interface ExportImportProps {
   open: boolean
@@ -120,7 +115,7 @@ const ExportImport: React.FC<ExportImportProps> = ({
   const [importFile, setImportFile] = useState<File | null>(null)
   const [importPreviewOpen, setImportPreviewOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  
+
   const [exportOptions, setExportOptions] = useState<ExportOptions>({
     format: 'csv',
     includeVariants: false,
@@ -145,12 +140,12 @@ const ExportImport: React.FC<ExportImportProps> = ({
         filteredProducts = filteredProducts.filter(p => p.isActive)
       }
       if (exportOptions.selectedStores.length > 0) {
-        filteredProducts = filteredProducts.filter(p => 
+        filteredProducts = filteredProducts.filter(p =>
           p.store && exportOptions.selectedStores.includes(p.store.id)
         )
       }
       if (exportOptions.selectedCategories.length > 0) {
-        filteredProducts = filteredProducts.filter(p => 
+        filteredProducts = filteredProducts.filter(p =>
           p.category && exportOptions.selectedCategories.includes(p.category.id)
         )
       }
@@ -173,8 +168,8 @@ const ExportImport: React.FC<ExportImportProps> = ({
 
         // Добавляем дополнительные поля по опциям
         if (exportOptions.includeImages) {
-          baseData['Изображения'] = Array.isArray(product.images) 
-            ? product.images.join('; ') 
+          baseData['Изображения'] = Array.isArray(product.images)
+            ? product.images.join('; ')
             : ''
         }
 
@@ -183,7 +178,7 @@ const ExportImport: React.FC<ExportImportProps> = ({
         }
 
         if (exportOptions.includeVariants && product.variants && Array.isArray(product.variants) && product.variants.length > 0) {
-          baseData['Варианты'] = product.variants.map(v => 
+          baseData['Варианты'] = product.variants.map(v =>
             `${v.name}:${v.value}${v.price ? ` (${v.price}₽)` : ''}`
           ).join('; ')
         }
@@ -213,7 +208,7 @@ const ExportImport: React.FC<ExportImportProps> = ({
     const headers = Object.keys(data[0])
     const csvContent = [
       headers.join(','),
-      ...data.map(row => 
+      ...data.map(row =>
         headers.map(header => {
           const value = row[header]
           // Экранируем значения с запятыми и кавычками
@@ -225,11 +220,17 @@ const ExportImport: React.FC<ExportImportProps> = ({
       )
     ].join('\n')
 
+    // SECURITY FIX: Sanitize filename to prevent XSS (CWE-79)
+    const sanitizedFilename = filename.replace(/[<>:"\/\\|?*\x00-\x1F]/g, '_')
+
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
-    link.download = filename
+    link.download = sanitizedFilename
     link.click()
+
+    // Cleanup
+    URL.revokeObjectURL(link.href)
   }
 
   const downloadExcel = (data: any[], filename: string) => {
@@ -252,7 +253,7 @@ const ExportImport: React.FC<ExportImportProps> = ({
     try {
       const text = await file.text()
       const lines = text.split('\n').filter(line => line.trim())
-      
+
       if (lines.length < 2) {
         toast.error('Файл должен содержать заголовки и хотя бы одну строку данных')
         return
@@ -275,7 +276,7 @@ const ExportImport: React.FC<ExportImportProps> = ({
         // Маппинг полей
         headers.forEach((header, index) => {
           const value = values[index] || ''
-          
+
           switch (header.toLowerCase()) {
             case 'название':
             case 'name':
@@ -297,15 +298,17 @@ const ExportImport: React.FC<ExportImportProps> = ({
               row.stock = parseInt(value) || 0
               break
             case 'магазин':
-            case 'store':
+            case 'store': {
               const store = (stores || []).find(s => s.name === value || s.id === value)
               row.storeId = store?.id
               break
+            }
             case 'категория':
-            case 'category':
+            case 'category': {
               const category = (categories || []).find(c => c.name === value || c.id === value)
               row.categoryId = category?.id
               break
+            }
             case 'активен':
             case 'active':
               row.isActive = value.toLowerCase() === 'да' || value.toLowerCase() === 'yes' || value === '1'
@@ -333,10 +336,10 @@ const ExportImport: React.FC<ExportImportProps> = ({
 
       setImportData(rows)
       setImportPreviewOpen(true)
-      
+
       const validRows = rows.filter(r => r.isValid).length
       const invalidRows = rows.length - validRows
-      
+
       toast.info(`Обработано ${rows.length} строк. Валидных: ${validRows}, с ошибками: ${invalidRows}`)
     } catch (error: any) {
       toast.error('Ошибка при обработке файла: ' + error.message)
@@ -378,7 +381,7 @@ const ExportImport: React.FC<ExportImportProps> = ({
       }
 
       toast.success(`Импортировано ${successCount} товаров${errorCount > 0 ? `, ошибок: ${errorCount}` : ''}`)
-      
+
       if (successCount > 0) {
         onSuccess()
         onClose()
@@ -424,7 +427,7 @@ const ExportImport: React.FC<ExportImportProps> = ({
                     <Typography variant="h6" gutterBottom color="primary">
                       Параметры экспорта
                     </Typography>
-                    
+
                     <FormControl fullWidth margin="normal">
                       <InputLabel>Формат файла</InputLabel>
                       <Select
@@ -503,7 +506,7 @@ const ExportImport: React.FC<ExportImportProps> = ({
                     <Typography variant="h6" gutterBottom color="primary">
                       Статистика экспорта
                     </Typography>
-                    
+
                     <List dense>
                       <ListItem>
                         <ListItemIcon>
@@ -514,7 +517,7 @@ const ExportImport: React.FC<ExportImportProps> = ({
                           secondary="Общее количество товаров в системе"
                         />
                       </ListItem>
-                      
+
                       <ListItem>
                         <ListItemIcon>
                           <CheckCircle color="success" />
@@ -524,7 +527,7 @@ const ExportImport: React.FC<ExportImportProps> = ({
                           secondary="Товары доступные для покупки"
                         />
                       </ListItem>
-                      
+
                       <ListItem>
                         <ListItemIcon>
                           <InsertDriveFile color="info" />
@@ -538,7 +541,7 @@ const ExportImport: React.FC<ExportImportProps> = ({
 
                     <Alert severity="info" sx={{ mt: 2 }}>
                       <Typography variant="body2">
-                        Экспортированный файл будет содержать все основные данные товаров 
+                        Экспортированный файл будет содержать все основные данные товаров
                         и может быть использован для создания резервных копий или анализа.
                       </Typography>
                     </Alert>
@@ -565,11 +568,11 @@ const ExportImport: React.FC<ExportImportProps> = ({
                     <Typography variant="h6" gutterBottom color="primary">
                       Выбор файла
                     </Typography>
-                    
-                    <Box 
-                      display="flex" 
-                      flexDirection="column" 
-                      alignItems="center" 
+
+                    <Box
+                      display="flex"
+                      flexDirection="column"
+                      alignItems="center"
                       gap={2}
                       sx={{
                         border: '2px dashed',
@@ -580,7 +583,7 @@ const ExportImport: React.FC<ExportImportProps> = ({
                       }}
                     >
                       <CloudUpload sx={{ fontSize: 48, color: 'primary.main' }} />
-                      
+
                       <Button
                         variant="contained"
                         component="label"
@@ -595,7 +598,7 @@ const ExportImport: React.FC<ExportImportProps> = ({
                           onChange={handleFileSelect}
                         />
                       </Button>
-                      
+
                       {importFile && (
                         <Chip
                           label={`Выбран: ${importFile.name}`}
@@ -626,7 +629,7 @@ const ExportImport: React.FC<ExportImportProps> = ({
                     <Typography variant="h6" gutterBottom color="primary">
                       Требования к файлу
                     </Typography>
-                    
+
                     <List dense>
                       <ListItem>
                         <ListItemIcon>
@@ -637,7 +640,7 @@ const ExportImport: React.FC<ExportImportProps> = ({
                           secondary="Разделитель: запятая (,)"
                         />
                       </ListItem>
-                      
+
                       <ListItem>
                         <ListItemIcon>
                           <CheckCircle color="success" fontSize="small" />
@@ -647,7 +650,7 @@ const ExportImport: React.FC<ExportImportProps> = ({
                           secondary="Для корректного отображения русских символов"
                         />
                       </ListItem>
-                      
+
                       <ListItem>
                         <ListItemIcon>
                           <Warning color="warning" fontSize="small" />
@@ -666,12 +669,15 @@ const ExportImport: React.FC<ExportImportProps> = ({
                         const template = `Название,Описание,SKU,Цена,Остаток,Магазин,Категория,Активен
 Пример товара 1,Описание товара 1,SKU001,1000,50,Название магазина,Категория 1,Да
 Пример товара 2,Описание товара 2,SKU002,2000,25,Название магазина,Категория 2,Нет`
-                        
+
                         const blob = new Blob(['\uFEFF' + template], { type: 'text/csv;charset=utf-8;' })
                         const link = document.createElement('a')
-                        link.href = URL.createObjectURL(blob)
+                        const url = URL.createObjectURL(blob)
+                        link.href = url
                         link.download = 'products_template.csv'
                         link.click()
+                        // SECURITY FIX: Cleanup object URL to prevent memory leak
+                        URL.revokeObjectURL(url)
                       }}
                     >
                       Скачать шаблон
@@ -687,7 +693,7 @@ const ExportImport: React.FC<ExportImportProps> = ({
           <Button onClick={onClose} disabled={loading}>
             Отмена
           </Button>
-          
+
           {activeTab === 0 && (
             <Button
               variant="contained"
@@ -702,8 +708,8 @@ const ExportImport: React.FC<ExportImportProps> = ({
       </Dialog>
 
       {/* Диалог предварительного просмотра импорта */}
-      <Dialog 
-        open={importPreviewOpen} 
+      <Dialog
+        open={importPreviewOpen}
         onClose={() => setImportPreviewOpen(false)}
         maxWidth="xl"
         fullWidth
@@ -732,7 +738,7 @@ const ExportImport: React.FC<ExportImportProps> = ({
             </Box>
           </Box>
         </DialogTitle>
-        
+
         <DialogContent>
           <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
             <Table stickyHeader size="small">
@@ -764,8 +770,8 @@ const ExportImport: React.FC<ExportImportProps> = ({
                       {(stores || []).find(s => s.id === row.storeId)?.name || 'Не найден'}
                     </TableCell>
                     <TableCell>
-                      {row.categoryId ? 
-                        (categories || []).find(c => c.id === row.categoryId)?.name : 
+                      {row.categoryId ?
+                        (categories || []).find(c => c.id === row.categoryId)?.name :
                         'Без категории'
                       }
                     </TableCell>
@@ -786,7 +792,7 @@ const ExportImport: React.FC<ExportImportProps> = ({
             </Table>
           </TableContainer>
         </DialogContent>
-        
+
         <DialogActions>
           <Button onClick={() => setImportPreviewOpen(false)}>
             Отмена

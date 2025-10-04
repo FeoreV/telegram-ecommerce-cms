@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Box,
   List,
@@ -14,6 +14,7 @@ import {
   Divider,
   IconButton,
   Tooltip,
+  CircularProgress,
 } from '@mui/material'
 import {
   Store,
@@ -29,6 +30,8 @@ import {
   Star,
 } from '@mui/icons-material'
 import DashboardWidget from '../DashboardWidget'
+import { dashboardService } from '../../../services/dashboardService'
+import { storeService } from '../../../services/storeService'
 
 interface PerformerData {
   id: string
@@ -54,115 +57,70 @@ const TopPerformersWidget: React.FC<TopPerformersWidgetProps> = ({
   onSettings,
 }) => {
   const [performanceType, setPerformanceType] = useState<PerformanceType>('stores')
-  const [favorites, setFavorites] = useState<string[]>(['1', '3'])
+  const [favorites, setFavorites] = useState<string[]>([])
+  const [loading, setLoading] = useState(false)
+  const [performersData, setPerformersData] = useState<{
+    stores: PerformerData[]
+    products: PerformerData[]
+    users: PerformerData[]
+  }>({
+    stores: [],
+    products: [],
+    users: []
+  })
 
-  // Mock data - in real app would come from API
-  const performersData = {
-    stores: [
-      {
-        id: '1',
-        name: 'Tech Store',
-        description: 'Электроника и гаджеты',
-        value: 150000,
-        change: 15.2,
-        extra: 'USD',
-        rank: 1,
-        maxValue: 200000,
-        avatar: undefined,
-      },
-      {
-        id: '2',
-        name: 'Fashion Boutique',
-        description: 'Модная одежда',
-        value: 120000,
-        change: -5.3,
-        extra: 'EUR',
-        rank: 2,
-        maxValue: 200000,
-        avatar: undefined,
-      },
-      {
-        id: '3',
-        name: 'Book Haven',
-        description: 'Книги и учебники',
-        value: 85000,
-        change: 8.7,
-        extra: 'RUB',
-        rank: 3,
-        maxValue: 200000,
-        avatar: undefined,
-      },
-      {
-        id: '4',
-        name: 'Pet Supplies',
-        description: 'Товары для животных',
-        value: 72000,
-        change: 22.1,
-        extra: 'USD',
-        rank: 4,
-        maxValue: 200000,
-        avatar: undefined,
-      },
-    ],
-    products: [
-      {
-        id: '1',
-        name: 'iPhone 15 Pro',
-        description: 'Смартфон Apple',
-        value: 45,
-        change: 12.5,
-        extra: '12 продаж',
-        rank: 1,
-        maxValue: 50,
-        avatar: undefined,
-      },
-      {
-        id: '2',
-        name: 'MacBook Air M2',
-        description: 'Ноутбук Apple',
-        value: 32,
-        change: 8.3,
-        extra: '8 продаж',
-        rank: 2,
-        maxValue: 50,
-        avatar: undefined,
-      },
-      {
-        id: '3',
-        name: 'AirPods Pro',
-        description: 'Беспроводные наушники',
-        value: 28,
-        change: -3.2,
-        extra: '18 продаж',
-        rank: 3,
-        maxValue: 50,
-        avatar: undefined,
-      },
-    ],
-    users: [
-      {
-        id: '1',
-        name: 'Алексей Иванов',
-        description: 'Менеджер продаж',
-        value: 95000,
-        change: 18.5,
-        extra: '45 заказов',
-        rank: 1,
-        maxValue: 100000,
-        avatar: undefined,
-      },
-      {
-        id: '2',
-        name: 'Мария Петрова',
-        description: 'Администратор',
-        value: 78000,
-        change: 7.2,
-        extra: '32 заказа',
-        rank: 2,
-        maxValue: 100000,
-        avatar: undefined,
-      },
-    ]
+  useEffect(() => {
+    loadPerformers()
+  }, [performanceType])
+
+  const loadPerformers = async () => {
+    setLoading(true)
+    try {
+      if (performanceType === 'stores') {
+        const topStores = await dashboardService.getTopStores({ limit: 10 })
+        const maxRevenue = Math.max(...topStores.map((s: any) => s.revenue || 0), 1)
+        setPerformersData(prev => ({
+          ...prev,
+          stores: topStores.map((store: any, index: number) => ({
+            id: store.id,
+            name: store.name,
+            description: store.description || '',
+            value: store.revenue || 0,
+            change: store.change || 0,
+            extra: store.currency || 'RUB',
+            rank: index + 1,
+            maxValue: maxRevenue,
+            avatar: store.logo
+          }))
+        }))
+      } else if (performanceType === 'products') {
+        const topProducts = await dashboardService.getTopProducts({ limit: 10 })
+        const maxRevenue = Math.max(...topProducts.map((p: any) => p.revenue || 0), 1)
+        setPerformersData(prev => ({
+          ...prev,
+          products: topProducts.map((product: any, index: number) => ({
+            id: product.id,
+            name: product.name,
+            description: product.category || '',
+            value: product.revenue || 0,
+            change: product.change || 0,
+            extra: `${product.quantity || 0} продаж`,
+            rank: index + 1,
+            maxValue: maxRevenue,
+            avatar: product.image
+          }))
+        }))
+      }
+    } catch (error) {
+      console.error('Error loading performers:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleRefresh = () => {
+    loadPerformers()
+    onRefresh?.()
   }
 
   const currentData = performersData[performanceType]
@@ -235,7 +193,7 @@ const TopPerformersWidget: React.FC<TopPerformersWidgetProps> = ({
       title={`Топ ${performanceType === 'stores' ? 'магазины' : performanceType === 'products' ? 'товары' : 'пользователи'}`}
       subtitle={`${getValueLabel(performanceType)} за месяц`}
       icon={getIcon(performanceType)}
-      onRefresh={onRefresh}
+      onRefresh={handleRefresh}
       onSettings={onSettings}
       showRefresh
       showSettings
@@ -244,8 +202,13 @@ const TopPerformersWidget: React.FC<TopPerformersWidgetProps> = ({
       headerAction={headerAction}
     >
       <Box>
-        <List sx={{ maxHeight: 320, overflow: 'auto' }}>
-          {currentData.map((performer, index) => (
+        {loading ? (
+          <Box display="flex" justifyContent="center" alignItems="center" height={200}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <List sx={{ maxHeight: 320, overflow: 'auto' }}>
+            {currentData.map((performer, index) => (
             <React.Fragment key={performer.id}>
               <ListItem
                 sx={{
@@ -333,10 +296,11 @@ const TopPerformersWidget: React.FC<TopPerformersWidgetProps> = ({
               
               {index < currentData.length - 1 && <Divider />}
             </React.Fragment>
-          ))}
-        </List>
+            ))}
+          </List>
+        )}
 
-        {currentData.length === 0 && (
+        {!loading && currentData.length === 0 && (
           <Box 
             display="flex" 
             alignItems="center" 

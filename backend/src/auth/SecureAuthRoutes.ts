@@ -1,24 +1,26 @@
 import express from 'express';
 import {
-  loginWithEmail,
-  loginWithTelegram,
-  refreshToken,
-  logout,
-  getProfile,
-  updateProfile,
-  changePassword,
-  setPassword,
-  verifyToken,
-  autoRefresh
+    autoRefresh,
+    changePassword,
+    getProfile,
+    loginWithEmail,
+    loginWithTelegram,
+    logout,
+    refreshToken,
+    setPassword,
+    updateProfile,
+    verifyToken
 } from './SecureAuthController';
 import {
-  secureAuthMiddleware,
-  optionalAuthMiddleware,
-  requireRole,
-  loginSlowDown,
-  ownerAuthMiddlewareStack
+    loginSlowDown,
+    optionalAuthMiddleware,
+    ownerAuthMiddlewareStack,
+    requireRole,
+    secureAuthMiddleware
 } from './SecureAuthMiddleware';
-import { UserRole, AuthenticatedRequest } from './SecureAuthSystem';
+import { AuthenticatedRequest, UserRole } from './SecureAuthSystem';
+// SECURITY FIX: CWE-352 - Add CSRF protection
+import { csrfProtection } from '../middleware/csrfProtection';
 
 const router = express.Router();
 
@@ -27,12 +29,12 @@ const router = express.Router();
  */
 
 // Email/Password login with rate limiting
-router.post('/login/email', 
+router.post('/login/email',
   loginSlowDown,
   loginWithEmail
 );
 
-// Telegram login with rate limiting  
+// Telegram login with rate limiting
 router.post('/login/telegram',
   loginSlowDown,
   loginWithTelegram
@@ -51,7 +53,7 @@ router.post('/refresh-token', refreshToken);
 router.post('/auto-refresh', autoRefresh);
 
 // Token verification (optional auth - can work without token)
-router.post('/verify-token', 
+router.post('/verify-token',
   optionalAuthMiddleware,
   verifyToken
 );
@@ -61,8 +63,10 @@ router.post('/verify-token',
  */
 
 // Logout (requires valid token)
+// SECURITY FIX: CWE-352 - Add CSRF protection
 router.post('/logout',
   secureAuthMiddleware,
+  csrfProtection,
   logout
 );
 
@@ -73,14 +77,18 @@ router.get('/profile',
 );
 
 // Update user profile
+// SECURITY FIX: CWE-352 - Add CSRF protection
 router.patch('/profile',
   secureAuthMiddleware,
+  csrfProtection,
   updateProfile
 );
 
 // Change password (for users with email accounts)
+// SECURITY FIX: CWE-352 - Add CSRF protection
 router.post('/change-password',
   secureAuthMiddleware,
+  csrfProtection,
   changePassword
 );
 
@@ -89,8 +97,10 @@ router.post('/change-password',
  */
 
 // Set password for any user (Owner only)
+// SECURITY FIX: CWE-352 - Add CSRF protection
 router.post('/set-password',
   ...ownerAuthMiddlewareStack,
+  csrfProtection,
   setPassword
 );
 
@@ -100,9 +110,9 @@ router.get('/permissions/:userId?',
   requireRole([UserRole.OWNER, UserRole.ADMIN]),
   async (req: AuthenticatedRequest, res) => {
     try {
-      const { SecureAuthSystem } = await import('./SecureAuthSystem');
+      const { SecureAuthSystem } = await import('./SecureAuthSystem.js');
       const targetUserId = req.params.userId || req.user?.id;
-      
+
       // Only owners can check other users' permissions
       if (targetUserId !== req.user?.id && req.user?.role !== UserRole.OWNER) {
         return res.status(403).json({
@@ -110,9 +120,9 @@ router.get('/permissions/:userId?',
           code: 'INSUFFICIENT_PERMISSIONS'
         });
       }
-      
+
       const permissions = await SecureAuthSystem.getUserPermissions(targetUserId);
-      
+
       res.json({
         success: true,
         userId: targetUserId,
@@ -137,16 +147,16 @@ router.get('/health',
   async (req, res) => {
     try {
       // Check database connection
-      const { prisma } = await import('../lib/prisma');
+      const { prisma } = await import('../lib/prisma.js');
       await prisma.user.count();
-      
+
       // Check Redis connection (if available)
       let redisStatus = 'not_configured';
       if (process.env.REDIS_URL) {
         // This would need to be implemented in SecureAuthSystem
         redisStatus = 'connected'; // Simplified for now
       }
-      
+
       res.json({
         success: true,
         status: 'healthy',
@@ -174,8 +184,8 @@ router.get('/stats',
   ...ownerAuthMiddlewareStack,
   async (req, res) => {
     try {
-      const { prisma } = await import('../lib/prisma');
-      
+      const { prisma } = await import('../lib/prisma.js');
+
       // Get user statistics
       const userStats = await prisma.user.groupBy({
         by: ['role'],
@@ -183,16 +193,16 @@ router.get('/stats',
           id: true
         }
       });
-      
+
       // Get active users (last 7 days) - would need lastLoginAt field
       const activeUsers = await prisma.user.count({
         where: {
           isActive: true
         }
       });
-      
+
       const totalUsers = await prisma.user.count();
-      
+
       res.json({
         success: true,
         stats: {

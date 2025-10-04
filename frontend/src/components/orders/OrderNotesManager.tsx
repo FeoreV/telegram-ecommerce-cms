@@ -112,39 +112,28 @@ const OrderNotesManager: React.FC<OrderNotesManagerProps> = ({
   const loadNotes = async () => {
     setLoading(true)
     try {
-      // Mock data - в реальном проекте загружаем с сервера
-      const mockNotes: OrderNote[] = [
-        {
-          id: '1',
-          content: 'Клиент просил ускорить доставку. Связались с курьерской службой.',
-          priority: 'high',
-          isPrivate: false,
-          category: 'shipping',
-          createdAt: new Date().toISOString(),
-          author: {
-            id: '1',
-            name: 'Анна Петрова',
-            username: 'anna.petrova'
-          },
-          tags: ['доставка', 'срочно']
-        },
-        {
-          id: '2',
-          content: 'Внутреннее примечание: проверить качество товара при упаковке.',
-          priority: 'medium',
-          isPrivate: true,
-          category: 'internal',
-          createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-          author: {
-            id: '2',
-            name: 'Михаил Козлов',
-            username: 'mikhail.kozlov'
-          },
-          tags: ['качество', 'проверка']
-        }
-      ]
+      // Load real notes from API
+      const orderDetails = await orderService.getOrder(order.id)
+      const apiNotes = orderDetails.notes || []
       
-      setNotes(mockNotes)
+      // Transform API notes to component format
+      const transformedNotes: OrderNote[] = apiNotes.map((note: any) => ({
+        id: note.id,
+        content: note.content || note.note || '',
+        priority: note.priority || 'medium',
+        isPrivate: note.isPrivate || false,
+        category: note.category || 'general',
+        createdAt: note.createdAt,
+        updatedAt: note.updatedAt,
+        author: {
+          id: note.author?.id || note.userId || '',
+          name: note.author?.name || note.author?.username || 'Пользователь',
+          username: note.author?.username
+        },
+        tags: note.tags || []
+      }))
+      
+      setNotes(transformedNotes)
     } catch (error) {
       console.error('Error loading notes:', error)
       toast.error('Ошибка при загрузке заметок')
@@ -196,9 +185,10 @@ const OrderNotesManager: React.FC<OrderNotesManagerProps> = ({
 
   const handleDeleteNote = async (noteId: string) => {
     try {
-      // В реальном проекте - API вызов для удаления
+      // Note: API endpoint for deleting notes needs to be implemented on backend
+      // For now, just remove from local state and show warning
       setNotes(prev => prev.filter(note => note.id !== noteId))
-      toast.success('Заметка удалена')
+      toast.warning('Удаление заметок будет реализовано в следующей версии')
       setDeleteDialog(null)
     } catch (error) {
       toast.error('Ошибка при удалении заметки')

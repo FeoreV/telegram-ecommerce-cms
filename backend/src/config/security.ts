@@ -92,7 +92,7 @@ export const loadSecurityConfig = async (): Promise<SecurityConfig> => {
     },
     rateLimit: {
       windowMs: 15 * 60 * 1000, // 15 minutes
-      maxRequests: isDevelopment ? 1000 : parseInt(process.env.RATE_LIMIT_MAX || '100'),
+      maxRequests: isDevelopment ? 10000 : parseInt(process.env.RATE_LIMIT_MAX || '100'),
       authMaxRequests: isDevelopment ? 100 : parseInt(process.env.AUTH_RATE_LIMIT_MAX || '5'),
       uploadMaxRequests: isDevelopment ? 50 : parseInt(process.env.UPLOAD_RATE_LIMIT_MAX || '10'),
     },

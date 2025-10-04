@@ -1,11 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const auth_1 = require("../middleware/auth");
-const permissions_1 = require("../middleware/permissions");
-const validation_1 = require("../middleware/validation");
 const express_validator_1 = require("express-validator");
 const userController_1 = require("../controllers/userController");
+const auth_1 = require("../middleware/auth");
+const csrfProtection_1 = require("../middleware/csrfProtection");
+const permissions_1 = require("../middleware/permissions");
+const validation_1 = require("../middleware/validation");
 const router = (0, express_1.Router)();
 router.use(auth_1.authMiddleware);
 router.get('/', (0, permissions_1.requirePermission)(permissions_1.Permission.USER_VIEW), [
@@ -37,7 +38,7 @@ router.get('/:id', (0, permissions_1.requirePermission)(permissions_1.Permission
         .isString()
         .withMessage('User ID is required')
 ], validation_1.validate, userController_1.getUser);
-router.put('/:id/role', (0, permissions_1.requirePermission)(permissions_1.Permission.USER_UPDATE), [
+router.put('/:id/role', csrfProtection_1.csrfProtection, (0, permissions_1.requirePermission)(permissions_1.Permission.USER_UPDATE), [
     (0, express_validator_1.param)('id')
         .isString()
         .withMessage('User ID is required'),
@@ -57,12 +58,12 @@ router.put('/:id/role', (0, permissions_1.requirePermission)(permissions_1.Permi
         .isIn(['ADMIN', 'VENDOR'])
         .withMessage('Assignment role must be ADMIN or VENDOR')
 ], validation_1.validate, userController_1.updateUserRole);
-router.patch('/:id/status', (0, permissions_1.requirePermission)(permissions_1.Permission.USER_UPDATE), [
+router.patch('/:id/status', csrfProtection_1.csrfProtection, (0, permissions_1.requirePermission)(permissions_1.Permission.USER_UPDATE), [
     (0, express_validator_1.param)('id')
         .isString()
         .withMessage('User ID is required')
 ], validation_1.validate, userController_1.toggleUserStatus);
-router.post('/assign-store', (0, permissions_1.requirePermission)(permissions_1.Permission.USER_UPDATE), [
+router.post('/assign-store', csrfProtection_1.csrfProtection, (0, permissions_1.requirePermission)(permissions_1.Permission.USER_UPDATE), [
     (0, express_validator_1.body)('userId')
         .isString()
         .withMessage('User ID is required'),
@@ -73,7 +74,7 @@ router.post('/assign-store', (0, permissions_1.requirePermission)(permissions_1.
         .isIn(['ADMIN', 'VENDOR'])
         .withMessage('Role must be ADMIN or VENDOR')
 ], validation_1.validate, userController_1.assignUserToStore);
-router.delete('/remove-store', (0, permissions_1.requirePermission)(permissions_1.Permission.USER_UPDATE), [
+router.delete('/remove-store', csrfProtection_1.csrfProtection, (0, permissions_1.requirePermission)(permissions_1.Permission.USER_UPDATE), [
     (0, express_validator_1.body)('userId')
         .isString()
         .withMessage('User ID is required'),
@@ -102,7 +103,7 @@ router.get('/:id/activity', (0, permissions_1.requirePermission)(permissions_1.P
         .isInt({ min: 1, max: 100 })
         .withMessage('Limit must be between 1 and 100')
 ], validation_1.validate, userController_1.getUserActivity);
-router.post('/:id/ban', (0, permissions_1.requirePermission)(permissions_1.Permission.USER_UPDATE), [
+router.post('/:id/ban', csrfProtection_1.csrfProtection, (0, permissions_1.requirePermission)(permissions_1.Permission.USER_UPDATE), [
     (0, express_validator_1.param)('id')
         .isString()
         .withMessage('User ID is required'),
@@ -112,17 +113,17 @@ router.post('/:id/ban', (0, permissions_1.requirePermission)(permissions_1.Permi
         .isLength({ min: 1, max: 500 })
         .withMessage('Reason must be 1-500 characters')
 ], validation_1.validate, userController_1.banUser);
-router.post('/:id/unban', (0, permissions_1.requirePermission)(permissions_1.Permission.USER_UPDATE), [
+router.post('/:id/unban', csrfProtection_1.csrfProtection, (0, permissions_1.requirePermission)(permissions_1.Permission.USER_UPDATE), [
     (0, express_validator_1.param)('id')
         .isString()
         .withMessage('User ID is required')
 ], validation_1.validate, userController_1.unbanUser);
-router.delete('/:id', (0, permissions_1.requirePermission)(permissions_1.Permission.USER_DELETE), [
+router.delete('/:id', csrfProtection_1.csrfProtection, (0, permissions_1.requirePermission)(permissions_1.Permission.USER_DELETE), [
     (0, express_validator_1.param)('id')
         .isString()
         .withMessage('User ID is required')
 ], validation_1.validate, userController_1.deleteUser);
-router.post('/bulk-action', (0, permissions_1.requirePermission)(permissions_1.Permission.USER_UPDATE), [
+router.post('/bulk-action', csrfProtection_1.csrfProtection, (0, permissions_1.requirePermission)(permissions_1.Permission.USER_UPDATE), [
     (0, express_validator_1.body)('action')
         .isIn(['ban', 'unban', 'changeRole', 'delete'])
         .withMessage('Invalid bulk action'),

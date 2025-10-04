@@ -1,8 +1,8 @@
 import jwt from 'jsonwebtoken';
 import type { StringValue } from 'ms';
-import { logger } from './logger';
-import { env } from './env';
 import { prisma } from '../lib/prisma';
+import { env } from './env';
+import { logger } from './logger';
 
 export interface JWTPayload {
   userId: string;
@@ -26,14 +26,14 @@ const activeSessions = new Map<string, { userId: string; createdAt: number; last
 // Clean up expired tokens every hour
 setInterval(() => {
   const now = Date.now();
-  
+
   // Clean blacklisted tokens
   for (const [token, expiry] of blacklistedTokens.entries()) {
     if (expiry < now) {
       blacklistedTokens.delete(token);
     }
   }
-  
+
   // Clean old sessions (30 days)
   const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
   for (const [sessionId, session] of activeSessions.entries()) {
@@ -56,14 +56,14 @@ export class JWTService {
   static generateTokenPair(payload: Omit<JWTPayload, 'type' | 'sessionId'>): TokenPair {
     const sessionId = this.generateSessionId();
     const now = Math.floor(Date.now() / 1000);
-    
+
     // Create access token
     const accessPayload: JWTPayload = {
       ...payload,
       type: 'access',
       sessionId,
     };
-    
+
     const accessOptions: jwt.SignOptions = {
       expiresIn: this.ACCESS_TOKEN_EXPIRY,
       issuer: this.ISSUER,
@@ -78,7 +78,7 @@ export class JWTService {
       type: 'refresh',
       sessionId,
     };
-    
+
     const refreshOptions: jwt.SignOptions = {
       expiresIn: this.REFRESH_TOKEN_EXPIRY,
       issuer: this.ISSUER,
@@ -141,12 +141,12 @@ export class JWTService {
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorName = error instanceof Error ? error.name : 'Unknown';
-      
+
+      // SECURITY: Token preview removed to prevent information exposure (CWE-532)
       logger.warn('Token verification failed', {
-        error: errorMessage,
-        tokenPreview: token.substring(0, 20) + '...',
+        error: errorMessage
       });
-      
+
       if (errorName === 'TokenExpiredError') {
         throw new Error('Token expired');
       } else if (errorName === 'JsonWebTokenError') {
@@ -165,7 +165,7 @@ export class JWTService {
   static async refreshToken(refreshToken: string): Promise<TokenPair> {
     try {
       const decoded = this.verifyToken(refreshToken);
-      
+
       if (decoded.type !== 'refresh') {
         throw new Error('Invalid token type');
       }
@@ -191,10 +191,10 @@ export class JWTService {
       });
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      
+
+      // SECURITY: Token preview removed to prevent information exposure (CWE-532)
       logger.warn('Token refresh failed', {
-        error: errorMessage,
-        tokenPreview: refreshToken.substring(0, 20) + '...',
+        error: errorMessage
       });
       throw error;
     }
@@ -209,12 +209,12 @@ export class JWTService {
       if (decoded && decoded.exp) {
         // Store until token would expire naturally
         blacklistedTokens.set(token, decoded.exp * 1000);
-        
+
         // Remove session if it's the last token
         if (decoded.sessionId) {
           activeSessions.delete(decoded.sessionId);
         }
-        
+
         logger.info('Token blacklisted', {
           userId: (decoded as any).userId,
           sessionId: decoded.sessionId,
@@ -240,7 +240,7 @@ export class JWTService {
 
       // In production, you'd also add user to a global blacklist
       // that gets checked during token verification
-      
+
       logger.info(`Blacklisted all tokens for user ${userId}`);
     } catch (error) {
       logger.error('Failed to blacklist all user tokens:', error);
@@ -253,7 +253,7 @@ export class JWTService {
    */
   static getUserSessions(userId: string): Array<{ sessionId: string; createdAt: Date; lastUsed: Date }> {
     const userSessions = [];
-    
+
     for (const [sessionId, session] of activeSessions.entries()) {
       if (session.userId === userId) {
         userSessions.push({
@@ -263,7 +263,7 @@ export class JWTService {
         });
       }
     }
-    
+
     return userSessions;
   }
 
@@ -288,10 +288,10 @@ export class JWTService {
     // Convert JWT expiry strings to seconds
     const match = expiry.match(/^(\d+)([smhd])$/);
     if (!match) return 900; // Default 15 minutes
-    
+
     const value = parseInt(match[1]);
     const unit = match[2];
-    
+
     switch (unit) {
       case 's': return value;
       case 'm': return value * 60;
@@ -310,11 +310,11 @@ export class JWTService {
     sessionsByUser: Record<string, number>;
   } {
     const sessionsByUser: Record<string, number> = {};
-    
+
     for (const session of activeSessions.values()) {
       sessionsByUser[session.userId] = (sessionsByUser[session.userId] || 0) + 1;
     }
-    
+
     return {
       blacklistedTokens: blacklistedTokens.size,
       activeSessions: activeSessions.size,

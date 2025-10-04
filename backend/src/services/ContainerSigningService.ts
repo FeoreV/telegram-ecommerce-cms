@@ -1,30 +1,31 @@
+// SECURITY FIX (CWE-78): Using spawnSync only (not execSync) to prevent command injection
+import { spawnSync } from 'child_process';
 import crypto from 'crypto';
 import * as fs from 'fs';
-import { execSync } from 'child_process';
-import { logger } from '../utils/logger';
 import { getErrorMessage } from '../utils/errorUtils';
+import { logger } from '../utils/logger';
 
 export interface SigningConfig {
   enableSigning: boolean;
   signingTool: 'cosign' | 'notary' | 'docker-content-trust';
   keyProvider: 'file' | 'vault' | 'kms' | 'pkcs11';
   registryUrl: string;
-  
+
   // Cosign specific
   cosignPrivateKey?: string;
   cosignPublicKey?: string;
   cosignPassword?: string;
-  
+
   // Notary specific
   notaryServer?: string;
   notaryRootKey?: string;
   notaryTargetKey?: string;
-  
+
   // Build attestation
   enableAttestation: boolean;
   attestationTypes: string[];
   builderImage: string;
-  
+
   // Verification
   enableVerification: boolean;
   trustedKeys: string[];
@@ -118,19 +119,19 @@ export class ContainerSigningService {
       signingTool: (process.env.CONTAINER_SIGNING_TOOL as any) || 'cosign',
       keyProvider: (process.env.SIGNING_KEY_PROVIDER as any) || 'file',
       registryUrl: process.env.CONTAINER_REGISTRY_URL || 'ghcr.io',
-      
+
       cosignPrivateKey: process.env.COSIGN_PRIVATE_KEY,
       cosignPublicKey: process.env.COSIGN_PUBLIC_KEY,
       cosignPassword: process.env.COSIGN_PASSWORD,
-      
+
       notaryServer: process.env.NOTARY_SERVER,
       notaryRootKey: process.env.NOTARY_ROOT_KEY,
       notaryTargetKey: process.env.NOTARY_TARGET_KEY,
-      
+
       enableAttestation: process.env.ENABLE_BUILD_ATTESTATION !== 'false',
       attestationTypes: (process.env.ATTESTATION_TYPES || 'slsa-provenance,sbom').split(','),
       builderImage: process.env.BUILDER_IMAGE || 'gcr.io/projectsigstore/cosign',
-      
+
       enableVerification: process.env.ENABLE_SIGNATURE_VERIFICATION !== 'false',
       trustedKeys: (process.env.TRUSTED_SIGNING_KEYS || '').split(',').filter(Boolean),
       policyFile: process.env.SIGNATURE_POLICY_FILE
@@ -227,26 +228,47 @@ export class ContainerSigningService {
       }
 
       // Sign the image
-      const signCmd = [
-        'cosign sign',
-        '--yes', // Skip confirmation
+      // SECURITY FIX: Sanitize and use safe command execution (CWE-94, CWE-78)
+      const { sanitizeImageRef } = await import('../utils/commandSanitizer.js');
+      const safeImageRef = sanitizeImageRef(imageRef);
+
+      // Use spawnSync with argument array for safe execution
+      const signResult = spawnSync('cosign', [
+        'sign',
+        '--yes',
         '--key', this.config.cosignPrivateKey || 'env://COSIGN_PRIVATE_KEY',
-        imageRef
-      ].join(' ');
-
-      execSync(signCmd, {
+        safeImageRef
+      ], {
         encoding: 'utf8',
         env,
-        stdio: 'pipe'
+        stdio: ['ignore', 'pipe', 'pipe']
       });
 
-      // Get signature info
-      const verifyCmd = `cosign verify --key ${this.config.cosignPublicKey || 'env://COSIGN_PUBLIC_KEY'} ${imageRef} --output json`;
-      const verifyOutput = execSync(verifyCmd, {
+      if (signResult.error) {
+        throw signResult.error;
+      }
+
+      if (signResult.status !== 0) {
+        throw new Error(`Cosign signing failed: ${signResult.stderr}`);
+      }
+
+      // Get signature info using safe command execution
+      const verifyResult = spawnSync('cosign', [
+        'verify',
+        '--key', this.config.cosignPublicKey || 'env://COSIGN_PUBLIC_KEY',
+        safeImageRef,
+        '--output', 'json'
+      ], {
         encoding: 'utf8',
         env,
-        stdio: 'pipe'
+        stdio: ['ignore', 'pipe', 'pipe']
       });
+
+      if (verifyResult.error) {
+        throw verifyResult.error;
+      }
+
+      const verifyOutput = verifyResult.stdout;
 
       const verificationData = JSON.parse(verifyOutput);
       const signatureData = verificationData[0];
@@ -279,7 +301,7 @@ export class ContainerSigningService {
     try {
       // This is a simplified implementation
       // In production, you'd integrate with actual Notary server
-      
+
       const timestamp = new Date();
       const signature = crypto
         .createHash('sha256')
@@ -317,9 +339,24 @@ export class ContainerSigningService {
         DOCKER_CONTENT_TRUST_SERVER: this.config.notaryServer || 'https://notary.docker.io'
       };
 
-      // Push with signing
-      const pushCmd = `docker push ${imageRef}`;
-      execSync(pushCmd, { env, stdio: 'pipe' });
+      // SECURITY FIX: Safe command execution (CWE-94, CWE-78)
+      const { sanitizeImageRef } = await import('../utils/commandSanitizer.js');
+      const safeImageRef = sanitizeImageRef(imageRef);
+
+      // Push with signing using safe spawn
+      const pushResult = spawnSync('docker', ['push', safeImageRef], {
+        env,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        encoding: 'utf8'
+      });
+
+      if (pushResult.error) {
+        throw pushResult.error;
+      }
+
+      if (pushResult.status !== 0) {
+        throw new Error(`Docker push failed: ${pushResult.stderr}`);
+      }
 
       const timestamp = new Date();
       const signature = crypto
@@ -469,14 +506,25 @@ export class ContainerSigningService {
     _buildContext?: any
   ): Promise<BuildAttestation> {
     try {
-      // Generate SBOM using syft or similar tool
-      const sbomCmd = `syft ${imageRef} -o cyclonedx-json`;
-      const sbomOutput = execSync(sbomCmd, {
+      // SECURITY FIX: Safe SBOM generation (CWE-94, CWE-78)
+      const { sanitizeImageRef } = await import('../utils/commandSanitizer.js');
+      const safeImageRef = sanitizeImageRef(imageRef);
+
+      // Generate SBOM using syft with safe command execution
+      const sbomResult = spawnSync('syft', [safeImageRef, '-o', 'cyclonedx-json'], {
         encoding: 'utf8',
-        stdio: 'pipe'
+        stdio: ['ignore', 'pipe', 'pipe']
       });
 
-      const sbomData = JSON.parse(sbomOutput);
+      if (sbomResult.error) {
+        throw sbomResult.error;
+      }
+
+      if (sbomResult.status !== 0) {
+        throw new Error(`SBOM generation failed: ${sbomResult.stderr}`);
+      }
+
+      const sbomData = JSON.parse(sbomResult.stdout);
 
       const subject: Subject[] = [
         {
@@ -499,7 +547,7 @@ export class ContainerSigningService {
 
     } catch (error) {
       logger.warn('Failed to generate SBOM attestation:', error);
-      
+
       // Return minimal SBOM attestation
       return {
         type: 'sbom',
@@ -541,14 +589,26 @@ export class ContainerSigningService {
     imageRef: string
   ): Promise<BuildAttestation> {
     try {
-      // Run vulnerability scan using trivy
-      const scanCmd = `trivy image --format json --quiet ${imageRef}`;
-      const scanOutput = execSync(scanCmd, {
+      // SECURITY FIX: Safe vulnerability scanning (CWE-94, CWE-78)
+      const { sanitizeImageRef } = await import('../utils/commandSanitizer.js');
+      const safeImageRef = sanitizeImageRef(imageRef);
+
+      // Run vulnerability scan using trivy with safe execution
+      const scanResult = spawnSync('trivy', ['image', '--format', 'json', '--quiet', safeImageRef], {
         encoding: 'utf8',
-        stdio: 'pipe'
+        stdio: ['ignore', 'pipe', 'pipe']
       });
 
-      const scanData = JSON.parse(scanOutput);
+      if (scanResult.error) {
+        throw scanResult.error;
+      }
+
+      if (scanResult.status !== 0) {
+        logger.warn('Trivy scan failed', { stderr: scanResult.stderr });
+        throw new Error(`Vulnerability scan failed: ${scanResult.stderr}`);
+      }
+
+      const scanData = JSON.parse(scanResult.stdout);
 
       const subject: Subject[] = [
         {
@@ -578,7 +638,7 @@ export class ContainerSigningService {
 
     } catch (error) {
       logger.warn('Failed to generate vulnerability scan attestation:', error);
-      
+
       // Return minimal scan attestation
       return {
         type: 'vulnerability-scan',
@@ -629,19 +689,30 @@ export class ContainerSigningService {
           env.COSIGN_PASSWORD = this.config.cosignPassword;
         }
 
-        const attestCmd = [
-          'cosign attest',
+        // SECURITY FIX: Safe attestation signing (CWE-94, CWE-78)
+        const { sanitizeImageRef } = await import('../utils/commandSanitizer.js');
+        const safeImageRef = sanitizeImageRef(imageRef);
+
+        const attestResult = spawnSync('cosign', [
+          'attest',
           '--yes',
           '--key', this.config.cosignPrivateKey || 'env://COSIGN_PRIVATE_KEY',
           '--predicate', attestationFile,
           '--type', attestation.type,
-          imageRef
-        ].join(' ');
-
-        execSync(attestCmd, {
+          safeImageRef
+        ], {
           env,
-          stdio: 'pipe'
+          stdio: ['ignore', 'pipe', 'pipe'],
+          encoding: 'utf8'
         });
+
+        if (attestResult.error) {
+          throw attestResult.error;
+        }
+
+        if (attestResult.status !== 0) {
+          throw new Error(`Attestation signing failed: ${attestResult.stderr}`);
+        }
 
         // Clean up
         fs.unlinkSync(attestationFile);
@@ -716,26 +787,55 @@ export class ContainerSigningService {
         return result;
       }
 
-      // Verify signatures
-      const verifyCmd = `cosign verify --key ${this.config.cosignPublicKey || 'env://COSIGN_PUBLIC_KEY'} ${imageRef} --output json`;
-      const verifyOutput = execSync(verifyCmd, {
+      // Sanitize image reference to prevent command injection (CWE-94)
+      const { sanitizeImageRef } = await import('../utils/commandSanitizer.js');
+      const safeImageRef = sanitizeImageRef(imageRef);
+
+      // SECURITY FIX: Safe signature verification (CWE-94, CWE-78)
+      // NOTE: Using spawnSync with argument array prevents command injection (CWE-94 mitigated)
+      const verifyResult = spawnSync('cosign', [
+        'verify',
+        '--key', this.config.cosignPublicKey || 'env://COSIGN_PUBLIC_KEY',
+        safeImageRef,
+        '--output', 'json'
+      ], {
         encoding: 'utf8',
-        stdio: 'pipe'
+        stdio: ['ignore', 'pipe', 'pipe']
       });
 
-      result.signatures = JSON.parse(verifyOutput);
-      result.verified = result.signatures.length > 0;
+      if (verifyResult.error) {
+        throw verifyResult.error;
+      }
 
-      // Verify attestations
+      if (verifyResult.status === 0) {
+        result.signatures = JSON.parse(verifyResult.stdout);
+        result.verified = result.signatures.length > 0;
+      }
+
+      // Verify attestations safely
       for (const type of this.config.attestationTypes) {
         try {
-          const attestCmd = `cosign verify-attestation --key ${this.config.cosignPublicKey || 'env://COSIGN_PUBLIC_KEY'} --type ${type} ${imageRef} --output json`;
-          const attestOutput = execSync(attestCmd, {
+          // NOTE: Using spawnSync with argument array prevents command injection (CWE-94 mitigated)
+          const attestResult = spawnSync('cosign', [
+            'verify-attestation',
+            '--key', this.config.cosignPublicKey || 'env://COSIGN_PUBLIC_KEY',
+            '--type', type,
+            safeImageRef,
+            '--output', 'json'
+          ], {
             encoding: 'utf8',
-            stdio: 'pipe'
+            stdio: ['ignore', 'pipe', 'pipe']
           });
 
-          const attestations = JSON.parse(attestOutput);
+          if (attestResult.error) {
+            throw attestResult.error;
+          }
+
+          if (attestResult.status !== 0) {
+            continue; // Skip this attestation type if verification fails
+          }
+
+          const attestations = JSON.parse(attestResult.stdout);
           result.attestations.push(...attestations);
 
         } catch (error) {
@@ -786,35 +886,74 @@ export class ContainerSigningService {
   }
 
   /**
-   * Get image digest
+   * Validate Docker image reference (CWE-78 prevention)
+   */
+  private validateImageRef(imageRef: string): void {
+    // SECURITY: Validate imageRef format to prevent command injection
+    // Valid format: [registry/]repository[:tag][@digest]
+    const validImagePattern = /^[a-zA-Z0-9][a-zA-Z0-9._\/-]*[a-zA-Z0-9](:[a-zA-Z0-9._-]+)?(@sha256:[a-f0-9]{64})?$/;
+
+    if (!validImagePattern.test(imageRef)) {
+      throw new Error(`SECURITY: Invalid image reference format: ${imageRef}`);
+    }
+
+    // SECURITY: Block shell metacharacters
+    const dangerousChars = /[;&|`$(){}[\]<>\\'"]/;
+    if (dangerousChars.test(imageRef)) {
+      throw new Error(`SECURITY: Image reference contains dangerous characters: ${imageRef}`);
+    }
+  }
+
+  /**
+   * Get image digest (FIXED: CWE-78 Command Injection)
    */
   private async getImageDigest(imageRef: string): Promise<string> {
     try {
+      // SECURITY: Validate imageRef before use
+      this.validateImageRef(imageRef);
+
       // If digest is already in the ref, extract it
       if (imageRef.includes('@sha256:')) {
         return imageRef.split('@')[1];
       }
 
-      // Get digest using docker inspect
-      const inspectCmd = `docker inspect --format='{{index .RepoDigests 0}}' ${imageRef}`;
-      const output = execSync(inspectCmd, {
+      // SECURITY: Use spawn with array arguments instead of string concatenation
+      const inspectResult = spawnSync('docker', [
+        'inspect',
+        '--format={{index .RepoDigests 0}}',
+        imageRef
+      ], {
         encoding: 'utf8',
         stdio: 'pipe'
       });
 
-      const digestRef = output.trim();
-      if (digestRef && digestRef.includes('@')) {
-        return digestRef.split('@')[1];
+      if (inspectResult.status === 0) {
+        const digestRef = inspectResult.stdout.trim();
+        if (digestRef && digestRef.includes('@')) {
+          return digestRef.split('@')[1];
+        }
       }
 
-      // Fallback: get digest using docker manifest
-      const manifestCmd = `docker manifest inspect ${imageRef} --verbose | grep -m1 '"digest"' | cut -d'"' -f4`;
-      const manifestOutput = execSync(manifestCmd, {
+      // Fallback: Use docker manifest with separate arguments
+      const manifestResult = spawnSync('docker', [
+        'manifest',
+        'inspect',
+        imageRef
+      ], {
         encoding: 'utf8',
         stdio: 'pipe'
       });
 
-      return manifestOutput.trim();
+      if (manifestResult.status === 0) {
+        const manifest = JSON.parse(manifestResult.stdout);
+        if (manifest.config && manifest.config.digest) {
+          return manifest.config.digest;
+        }
+      }
+
+      // Generate a placeholder digest if all else fails
+      logger.warn(`Failed to get image digest for ${imageRef}, generating placeholder`);
+      return 'sha256:' + crypto.createHash('sha256').update(imageRef).digest('hex');
 
     } catch (error) {
       logger.warn('Failed to get image digest:', error);
@@ -830,17 +969,21 @@ export class ContainerSigningService {
     if (imageRef.includes('@sha256:')) {
       return imageRef.split('@sha256:')[1];
     }
-    
+
     // Generate placeholder if no digest
     return crypto.createHash('sha256').update(imageRef).digest('hex');
   }
 
   /**
    * Ensure Cosign is available
+   * SECURITY FIX (CWE-78): Use spawnSync instead of execSync to prevent command injection
    */
   private ensureCosignAvailable(throwOnError: boolean = true): boolean {
     try {
-      execSync('cosign version', { stdio: 'pipe' });
+      const result = spawnSync('cosign', ['version'], { stdio: 'pipe' });
+      if (result.error || result.status !== 0) {
+        throw new Error('Cosign command failed');
+      }
       return true;
     } catch (error) {
       const message = 'Cosign is not available. Please install cosign.';
@@ -933,20 +1076,25 @@ export class ContainerSigningService {
   }> {
     const capabilities: string[] = [];
 
+    // SECURITY FIX (CWE-78): Use spawnSync instead of execSync to prevent command injection
     // Check signing tool availability
     try {
       switch (this.config.signingTool) {
         case 'cosign':
-          execSync('cosign version', { stdio: 'pipe' });
-          capabilities.push('cosign');
+          const cosignResult = spawnSync('cosign', ['version'], { stdio: 'pipe' });
+          if (cosignResult.status === 0) {
+            capabilities.push('cosign');
+          }
           break;
         case 'notary':
           // Check notary availability
           capabilities.push('notary');
           break;
         case 'docker-content-trust':
-          execSync('docker version', { stdio: 'pipe' });
-          capabilities.push('docker-content-trust');
+          const dockerResult = spawnSync('docker', ['version'], { stdio: 'pipe' });
+          if (dockerResult.status === 0) {
+            capabilities.push('docker-content-trust');
+          }
           break;
       }
     } catch (error) {
@@ -955,15 +1103,19 @@ export class ContainerSigningService {
 
     // Check attestation tools
     try {
-      execSync('syft version', { stdio: 'pipe' });
-      capabilities.push('syft');
+      const syftResult = spawnSync('syft', ['version'], { stdio: 'pipe' });
+      if (syftResult.status === 0) {
+        capabilities.push('syft');
+      }
     } catch (error) {
       // syft not available
     }
 
     try {
-      execSync('trivy version', { stdio: 'pipe' });
-      capabilities.push('trivy');
+      const trivyResult = spawnSync('trivy', ['version'], { stdio: 'pipe' });
+      if (trivyResult.status === 0) {
+        capabilities.push('trivy');
+      }
     } catch (error) {
       // trivy not available
     }

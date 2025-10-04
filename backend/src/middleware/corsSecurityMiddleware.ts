@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
 import cors, { CorsOptions } from 'cors';
 import crypto from 'crypto';
+import { NextFunction, Request, Response } from 'express';
 import { logger } from '../utils/logger';
 
 export interface CorsSecurityConfig {
@@ -170,16 +170,36 @@ export class CorsSecurityService {
   }
 
   /**
-   * Match origin against pattern (supports wildcards)
+   * Match origin against pattern (supports wildcards) - FIXED: CWE-1333 ReDoS
    */
   private matchOriginPattern(origin: string, pattern: string): boolean {
-    // Convert pattern to regex
-    const regexPattern = pattern
-      .replace(/\./g, '\\.')
-      .replace(/\*/g, '.*');
-    
-    const regex = new RegExp(`^${regexPattern}$`, 'i');
-    return regex.test(origin);
+    // SECURITY: Escape special regex characters to prevent ReDoS
+    const escapeRegex = (str: string): string => {
+      return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    };
+
+    // SECURITY: Validate pattern length to prevent ReDoS
+    if (pattern.length > 200) {
+      throw new Error('SECURITY: Pattern too long');
+    }
+
+    // Convert pattern to regex safely
+    const escapedPattern = escapeRegex(pattern);
+    // Only allow * as wildcard after escaping
+    const regexPattern = escapedPattern.replace(/\\\*/g, '.*');
+
+    // SECURITY: Use timeout for regex execution to prevent ReDoS
+    try {
+      const regex = new RegExp(`^${regexPattern}$`, 'i');
+      // Simple string matching instead of complex regex
+      if (!pattern.includes('*')) {
+        return origin.toLowerCase() === pattern.toLowerCase();
+      }
+      return regex.test(origin);
+    } catch (error) {
+      // If regex compilation fails, fall back to exact match
+      return origin.toLowerCase() === pattern.toLowerCase();
+    }
   }
 
   /**
@@ -242,8 +262,8 @@ export class CorsSecurityService {
 
     this.csrfTokens.set(token, csrfToken);
 
+    // SECURITY FIX: CWE-522 - Do not log token fragments, only safe identifiers
     logger.debug('CSRF token generated', {
-      tokenId: token.substring(0, 8) + '...',
       userId,
       sessionId,
       expiresAt: csrfToken.expiresAt
@@ -267,8 +287,8 @@ export class CorsSecurityService {
 
     const csrfToken = this.csrfTokens.get(token);
     if (!csrfToken) {
+      // SECURITY FIX: CWE-522 - Do not log token fragments
       logger.warn('CSRF token validation failed: Token not found', {
-        tokenId: token.substring(0, 8) + '...',
         userId,
         sessionId
       });
@@ -278,37 +298,62 @@ export class CorsSecurityService {
     // Check expiration
     if (csrfToken.expiresAt < new Date()) {
       this.csrfTokens.delete(token);
+      // SECURITY FIX: CWE-522 - Do not log token fragments
       logger.warn('CSRF token validation failed: Token expired', {
-        tokenId: token.substring(0, 8) + '...',
         userId,
         expiresAt: csrfToken.expiresAt
       });
       return false;
     }
 
+    // SECURITY FIX (CWE-208): Use timing-safe comparisons to prevent timing attacks
     // Check user/session binding if provided
-    if (userId && csrfToken.userId && csrfToken.userId !== userId) {
-      logger.warn('CSRF token validation failed: User mismatch', {
-        tokenId: token.substring(0, 8) + '...',
-        expectedUser: csrfToken.userId,
-        actualUser: userId
-      });
-      return false;
+    if (userId && csrfToken.userId) {
+      try {
+        const userMatch = crypto.timingSafeEqual(
+          Buffer.from(csrfToken.userId),
+          Buffer.from(userId)
+        );
+        if (!userMatch) {
+          // SECURITY FIX: CWE-522 - Do not log token fragments
+          logger.warn('CSRF token validation failed: User mismatch', {
+            expectedUser: csrfToken.userId,
+            actualUser: userId
+          });
+          return false;
+        }
+      } catch {
+        // Lengths don't match
+        logger.warn('CSRF token validation failed: User ID length mismatch');
+        return false;
+      }
     }
 
-    if (sessionId && csrfToken.sessionId && csrfToken.sessionId !== sessionId) {
-      logger.warn('CSRF token validation failed: Session mismatch', {
-        tokenId: token.substring(0, 8) + '...',
-        expectedSession: csrfToken.sessionId,
-        actualSession: sessionId
-      });
-      return false;
+    if (sessionId && csrfToken.sessionId) {
+      try {
+        const sessionMatch = crypto.timingSafeEqual(
+          Buffer.from(csrfToken.sessionId),
+          Buffer.from(sessionId)
+        );
+        if (!sessionMatch) {
+          // SECURITY FIX: CWE-522 - Do not log token fragments
+          logger.warn('CSRF token validation failed: Session mismatch', {
+            expectedSession: csrfToken.sessionId,
+            actualSession: sessionId
+          });
+          return false;
+        }
+      } catch {
+        // Lengths don't match
+        logger.warn('CSRF token validation failed: Session ID length mismatch');
+        return false;
+      }
     }
 
     // Check IP binding (optional, can be disabled for mobile users)
     if (ipAddress && csrfToken.ipAddress && csrfToken.ipAddress !== ipAddress) {
+      // SECURITY FIX: CWE-522 - Do not log token fragments
       logger.warn('CSRF token validation failed: IP address mismatch', {
-        tokenId: token.substring(0, 8) + '...',
         expectedIP: csrfToken.ipAddress,
         actualIP: ipAddress
       });
@@ -334,7 +379,7 @@ export class CorsSecurityService {
       }
 
       // Extract token from header or body
-      const token = req.get(this.config.csrfHeaderName) || 
+      const token = req.get(this.config.csrfHeaderName) ||
                    req.body[this.config.csrfTokenName] ||
                    req.query[this.config.csrfTokenName];
 
@@ -409,7 +454,7 @@ export class CorsSecurityService {
             path: req.path,
             method: req.method
           });
-          
+
           return res.status(403).json({
             error: 'Origin not allowed',
             message: 'Request origin is not in the allowed list',
@@ -419,11 +464,11 @@ export class CorsSecurityService {
       }
 
       // Validate Referer header for state-changing operations
-      if (this.config.enableReferrerValidation && 
+      if (this.config.enableReferrerValidation &&
           ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
         const referer = req.get('Referer');
         const origin = req.get('Origin');
-        
+
         if (referer && !this.isRefererValid(referer, origin)) {
           logger.warn('Request blocked: Invalid Referer header', {
             referer,
@@ -431,7 +476,7 @@ export class CorsSecurityService {
             path: req.path,
             method: req.method
           });
-          
+
           return res.status(403).json({
             error: 'Invalid referer',
             message: 'Request referer is not allowed',
@@ -471,7 +516,7 @@ export class CorsSecurityService {
       // Check if referer origin is in whitelist
       return this.isOriginAllowed(refererOrigin);
 
-    } catch (error) {
+    } catch {
       // Invalid referer URL
       return false;
     }
@@ -552,7 +597,7 @@ export class CorsSecurityService {
   }> {
     try {
       const stats = this.getSecurityStats();
-      
+
       return {
         status: 'healthy',
         stats

@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.requireStoreAccess = exports.requireRole = exports.authMiddleware = void 0;
-const jwt_1 = require("../utils/jwt");
 const prisma_1 = require("../lib/prisma");
+const jwt_1 = require("../utils/jwt");
 const logger_1 = require("../utils/logger");
 const authMiddleware = async (req, res, next) => {
     try {
@@ -21,7 +21,7 @@ const authMiddleware = async (req, res, next) => {
                 errorName: error instanceof Error ? error.name : undefined,
                 userAgent: req.headers['user-agent'],
                 ip: req.ip,
-                tokenPreview: `${token.substring(0, 6)}...${token.substring(token.length - 6)}`,
+                timestamp: new Date().toISOString()
             });
             if (error instanceof Error && error.message === 'Token expired') {
                 return res.status(401).json({ error: 'Token expired', code: 'TOKEN_EXPIRED' });
@@ -32,6 +32,22 @@ const authMiddleware = async (req, res, next) => {
             else {
                 return res.status(401).json({ error: 'Authentication failed', code: 'AUTH_FAILED' });
             }
+        }
+        const crypto = require('crypto');
+        const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+        const isRevoked = await prisma_1.prisma.revokedToken.findUnique({
+            where: { token: tokenHash }
+        });
+        if (isRevoked) {
+            logger_1.logger.warn('Revoked token used', {
+                userId: decoded.userId,
+                ip: req.ip,
+                userAgent: req.headers['user-agent']
+            });
+            return res.status(401).json({
+                error: 'Token has been revoked',
+                code: 'TOKEN_REVOKED'
+            });
         }
         const user = await prisma_1.prisma.user.findUnique({
             where: { id: decoded.userId },

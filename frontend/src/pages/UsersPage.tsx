@@ -1,72 +1,67 @@
-import React, { useState, useEffect } from 'react'
 import {
-  Typography,
-  Box,
-  Paper,
-  Grid,
-  TextField,
-  InputAdornment,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Button,
-  Chip,
-  CircularProgress,
-  Alert,
-  Avatar,
-  IconButton,
-  Tooltip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Switch,
-  FormControlLabel,
-  Card,
-  CardContent,
-  Badge,
-  Tabs,
-  Tab,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  Divider,
-  Checkbox,
-  Menu,
-} from '@mui/material'
-import {
-  Search,
-  PersonAdd,
-  Edit,
-  Block,
-  CheckCircle,
-  Store as StoreIcon,
-  AdminPanelSettings,
-  Business,
-  Person,
-  Refresh,
-  Assignment,
-  RemoveCircle,
-  Delete,
-  Visibility,
-  MoreVert,
-  Warning,
-  History,
-  ShoppingCart,
-  LockOpen,
+    AdminPanelSettings,
+    Block,
+    Business,
+    CheckCircle,
+    Delete,
+    Edit,
+    History,
+    LockOpen,
+    MoreVert,
+    Person,
+    PersonAdd,
+    Refresh,
+    Search,
+    ShoppingCart,
+    Store as StoreIcon,
+    Visibility,
+    Warning
 } from '@mui/icons-material'
+import {
+    Alert,
+    Avatar,
+    Badge,
+    Box,
+    Button,
+    Card,
+    CardContent,
+    Checkbox,
+    Chip,
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    Divider,
+    FormControl,
+    Grid,
+    IconButton,
+    InputAdornment,
+    InputLabel,
+    List,
+    ListItem,
+    ListItemIcon,
+    ListItemText,
+    Menu,
+    MenuItem,
+    Paper,
+    Select,
+    Tab,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Tabs,
+    TextField,
+    Typography
+} from '@mui/material'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
-import { useAuth } from '../contexts/AuthContext'
+import React, { useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
+import { useAuth } from '../contexts/AuthContext'
 import { userService } from '../services/userService'
 import { User } from '../types'
 
@@ -116,7 +111,7 @@ const UsersPage: React.FC = () => {
   const [activityTab, setActivityTab] = useState(0)
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [menuUser, setMenuUser] = useState<UserWithStats | null>(null)
-  
+
   const [filters, setFilters] = useState({
     page: 1,
     limit: 20,
@@ -144,7 +139,8 @@ const UsersPage: React.FC = () => {
         ...filters,
         role: filters.role === 'all' ? undefined : filters.role
       })
-      setUsers(response.users || [])
+      // Type assertion since API returns users with stats
+      setUsers((response.items || []) as UserWithStats[])
       setPagination(response.pagination || pagination)
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Ошибка при загрузке пользователей')
@@ -243,7 +239,7 @@ const UsersPage: React.FC = () => {
       return
     }
 
-    const confirmMessage = 
+    const confirmMessage =
       action === 'ban' ? 'Вы уверены, что хотите заблокировать выбранных пользователей?' :
       action === 'unban' ? 'Вы уверены, что хотите разблокировать выбранных пользователей?' :
       'Вы уверены, что хотите удалить выбранных пользователей? Это действие необратимо!'
@@ -261,8 +257,8 @@ const UsersPage: React.FC = () => {
   }
 
   const handleSelectUser = (userId: string) => {
-    setSelectedUsers(prev => 
-      prev.includes(userId) 
+    setSelectedUsers(prev =>
+      prev.includes(userId)
         ? prev.filter(id => id !== userId)
         : [...prev, userId]
     )
@@ -530,10 +526,10 @@ const UsersPage: React.FC = () => {
                 value={filters.isActive === undefined ? 'all' : filters.isActive ? 'active' : 'inactive'}
                 onChange={(e) => {
                   const value = e.target.value
-                  setFilters(prev => ({ 
-                    ...prev, 
+                  setFilters(prev => ({
+                    ...prev,
                     isActive: value === 'all' ? undefined : value === 'active',
-                    page: 1 
+                    page: 1
                   }))
                 }}
                 label="Статус"
@@ -604,7 +600,7 @@ const UsersPage: React.FC = () => {
                 </TableRow>
               ) : (
                 users.map((user) => (
-                  <TableRow 
+                  <TableRow
                     key={user.id}
                     sx={{
                       bgcolor: !user.isActive ? 'action.disabledBackground' : undefined,
@@ -708,7 +704,7 @@ const UsersPage: React.FC = () => {
             </TableBody>
           </Table>
         </TableContainer>
-        
+
         {/* Pagination */}
         {pagination.totalPages > 1 && (
           <Box display="flex" justifyContent="center" p={2} gap={1}>
@@ -745,7 +741,7 @@ const UsersPage: React.FC = () => {
           </ListItemIcon>
           <ListItemText>Просмотр деталей</ListItemText>
         </MenuItem>
-        
+
         {currentUser.role === 'OWNER' && (
           <MenuItem onClick={() => {
             setSelectedUser(menuUser)
@@ -759,9 +755,9 @@ const UsersPage: React.FC = () => {
             <ListItemText>Изменить роль</ListItemText>
           </MenuItem>
         )}
-        
+
         <Divider />
-        
+
         {menuUser?.isActive ? (
           <MenuItem onClick={() => {
             setSelectedUser(menuUser)
@@ -784,7 +780,7 @@ const UsersPage: React.FC = () => {
             <ListItemText>Разблокировать</ListItemText>
           </MenuItem>
         )}
-        
+
         {currentUser.role === 'OWNER' && (
           <MenuItem onClick={() => {
             setSelectedUser(menuUser)
@@ -817,7 +813,7 @@ const UsersPage: React.FC = () => {
                 <Tab label="Статистика" />
                 <Tab label="Активность" />
               </Tabs>
-              
+
               <TabPanel value={activityTab} index={0}>
                 <Grid container spacing={2}>
                   <Grid item xs={12}>
@@ -832,7 +828,7 @@ const UsersPage: React.FC = () => {
                         <Typography variant="body2" color="text.secondary">
                           @{detailedUserInfo.username || 'no_username'} • {detailedUserInfo.telegramId}
                         </Typography>
-                        <Chip 
+                        <Chip
                           label={getRoleLabel(detailedUserInfo.role)}
                           color={getRoleColor(detailedUserInfo.role) as any}
                           size="small"
@@ -858,14 +854,14 @@ const UsersPage: React.FC = () => {
                   <Grid item xs={12} sm={6}>
                     <Typography variant="caption" color="text.secondary">Последний вход</Typography>
                     <Typography variant="body2">
-                      {detailedUserInfo.lastLoginAt 
+                      {detailedUserInfo.lastLoginAt
                         ? format(new Date(detailedUserInfo.lastLoginAt), 'dd.MM.yyyy HH:mm', { locale: ru })
                         : 'Никогда'}
                     </Typography>
                   </Grid>
                 </Grid>
               </TabPanel>
-              
+
               <TabPanel value={activityTab} index={1}>
                 <Grid container spacing={2}>
                   <Grid item xs={6} sm={3}>
@@ -902,7 +898,7 @@ const UsersPage: React.FC = () => {
                   </Grid>
                 </Grid>
               </TabPanel>
-              
+
               <TabPanel value={activityTab} index={2}>
                 {userActivity.length > 0 ? (
                   <List>
@@ -969,7 +965,7 @@ const UsersPage: React.FC = () => {
           <Button onClick={() => setBanDialog(false)}>
             Отмена
           </Button>
-          <Button 
+          <Button
             onClick={handleBanUser}
             variant="contained"
             color="error"
@@ -1005,7 +1001,7 @@ const UsersPage: React.FC = () => {
           <Button onClick={() => setDeleteDialog(false)}>
             Отмена
           </Button>
-          <Button 
+          <Button
             onClick={handleDeleteUser}
             variant="contained"
             color="error"

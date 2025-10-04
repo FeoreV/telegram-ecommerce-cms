@@ -116,11 +116,24 @@ class CorsSecurityService {
         return false;
     }
     matchOriginPattern(origin, pattern) {
-        const regexPattern = pattern
-            .replace(/\./g, '\\.')
-            .replace(/\*/g, '.*');
-        const regex = new RegExp(`^${regexPattern}$`, 'i');
-        return regex.test(origin);
+        const escapeRegex = (str) => {
+            return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        };
+        if (pattern.length > 200) {
+            throw new Error('SECURITY: Pattern too long');
+        }
+        const escapedPattern = escapeRegex(pattern);
+        const regexPattern = escapedPattern.replace(/\\\*/g, '.*');
+        try {
+            const regex = new RegExp(`^${regexPattern}$`, 'i');
+            if (!pattern.includes('*')) {
+                return origin.toLowerCase() === pattern.toLowerCase();
+            }
+            return regex.test(origin);
+        }
+        catch (error) {
+            return origin.toLowerCase() === pattern.toLowerCase();
+        }
     }
     logSuspiciousOrigin(origin) {
         const now = new Date();
@@ -199,21 +212,39 @@ class CorsSecurityService {
             });
             return false;
         }
-        if (userId && csrfToken.userId && csrfToken.userId !== userId) {
-            logger_1.logger.warn('CSRF token validation failed: User mismatch', {
-                tokenId: token.substring(0, 8) + '...',
-                expectedUser: csrfToken.userId,
-                actualUser: userId
-            });
-            return false;
+        if (userId && csrfToken.userId) {
+            try {
+                const userMatch = crypto_1.default.timingSafeEqual(Buffer.from(csrfToken.userId), Buffer.from(userId));
+                if (!userMatch) {
+                    logger_1.logger.warn('CSRF token validation failed: User mismatch', {
+                        tokenId: token.substring(0, 8) + '...',
+                        expectedUser: csrfToken.userId,
+                        actualUser: userId
+                    });
+                    return false;
+                }
+            }
+            catch {
+                logger_1.logger.warn('CSRF token validation failed: User ID length mismatch');
+                return false;
+            }
         }
-        if (sessionId && csrfToken.sessionId && csrfToken.sessionId !== sessionId) {
-            logger_1.logger.warn('CSRF token validation failed: Session mismatch', {
-                tokenId: token.substring(0, 8) + '...',
-                expectedSession: csrfToken.sessionId,
-                actualSession: sessionId
-            });
-            return false;
+        if (sessionId && csrfToken.sessionId) {
+            try {
+                const sessionMatch = crypto_1.default.timingSafeEqual(Buffer.from(csrfToken.sessionId), Buffer.from(sessionId));
+                if (!sessionMatch) {
+                    logger_1.logger.warn('CSRF token validation failed: Session mismatch', {
+                        tokenId: token.substring(0, 8) + '...',
+                        expectedSession: csrfToken.sessionId,
+                        actualSession: sessionId
+                    });
+                    return false;
+                }
+            }
+            catch {
+                logger_1.logger.warn('CSRF token validation failed: Session ID length mismatch');
+                return false;
+            }
         }
         if (ipAddress && csrfToken.ipAddress && csrfToken.ipAddress !== ipAddress) {
             logger_1.logger.warn('CSRF token validation failed: IP address mismatch', {
@@ -334,7 +365,7 @@ class CorsSecurityService {
             }
             return this.isOriginAllowed(refererOrigin);
         }
-        catch (error) {
+        catch {
             return false;
         }
     }

@@ -5,8 +5,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.secureStorageService = exports.SecureStorageService = void 0;
 const aws_sdk_1 = __importDefault(require("aws-sdk"));
-const path_1 = __importDefault(require("path"));
 const crypto_1 = __importDefault(require("crypto"));
+const path_1 = __importDefault(require("path"));
 const logger_1 = require("../utils/logger");
 const StorageEncryptionService_1 = require("./StorageEncryptionService");
 class SecureStorageService {
@@ -87,7 +87,7 @@ class SecureStorageService {
                         encryption: encryption.ServerSideEncryptionConfiguration
                     });
                 }
-                catch (error) {
+                catch (_error) {
                     logger_1.logger.warn('Bucket encryption not configured, setting up default encryption');
                     await this.configureBucketEncryption();
                 }
@@ -111,7 +111,7 @@ class SecureStorageService {
                         await this.blockPublicAccess();
                     }
                 }
-                catch (error) {
+                catch (_error) {
                     logger_1.logger.warn('Public access block not configured, setting up block');
                     await this.blockPublicAccess();
                 }
@@ -436,7 +436,7 @@ class SecureStorageService {
             }).promise();
             return result.Metadata || null;
         }
-        catch (error) {
+        catch (_error) {
             return null;
         }
     }
@@ -456,7 +456,7 @@ class SecureStorageService {
             }
             return tags;
         }
-        catch (error) {
+        catch (_error) {
             return null;
         }
     }

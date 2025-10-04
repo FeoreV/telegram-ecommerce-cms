@@ -44,7 +44,7 @@ class BotDataService {
             };
         }
         catch (error) {
-            logger_js_1.logger.error(`Error fetching products for store ${this.storeId}:`, error);
+            logger_js_1.logger.error('Error fetching products for store', { storeId: this.storeId, error });
             throw new Error('Ошибка получения товаров');
         }
     }
@@ -66,7 +66,7 @@ class BotDataService {
             return product;
         }
         catch (error) {
-            logger_js_1.logger.error(`Error fetching product ${productId} for store ${this.storeId}:`, error);
+            logger_js_1.logger.error('Error fetching product for store', { productId, storeId: this.storeId, error });
             throw error;
         }
     }
@@ -98,7 +98,7 @@ class BotDataService {
             return categories;
         }
         catch (error) {
-            logger_js_1.logger.error(`Error fetching categories for store ${this.storeId}:`, error);
+            logger_js_1.logger.error(`Error fetching categories for store:`, { storeId: this.storeId, error });
             throw new Error('Ошибка получения категорий');
         }
     }
@@ -152,11 +152,11 @@ class BotDataService {
                     }
                 }
             });
-            logger_js_1.logger.info(`Order created: ${order.orderNumber} for store ${this.storeId}`);
+            logger_js_1.logger.info('Order created', { orderNumber: order.orderNumber, storeId: this.storeId });
             return order;
         }
         catch (error) {
-            logger_js_1.logger.error(`Error creating order for store ${this.storeId}:`, error);
+            logger_js_1.logger.error('Error creating order for store', { storeId: this.storeId, error });
             throw error;
         }
     }
@@ -191,7 +191,7 @@ class BotDataService {
             return order;
         }
         catch (error) {
-            logger_js_1.logger.error(`Error fetching order ${orderId} for store ${this.storeId}:`, error);
+            logger_js_1.logger.error('Error fetching order for store', { orderId, storeId: this.storeId, error });
             throw error;
         }
     }
@@ -223,7 +223,7 @@ class BotDataService {
             return order;
         }
         catch (error) {
-            logger_js_1.logger.error(`Error fetching order ${orderNumber} for store ${this.storeId}:`, error);
+            logger_js_1.logger.error('Error fetching order by number for store', { orderNumber, storeId: this.storeId, error });
             throw error;
         }
     }
@@ -249,7 +249,7 @@ class BotDataService {
             return orders;
         }
         catch (error) {
-            logger_js_1.logger.error(`Error fetching orders for customer ${customerId} in store ${this.storeId}:`, error);
+            logger_js_1.logger.error('Error fetching orders for customer in store', { customerId, storeId: this.storeId, error });
             throw new Error('Ошибка получения заказов');
         }
     }
@@ -268,7 +268,7 @@ class BotDataService {
                         role: 'CUSTOMER'
                     }
                 });
-                logger_js_1.logger.info(`New customer created: ${telegramId} for store ${this.storeId}`);
+                logger_js_1.logger.info('New customer created for store', { telegramId, storeId: this.storeId });
             }
             else {
                 const updateData = {};
@@ -291,7 +291,7 @@ class BotDataService {
             return user;
         }
         catch (error) {
-            logger_js_1.logger.error(`Error getting/creating customer ${telegramId} for store ${this.storeId}:`, error);
+            logger_js_1.logger.error('Error getting/creating customer for store', { telegramId, storeId: this.storeId, error });
             throw new Error('Ошибка работы с пользователем');
         }
     }
@@ -323,19 +323,30 @@ class BotDataService {
             };
         }
         catch (error) {
-            logger_js_1.logger.error(`Error fetching store info for ${this.storeId}:`, error);
+            logger_js_1.logger.error('Error fetching store info', { storeId: this.storeId, error });
             throw error;
         }
     }
     async updateStoreStats() {
         try {
+            const store = await prisma_js_1.prisma.store.findUnique({
+                where: { id: this.storeId },
+                select: { id: true }
+            });
+            if (!store) {
+                logger_js_1.logger.error('Store not found - bot should be stopped', { storeId: this.storeId });
+                throw new Error(`STORE_NOT_FOUND: Store ${this.storeId} does not exist`);
+            }
             await prisma_js_1.prisma.store.update({
                 where: { id: this.storeId },
                 data: { botLastActive: new Date() }
             });
         }
         catch (error) {
-            logger_js_1.logger.warn(`Error updating store stats for ${this.storeId}:`, error);
+            if (error instanceof Error && error.message.startsWith('STORE_NOT_FOUND')) {
+                throw error;
+            }
+            logger_js_1.logger.warn('Error updating store stats', { storeId: this.storeId, error });
         }
     }
     async generateOrderNumber() {
@@ -364,7 +375,7 @@ class BotDataService {
             return !!(store && store.botStatus === 'ACTIVE');
         }
         catch (error) {
-            logger_js_1.logger.error(`Error validating store access for ${this.storeId}:`, error);
+            logger_js_1.logger.error('Error validating store access', { storeId: this.storeId, error });
             return false;
         }
     }
@@ -404,7 +415,7 @@ class BotDataService {
             };
         }
         catch (error) {
-            logger_js_1.logger.error(`Error fetching basic stats for store ${this.storeId}:`, error);
+            logger_js_1.logger.error('Error fetching basic stats for store', { storeId: this.storeId, error });
             throw new Error('Ошибка получения статистики');
         }
     }

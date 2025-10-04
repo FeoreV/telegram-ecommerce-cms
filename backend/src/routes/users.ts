@@ -1,23 +1,24 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middleware/auth';
-import { requirePermission, Permission } from '../middleware/permissions';
-import { validate } from '../middleware/validation';
 import { body, param, query } from 'express-validator';
 import {
-  getUsers,
-  getUser,
-  getUserDetailed,
-  getUserActivity,
-  updateUserRole,
-  toggleUserStatus,
-  assignUserToStore,
-  removeUserFromStore,
-  getRoleStatistics,
-  deleteUser,
-  banUser,
-  unbanUser,
-  bulkUserActions
+    assignUserToStore,
+    banUser,
+    bulkUserActions,
+    deleteUser,
+    getRoleStatistics,
+    getUser,
+    getUserActivity,
+    getUserDetailed,
+    getUsers,
+    removeUserFromStore,
+    toggleUserStatus,
+    unbanUser,
+    updateUserRole
 } from '../controllers/userController';
+import { authMiddleware } from '../middleware/auth';
+import { csrfProtection } from '../middleware/csrfProtection';
+import { Permission, requirePermission } from '../middleware/permissions';
+import { validate } from '../middleware/validation';
 
 const router = Router();
 
@@ -78,6 +79,7 @@ router.get(
 // Update user role (OWNER only)
 router.put(
   '/:id/role',
+  csrfProtection,
   requirePermission(Permission.USER_UPDATE),
   [
     param('id')
@@ -106,6 +108,7 @@ router.put(
 // Toggle user active status
 router.patch(
   '/:id/status',
+  csrfProtection,
   requirePermission(Permission.USER_UPDATE),
   [
     param('id')
@@ -116,9 +119,10 @@ router.patch(
   toggleUserStatus
 );
 
-// Assign user to store
+// Assign user to store (SECURITY: CSRF protected)
 router.post(
   '/assign-store',
+  csrfProtection,
   requirePermission(Permission.USER_UPDATE),
   [
     body('userId')
@@ -135,9 +139,10 @@ router.post(
   assignUserToStore
 );
 
-// Remove user from store
+// Remove user from store (SECURITY: CSRF protected)
 router.delete(
   '/remove-store',
+  csrfProtection,
   requirePermission(Permission.USER_UPDATE),
   [
     body('userId')
@@ -188,9 +193,10 @@ router.get(
   getUserActivity
 );
 
-// Ban user
+// Ban user (SECURITY: CSRF protected)
 router.post(
   '/:id/ban',
+  csrfProtection,
   requirePermission(Permission.USER_UPDATE),
   [
     param('id')
@@ -206,9 +212,10 @@ router.post(
   banUser
 );
 
-// Unban user
+// Unban user (SECURITY: CSRF protected)
 router.post(
   '/:id/unban',
+  csrfProtection,
   requirePermission(Permission.USER_UPDATE),
   [
     param('id')
@@ -219,9 +226,10 @@ router.post(
   unbanUser
 );
 
-// Delete user
+// Delete user (SECURITY: CSRF protected)
 router.delete(
   '/:id',
+  csrfProtection,
   requirePermission(Permission.USER_DELETE),
   [
     param('id')
@@ -232,9 +240,10 @@ router.delete(
   deleteUser
 );
 
-// Bulk actions on users
+// Bulk actions on users (SECURITY: CSRF protected)
 router.post(
   '/bulk-action',
+  csrfProtection,
   requirePermission(Permission.USER_UPDATE),
   [
     body('action')

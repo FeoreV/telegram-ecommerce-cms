@@ -1,10 +1,10 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import slowDown from 'express-slow-down';
-import { SecureAuthSystem, AuthenticatedRequest, UserRole } from './SecureAuthSystem';
+import { Permission, PermissionChecker } from '../middleware/permissions';
 import type { UserWithPermissions } from '../types/express.d';
 import { logger } from '../utils/logger';
-import { PermissionChecker, Permission } from '../middleware/permissions';
+import { AuthenticatedRequest, SecureAuthSystem, UserRole } from './SecureAuthSystem';
 
 // Rate limiting configurations
 export const authRateLimit = rateLimit({
@@ -24,7 +24,7 @@ export const authRateLimit = rateLimit({
       userAgent: req.get('User-Agent'),
       endpoint: req.originalUrl
     });
-    
+
     res.status(429).json({
       error: 'Too many authentication attempts',
       code: 'RATE_LIMIT_EXCEEDED',
@@ -118,7 +118,7 @@ export const secureAuthMiddleware = async (
     await SecureAuthSystem.updateSessionActivity(tokenPayload.sessionId, tokenPayload.userId);
 
     // Fetch current user data from database
-    const { prisma } = await import('../lib/prisma');
+    const { prisma } = await import('../lib/prisma.js');
     const user = await prisma.user.findUnique({
       where: { id: tokenPayload.userId },
       select: {
@@ -177,14 +177,16 @@ export const secureAuthMiddleware = async (
     req.sessionId = tokenPayload.sessionId;
     req.token = token;
 
-    // Log successful authentication for security monitoring
-    logger.debug('User authenticated successfully', {
-      userId: user.id,
-      role: user.role,
-      ip: req.ip,
-      endpoint: req.originalUrl,
-      userAgent: req.get('User-Agent')
-    });
+    // Log successful authentication for security monitoring (only in production)
+    if (process.env.NODE_ENV === 'production') {
+      logger.debug('User authenticated successfully', {
+        userId: user.id,
+        role: user.role,
+        ip: req.ip,
+        endpoint: req.originalUrl,
+        userAgent: req.get('User-Agent')
+      });
+    }
 
     next();
   } catch (error) {
@@ -222,14 +224,14 @@ export const optionalAuthMiddleware = async (
     // Try to authenticate, but don't fail if it doesn't work
     try {
       const tokenPayload = await SecureAuthSystem.verifyAccessToken(token);
-      
+
       const sessionValid = await SecureAuthSystem.validateSession(
         tokenPayload.sessionId,
         tokenPayload.userId
       );
 
       if (sessionValid) {
-        const { prisma } = await import('../lib/prisma');
+        const { prisma } = await import('../lib/prisma.js');
         const user = await prisma.user.findUnique({
           where: { id: tokenPayload.userId },
           select: {
@@ -279,7 +281,7 @@ export const optionalAuthMiddleware = async (
  */
 export const requireRole = (allowedRoles: UserRole[] | UserRole) => {
   const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
-  
+
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({
@@ -323,7 +325,7 @@ export const requirePermission = (permission: Permission) => {
 
     try {
       const permissionChecker = new PermissionChecker(req.user);
-      
+
       if (!permissionChecker.hasPermission(permission)) {
         logger.warn('Access denied - insufficient permission', {
           userId: req.user.id,
@@ -370,7 +372,7 @@ export const requireStoreAccess = (storeIdParam: string = 'storeId') => {
     }
 
     const storeId = req.params[storeIdParam] || req.body.storeId;
-    
+
     if (!storeId) {
       return res.status(400).json({
         error: 'Store ID required',
@@ -384,8 +386,8 @@ export const requireStoreAccess = (storeIdParam: string = 'storeId') => {
         return next();
       }
 
-      const { prisma } = await import('../lib/prisma');
-      
+      const { prisma } = await import('../lib/prisma.js');
+
       // Check if user has access to this specific store
       const hasAccess = await prisma.user.findFirst({
         where: {
@@ -438,7 +440,7 @@ export const securityLoggingMiddleware = (req: Request, res: Response, next: Nex
 
   // Log security-relevant requests
   const securityEndpoints = ['/auth', '/admin', '/api/users', '/api/stores'];
-  const isSecurityEndpoint = securityEndpoints.some(endpoint => 
+  const isSecurityEndpoint = securityEndpoints.some(endpoint =>
     req.originalUrl.startsWith(endpoint)
   );
 
@@ -455,7 +457,7 @@ export const securityLoggingMiddleware = (req: Request, res: Response, next: Nex
   // Override res.send to log responses
   res.send = function(body: string | object | Buffer) {
     const responseTime = Date.now() - startTime;
-    
+
     // Log authentication failures and security events
     if (res.statusCode === 401 || res.statusCode === 403) {
       logger.warn('Security event - access denied', {

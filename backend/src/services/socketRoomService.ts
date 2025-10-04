@@ -1,7 +1,8 @@
-import { AuthenticatedSocket } from '../middleware/socketAuth'
-import { getIO } from '../lib/socket'
-import { logger } from '../utils/logger'
 import { prisma } from '../lib/prisma'
+import { getIO } from '../lib/socket'
+import { AuthenticatedSocket } from '../middleware/socketAuth'
+import { logger, toLogMetadata } from '../utils/logger'
+import { sanitizeForLog } from '../utils/sanitizer'
 
 export class SocketRoomService {
   /**
@@ -29,16 +30,16 @@ export class SocketRoomService {
           socket.join(ownerAdminRoom)
           socket.join('admins') // Global admin room
           socket.join('owners') // OWNER-only room
-          
+
           // Join all store rooms (OWNER has access to all stores)
           const allStores = await prisma.store.findMany({
             select: { id: true }
           })
-          
+
           for (const store of allStores) {
             socket.join(`store_${store.id}`)
           }
-          
+
           logger.info(`OWNER ${userId} joined admin rooms and ${allStores.length} store rooms`)
           break
         }
@@ -94,7 +95,7 @@ export class SocketRoomService {
           break
 
         default:
-          logger.warn(`Unknown role ${role} for user ${userId}`)
+          logger.warn(`Unknown role ${sanitizeForLog(role)} for user ${sanitizeForLog(userId)}`)
       }
 
       // Emit successful room joining event
@@ -105,7 +106,7 @@ export class SocketRoomService {
       })
 
     } catch (error) {
-      logger.error(`Error joining user ${userId} to rooms:`, error)
+      logger.error(`Error joining user ${sanitizeForLog(userId)} to rooms:`, toLogMetadata(error))
       socket.emit('room_join_error', {
         error: 'Failed to join rooms',
         timestamp: new Date().toISOString()
@@ -122,7 +123,7 @@ export class SocketRoomService {
     }
 
     const { id: userId, role } = socket.user
-    
+
     // Socket.IO automatically handles leaving rooms on disconnect,
     // but we can perform cleanup if needed
     logger.info(`User ${userId} (${role}) disconnected from socket ${socket.id}`)
@@ -138,10 +139,10 @@ export class SocketRoomService {
         ...data,
         timestamp: new Date().toISOString()
       })
-      
+
       logger.info(`Broadcasted ${event} to room ${room}`)
     } catch (error) {
-      logger.error(`Failed to broadcast to room ${room}:`, error)
+      logger.error(`Failed to broadcast to room ${sanitizeForLog(room)}:`, toLogMetadata(error))
     }
   }
 
@@ -179,10 +180,10 @@ export class SocketRoomService {
   static notifyOrderUpdate(orderId: string, storeId: string, event: string, data: Record<string, unknown>): void {
     // Notify all admins
     this.notifyAdmins(event, { ...data, orderId, storeId })
-    
+
     // Notify specific store
     this.notifyStore(storeId, event, { ...data, orderId })
-    
+
     // If customer ID is provided, notify customer
     if (data.customerId) {
       this.notifyUser(data.customerId as string, event, { ...data, orderId, storeId })
@@ -196,13 +197,13 @@ export class SocketRoomService {
     try {
       const io = getIO()
       const sockets = await io.in(room).fetchSockets()
-      
+
       return {
         memberCount: sockets.length,
         members: sockets.map(s => (s as unknown as AuthenticatedSocket).userId || s.id)
       }
     } catch (error) {
-      logger.error(`Failed to get room info for ${room}:`, error)
+      logger.error(`Failed to get room info for ${sanitizeForLog(room)}:`, toLogMetadata(error))
       return { memberCount: 0, members: [] }
     }
   }
@@ -219,7 +220,7 @@ export class SocketRoomService {
     try {
       const io = getIO()
       const allSockets = await io.fetchSockets()
-      
+
       let adminCount = 0
       let customerCount = 0
       const roomStats: Record<string, number> = {}
@@ -249,7 +250,7 @@ export class SocketRoomService {
         roomStats
       }
     } catch (error) {
-      logger.error('Failed to get socket stats:', error)
+      logger.error('Failed to get socket stats:', toLogMetadata(error))
       return {
         totalConnections: 0,
         adminConnections: 0,

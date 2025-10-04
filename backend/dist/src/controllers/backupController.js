@@ -34,11 +34,12 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.scheduleBackups = exports.getBackupStatus = exports.deleteBackup = exports.restoreBackup = exports.downloadBackup = exports.listBackups = exports.createBackup = void 0;
+const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
 const errorHandler_1 = require("../middleware/errorHandler");
 const backupService_1 = require("../services/backupService");
 const logger_1 = require("../utils/logger");
-const path = __importStar(require("path"));
-const fs = __importStar(require("fs"));
+const sanitizer_1 = require("../utils/sanitizer");
 exports.createBackup = (0, errorHandler_1.asyncHandler)(async (req, res) => {
     if (!req.user || req.user.role !== 'OWNER') {
         throw new errorHandler_1.AppError('Only owners can create backups', 403);
@@ -84,18 +85,17 @@ exports.downloadBackup = (0, errorHandler_1.asyncHandler)(async (req, res) => {
     if (!filename) {
         throw new errorHandler_1.AppError('Filename is required', 400);
     }
-    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
-        throw new errorHandler_1.AppError('Invalid filename', 400);
-    }
     try {
-        const backupPath = path.join(process.cwd(), 'backups', filename);
+        const backupsDir = path.join(process.cwd(), 'backups');
+        const backupPath = (0, sanitizer_1.sanitizePath)(filename, backupsDir);
         await fs.promises.access(backupPath);
+        const safeFilename = path.basename(backupPath);
         res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Content-Disposition', `attachment; filename="${safeFilename}"`);
         res.sendFile(backupPath);
     }
     catch (error) {
-        logger_1.logger.error(`Failed to download backup: ${filename}`, error);
+        logger_1.logger.error(`Failed to download backup: ${(0, sanitizer_1.sanitizeForLog)(filename)}`, error);
         throw new errorHandler_1.AppError('Backup file not found', 404);
     }
 });
@@ -115,8 +115,9 @@ exports.restoreBackup = (0, errorHandler_1.asyncHandler)(async (req, res) => {
         throw new errorHandler_1.AppError('Invalid filename', 400);
     }
     try {
-        logger_1.logger.warn(`DANGEROUS: Database restore initiated by ${req.user.id}`, {
-            filename,
+        const { sanitizeForLog } = require('../utils/sanitizer');
+        logger_1.logger.warn(`DANGEROUS: Database restore initiated by ${sanitizeForLog(req.user.id)}`, {
+            filename: sanitizeForLog(filename),
             options: { restoreUploads, skipExisting },
         });
         await backupService_1.BackupService.restoreFromBackup(filename, req.user.id, {
@@ -125,13 +126,14 @@ exports.restoreBackup = (0, errorHandler_1.asyncHandler)(async (req, res) => {
         });
         res.json({
             message: 'Database restored successfully',
-            filename,
+            filename: sanitizeForLog(filename),
             options: { restoreUploads, skipExisting },
             warning: 'Database has been restored. Some users may need to re-login.',
         });
     }
     catch (error) {
-        logger_1.logger.error(`Failed to restore backup: ${filename}`, error);
+        const { sanitizeForLog } = require('../utils/sanitizer');
+        logger_1.logger.error(`Failed to restore backup: ${sanitizeForLog(filename)}`, error);
         throw new errorHandler_1.AppError(`Failed to restore backup: ${error instanceof Error ? error.message : 'Unknown error'}`, 500);
     }
 });
@@ -154,7 +156,7 @@ exports.deleteBackup = (0, errorHandler_1.asyncHandler)(async (req, res) => {
         });
     }
     catch (error) {
-        logger_1.logger.error(`Failed to delete backup: ${filename}`, error);
+        logger_1.logger.error(`Failed to delete backup: ${(0, sanitizer_1.sanitizeForLog)(filename)}`, error);
         throw new errorHandler_1.AppError('Failed to delete backup', 500);
     }
 });
@@ -172,7 +174,7 @@ exports.getBackupStatus = (0, errorHandler_1.asyncHandler)(async (req, res) => {
             await fs.promises.stat(backupsDir);
             availableSpace = 1024 * 1024 * 1024;
         }
-        catch (error) {
+        catch {
             logger_1.logger.warn('Could not check available disk space');
         }
         const status = {

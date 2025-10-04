@@ -1,42 +1,39 @@
-import React, { useState } from 'react'
 import {
-  Card,
-  CardContent,
-  CardMedia,
-  Typography,
-  Box,
-  Chip,
-  Button,
-  IconButton,
-  Menu,
-  MenuItem,
-  Dialog,
-  Checkbox,
-  Fade,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Badge,
-  Tooltip,
-  Avatar,
-} from '@mui/material'
-import {
-  MoreVert,
-  Edit,
-  Delete,
-  Visibility,
-  VisibilityOff,
-  Inventory,
-  Store,
-  Category,
-  LocalOffer,
-  Warning,
-  ContentCopy,
+    Category,
+    ContentCopy,
+    Delete,
+    Edit,
+    Inventory,
+    LocalOffer,
+    MoreVert,
+    Store,
+    Visibility,
+    VisibilityOff,
+    Warning,
 } from '@mui/icons-material'
-import { Product } from '../../types'
-import { productService } from '../../services/productService'
+import {
+    Box,
+    Button,
+    Card,
+    CardContent,
+    CardMedia,
+    Checkbox,
+    Chip,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    IconButton,
+    Menu,
+    MenuItem,
+    TextField,
+    Tooltip,
+    Typography
+} from '@mui/material'
+import React, { useState } from 'react'
 import { toast } from 'react-toastify'
+import { productService } from '../../services/productService'
+import { Product } from '../../types'
 
 interface ProductCardProps {
   product: Product
@@ -164,16 +161,16 @@ const ProductCard: React.FC<ProductCardProps> = ({
   }
 
   const stockStatus = getStockStatus()
-  const mainImage = Array.isArray(product.images) && product.images.length > 0 
-    ? product.images[0] 
+  const mainImage = Array.isArray(product.images) && product.images.length > 0
+    ? product.images[0]
     : null
 
   if (compact) {
     return (
-      <Card 
-        sx={{ 
-          display: 'flex', 
-          mb: 1, 
+      <Card
+        sx={{
+          display: 'flex',
+          mb: 1,
           minHeight: 120,
           border: selected ? 2 : 0,
           borderColor: 'primary.main',
@@ -266,10 +263,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
   return (
     <>
-      <Card 
-        sx={{ 
-          height: '100%', 
-          display: 'flex', 
+      <Card
+        sx={{
+          height: '100%',
+          display: 'flex',
           flexDirection: 'column',
           transition: 'transform 0.2s, box-shadow 0.2s',
           border: selected ? 2 : 0,
@@ -329,10 +326,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
           </CardMedia>
 
           <Box position="absolute" top={8} right={8}>
-            <IconButton 
-              size="small" 
+            <IconButton
+              size="small"
               onClick={handleMenuOpen}
-              sx={{ 
+              sx={{
                 bgcolor: 'rgba(255, 255, 255, 0.9)',
                 '&:hover': { bgcolor: 'rgba(255, 255, 255, 1)' }
               }}
@@ -343,9 +340,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
           <Box position="absolute" top={8} left={8}>
             {!product.isActive && (
-              <Chip 
-                label="Неактивен" 
-                color="default" 
+              <Chip
+                label="Неактивен"
+                color="default"
                 size="small"
                 sx={{ bgcolor: 'rgba(255, 255, 255, 0.9)' }}
               />
@@ -353,13 +350,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
           </Box>
 
           {product.stock === 0 && (
-            <Box 
-              position="absolute" 
-              bottom={0} 
-              left={0} 
-              right={0} 
-              bgcolor="rgba(255, 0, 0, 0.8)" 
-              color="white" 
+            <Box
+              position="absolute"
+              bottom={0}
+              left={0}
+              right={0}
+              bgcolor="rgba(255, 0, 0, 0.8)"
+              color="white"
               p={0.5}
               textAlign="center"
             >
@@ -375,11 +372,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
             <Typography variant="h6" component="div" gutterBottom noWrap>
               {product.name}
             </Typography>
-            
+
             {product.description && (
               <Typography variant="body2" color="text.secondary" gutterBottom>
-                {product.description.length > 100 
-                  ? `${product.description.substring(0, 100)}...` 
+                {product.description.length > 100
+                  ? `${product.description.substring(0, 100)}...`
                   : product.description
                 }
               </Typography>
@@ -387,14 +384,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
           </Box>
 
           <Box display="flex" flexWrap="wrap" gap={0.5} mb={2}>
-            <Chip 
+            <Chip
               icon={<Store />}
               label={product.store.name}
               variant="outlined"
               size="small"
             />
             {product.category && (
-              <Chip 
+              <Chip
                 icon={<Category />}
                 label={product.category.name}
                 variant="outlined"
@@ -402,7 +399,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
               />
             )}
             {product.sku && (
-              <Chip 
+              <Chip
                 icon={<LocalOffer />}
                 label={product.sku}
                 variant="outlined"
@@ -410,6 +407,52 @@ const ProductCard: React.FC<ProductCardProps> = ({
               />
             )}
           </Box>
+
+          {/* Variants Display */}
+          {product.variants && product.variants.length > 0 && (
+            <Box mb={2}>
+              <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                Доступные варианты:
+              </Typography>
+              <Box display="flex" flexWrap="wrap" gap={0.5}>
+                {(() => {
+                  const variantGroups: { [key: string]: any[] } = {}
+                  product.variants.forEach((variant) => {
+                    const groupName = variant.name || 'Другое'
+                    if (!variantGroups[groupName]) {
+                      variantGroups[groupName] = []
+                    }
+                    variantGroups[groupName].push(variant)
+                  })
+                  
+                  return Object.entries(variantGroups).map(([groupName, variants]) => (
+                    <Tooltip
+                      key={groupName}
+                      title={
+                        <Box>
+                          <Typography variant="caption" display="block" fontWeight="bold">
+                            {groupName}:
+                          </Typography>
+                          {variants.map((v, i) => (
+                            <Typography key={i} variant="caption" display="block">
+                              • {v.value} {v.price ? `(${formatCurrency(Number(v.price))})` : ''}
+                            </Typography>
+                          ))}
+                        </Box>
+                      }
+                    >
+                      <Chip
+                        label={`${groupName} (${variants.length})`}
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                      />
+                    </Tooltip>
+                  ))
+                })()}
+              </Box>
+            </Box>
+          )}
 
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
             <Typography variant="h5" fontWeight="bold" color="primary">
@@ -520,7 +563,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
             </>
           )}
         </MenuItem>
-        <MenuItem 
+        <MenuItem
           onClick={() => {
             setDeleteDialogOpen(true)
             handleMenuClose()
@@ -537,7 +580,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         <DialogTitle>Подтвердите удаление</DialogTitle>
         <DialogContent>
           <Typography>
-            Вы уверены, что хотите удалить товар "<strong>{product.name}</strong>"?
+            Вы уверены, что хотите удалить товар &quot;<strong>{product.name}</strong>&quot;?
           </Typography>
           <Typography color="error" sx={{ mt: 1 }}>
             Это действие необратимо. Все данные о товаре будут удалены.
@@ -547,9 +590,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
           <Button onClick={() => setDeleteDialogOpen(false)} disabled={loading}>
             Отмена
           </Button>
-          <Button 
-            onClick={handleDelete} 
-            color="error" 
+          <Button
+            onClick={handleDelete}
+            color="error"
             variant="contained"
             disabled={loading}
           >

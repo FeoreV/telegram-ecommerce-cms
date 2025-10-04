@@ -1,16 +1,16 @@
 import { Router } from 'express';
-import { 
-  createInviteLink,
-  getInviteLinks,
-  updateInviteLink,
-  deleteInviteLink,
-  getInviteLinkInfo,
-  useInviteLink
+import {
+    createInviteLink,
+    deleteInviteLink,
+    getInviteLinkInfo,
+    getInviteLinks,
+    updateInviteLink,
+    useInviteLink
 } from '../controllers/inviteLinkController';
 import { handleInviteLinkPage } from '../controllers/inviteLinkWebController';
 import { authMiddleware } from '../middleware/auth';
-import { requirePermission } from '../middleware/permissions';
-import { Permission } from '../middleware/permissions';
+import { csrfProtection } from '../middleware/csrfProtection';
+import { Permission, requirePermission } from '../middleware/permissions';
 
 const router = Router();
 
@@ -32,8 +32,9 @@ router.get('/info/:token', getInviteLinkInfo);
  * @route POST /api/invite-links/use
  * @desc Использовать инвайт ссылку для регистрации
  * @access Public
+ * @security CSRF protected
  */
-router.post('/use', useInviteLink);
+router.post('/use', csrfProtection, useInviteLink);
 
 // Защищенные маршруты (требуют аутентификации)
 router.use(authMiddleware);
@@ -42,9 +43,11 @@ router.use(authMiddleware);
  * @route POST /api/invite-links
  * @desc Создать инвайт ссылку
  * @access ADMIN, OWNER
+ * @security CSRF protected
  */
 router.post(
   '/',
+  csrfProtection,
   requirePermission(Permission.USER_CREATE),
   createInviteLink
 );
@@ -64,9 +67,11 @@ router.get(
  * @route PUT /api/invite-links/:id
  * @desc Обновить инвайт ссылку
  * @access ADMIN, OWNER
+ * @security CSRF protected
  */
 router.put(
   '/:id',
+  csrfProtection,
   requirePermission(Permission.USER_UPDATE),
   updateInviteLink
 );
@@ -75,9 +80,11 @@ router.put(
  * @route DELETE /api/invite-links/:id
  * @desc Удалить инвайт ссылку
  * @access ADMIN, OWNER
+ * @security CSRF protected
  */
 router.delete(
   '/:id',
+  csrfProtection,
   requirePermission(Permission.USER_DELETE),
   deleteInviteLink
 );

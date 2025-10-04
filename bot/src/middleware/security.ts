@@ -69,7 +69,7 @@ type RedisClient = typeof RedisPackage extends { new (...args: any[]): infer R }
 export class TelegramBotSecurity {
   private config: SecurityConfig;
   private redis: RedisClient;
-  
+
   private requestCounts = new Map<string, { count: number; resetTime: number }>();
   private blockedUsers = new Map<string, number>();
   private suspiciousUsers = new Map<string, { score: number; lastSeen: number }>();
@@ -84,20 +84,20 @@ export class TelegramBotSecurity {
         const isProduction = process.env.NODE_ENV === 'production';
         const isDevelopment = process.env.NODE_ENV === 'development';
         const errorCode = (err as any).code;
-        
+
         // Suppress ECONNREFUSED spam in development mode
         if (isDevelopment && errorCode === 'ECONNREFUSED') {
           // Only log once every 5 minutes to avoid spam
           const now = Date.now();
-          if (!this.lastRedisError || 
-              this.lastRedisError.message !== errorCode || 
+          if (!this.lastRedisError ||
+              this.lastRedisError.message !== errorCode ||
               now - this.lastRedisError.timestamp > 300000) {
             logger.warn('Redis unavailable in bot security (using in-memory mode). To enable Redis, start Docker: docker-compose up -d redis');
             this.lastRedisError = { message: errorCode, timestamp: now };
           }
           return;
         }
-        
+
         if (isProduction) {
           logger.error('Redis connection error in bot security:', err);
         } else {
@@ -122,7 +122,7 @@ export class TelegramBotSecurity {
       }
 
       const isDevelopment = process.env.NODE_ENV === 'development';
-      
+
       const redisOptions = {
         retryStrategy: (times: number) => {
           // In development, stop retrying after 3 attempts to avoid spam
@@ -203,7 +203,7 @@ export class TelegramBotSecurity {
             return false;
           }
         }
-        
+
         if (this.redis && typeof (this.redis as any).incr === 'function') {
           await (this.redis as any).incr(key);
         }
@@ -218,7 +218,7 @@ export class TelegramBotSecurity {
 
     // Fallback to in-memory
     const userLimit = this.requestCounts.get(userId);
-    
+
     if (!userLimit || now >= userLimit.resetTime) {
       this.requestCounts.set(userId, {
         count: 1,
@@ -229,7 +229,9 @@ export class TelegramBotSecurity {
 
     if (userLimit.count >= this.config.rateLimit.maxRequests) {
       this.blockedUsers.set(userId, now + this.config.rateLimit.blockDuration);
-      logger.warn(`Rate limit exceeded for user ${userId}`);
+      // Sanitize userId to prevent log injection
+      const sanitizedUserId = String(userId).replace(/[\r\n]/g, ' ');
+      logger.warn(`Rate limit exceeded for user ${sanitizedUserId}`);
       return false;
     }
 
@@ -257,9 +259,12 @@ export class TelegramBotSecurity {
         await (this.redis as any).del(`rate_limit:${userId}`);
       }
     } catch (error) {
-      logger.warn('Failed to clear Redis rate limit during unblock', error);
+      const sanitizedError = error instanceof Error ? error.message.replace(/[\r\n]/g, ' ') : String(error).replace(/[\r\n]/g, ' ');
+      logger.warn('Failed to clear Redis rate limit during unblock', sanitizedError);
     }
-    logger.info(`User ${userId} unblocked via security service`);
+    // Sanitize userId to prevent log injection
+    const sanitizedUserId = String(userId).replace(/[\r\n]/g, ' ');
+    logger.info(`User ${sanitizedUserId} unblocked via security service`);
   }
 
   /**
@@ -272,7 +277,7 @@ export class TelegramBotSecurity {
 
     const score = this.calculateSpamScore(userId, message);
     const user = this.suspiciousUsers.get(userId) || { score: 0, lastSeen: Date.now() };
-    
+
     // Decay score over time
     const timeSinceLastSeen = Date.now() - user.lastSeen;
     if (timeSinceLastSeen > this.config.spamDetection.scoreDecayMs) {
@@ -421,7 +426,7 @@ export class TelegramBotSecurity {
    */
   cleanup(): void {
     const now = Date.now();
-    
+
     // Clean up expired blocks
     for (const [userId, blockedUntil] of this.blockedUsers.entries()) {
       if (now >= blockedUntil) {

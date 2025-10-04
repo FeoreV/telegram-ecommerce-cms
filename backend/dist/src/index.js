@@ -1,90 +1,60 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
+const cookie_parser_1 = __importDefault(require("cookie-parser"));
+const csrf_csrf_1 = require("csrf-csrf");
 const dotenv_1 = __importDefault(require("dotenv"));
-const env_1 = require("./utils/env");
+const express_1 = __importDefault(require("express"));
 const http_1 = require("http");
-const security_1 = require("./middleware/security");
+const auth_1 = require("./auth");
+const auth_2 = require("./middleware/auth");
 const jwtSecurity_1 = require("./middleware/jwtSecurity");
-const auth_1 = require("./middleware/auth");
-const auth_2 = require("./auth");
-const prisma_1 = require("./lib/prisma");
+const security_1 = require("./middleware/security");
+const env_1 = require("./utils/env");
 const database_1 = require("./lib/database");
-const socket_1 = require("./lib/socket");
-const backupService_1 = require("./services/backupService");
-const botFactoryService_1 = require("./services/botFactoryService");
-const auth_3 = __importDefault(require("./routes/auth"));
+const prisma_1 = require("./lib/prisma");
 const SecureAuthRoutes_1 = __importDefault(require("./auth/SecureAuthRoutes"));
-const stores_1 = __importDefault(require("./routes/stores"));
-const products_1 = __importDefault(require("./routes/products"));
-const orders_1 = __importDefault(require("./routes/orders"));
-const admin_1 = __importDefault(require("./routes/admin"));
-const cms_1 = __importDefault(require("./routes/cms"));
-const integration_1 = __importDefault(require("./routes/integration"));
-const bulk_1 = __importDefault(require("./routes/bulk"));
-const notifications_1 = __importDefault(require("./routes/notifications"));
-const backup_1 = __importDefault(require("./routes/backup"));
-const health_1 = __importDefault(require("./routes/health"));
-const security_2 = __importDefault(require("./routes/security"));
-const config_1 = __importDefault(require("./routes/config"));
-const bots_1 = __importDefault(require("./routes/bots"));
-const categories_1 = __importDefault(require("./routes/categories"));
-const employeeRoutes_1 = __importDefault(require("./routes/employeeRoutes"));
-const invitationRoutes_1 = __importDefault(require("./routes/invitationRoutes"));
-const inviteLinkRoutes_1 = __importDefault(require("./routes/inviteLinkRoutes"));
-const customRoleRoutes_1 = __importDefault(require("./routes/customRoleRoutes"));
-const users_1 = __importDefault(require("./routes/users"));
+const socket_1 = require("./lib/socket");
+const compromiseGuard_1 = require("./middleware/compromiseGuard");
 const errorHandler_1 = require("./middleware/errorHandler");
-const notFoundHandler_1 = require("./middleware/notFoundHandler");
-const loggerEnhanced_1 = require("./utils/loggerEnhanced");
-const envValidator_1 = __importDefault(require("./utils/envValidator"));
+const exfiltrationTrap_1 = require("./middleware/exfiltrationTrap");
 const httpLogger_1 = require("./middleware/httpLogger");
 const metrics_1 = require("./middleware/metrics");
+const notFoundHandler_1 = require("./middleware/notFoundHandler");
 const performanceTracker_1 = require("./middleware/performanceTracker");
-const SecretManager_1 = require("./utils/SecretManager");
-const vaultHealthCheck_1 = require("./middleware/vaultHealthCheck");
-const compromiseGuard_1 = require("./middleware/compromiseGuard");
-const CompromiseResponseService_1 = require("./services/CompromiseResponseService");
-const exfiltrationTrap_1 = require("./middleware/exfiltrationTrap");
-const HoneytokenService_1 = require("./services/HoneytokenService");
-const webhookQuarantineGuard_1 = require("./middleware/webhookQuarantineGuard");
 const responseDLP_1 = require("./middleware/responseDLP");
+const vaultHealthCheck_1 = require("./middleware/vaultHealthCheck");
+const webhookQuarantineGuard_1 = require("./middleware/webhookQuarantineGuard");
+const contentTypeValidation_1 = require("./middleware/contentTypeValidation");
+const admin_1 = __importDefault(require("./routes/admin"));
+const auth_3 = __importDefault(require("./routes/auth"));
+const backup_1 = __importDefault(require("./routes/backup"));
+const bots_1 = __importDefault(require("./routes/bots"));
+const bulk_1 = __importDefault(require("./routes/bulk"));
+const categories_1 = __importDefault(require("./routes/categories"));
+const cms_1 = __importDefault(require("./routes/cms"));
+const config_1 = __importDefault(require("./routes/config"));
+const customRoleRoutes_1 = __importDefault(require("./routes/customRoleRoutes"));
+const employeeRoutes_1 = __importDefault(require("./routes/employeeRoutes"));
+const health_1 = __importDefault(require("./routes/health"));
+const integration_1 = __importDefault(require("./routes/integration"));
+const invitationRoutes_1 = __importDefault(require("./routes/invitationRoutes"));
+const inviteLinkRoutes_1 = __importDefault(require("./routes/inviteLinkRoutes"));
+const notifications_1 = __importDefault(require("./routes/notifications"));
+const orders_1 = __importDefault(require("./routes/orders"));
+const products_1 = __importDefault(require("./routes/products"));
+const security_2 = __importDefault(require("./routes/security"));
+const stores_1 = __importDefault(require("./routes/stores"));
+const users_1 = __importDefault(require("./routes/users"));
+const backupService_1 = require("./services/backupService");
+const botFactoryService_1 = require("./services/botFactoryService");
+const CompromiseResponseService_1 = require("./services/CompromiseResponseService");
+const HoneytokenService_1 = require("./services/HoneytokenService");
+const envValidator_1 = __importDefault(require("./utils/envValidator"));
+const loggerEnhanced_1 = require("./utils/loggerEnhanced");
+const SecretManager_1 = require("./utils/SecretManager");
 dotenv_1.default.config();
 const initializeSecrets = async () => {
     try {
@@ -120,6 +90,7 @@ const app = (0, express_1.default)();
 const server = (0, http_1.createServer)(app);
 const io = (0, socket_1.initSocket)(server, env_1.env.FRONTEND_URL || "http://localhost:3000");
 app.use(security_1.securityMiddlewareBundle);
+app.use(contentTypeValidation_1.validateContentType);
 app.use(compromiseGuard_1.compromiseGuard);
 app.use(exfiltrationTrap_1.exfiltrationTrap);
 app.use(responseDLP_1.responseDLP);
@@ -128,7 +99,7 @@ app.use(httpLogger_1.httpLogger);
 app.use(performanceTracker_1.performanceTracker);
 app.use(metrics_1.metricsMiddleware);
 app.use(vaultHealthCheck_1.vaultHealthMiddleware);
-app.get('/api/security/status', auth_1.authMiddleware, (req, res) => {
+app.get('/api/security/status', auth_2.authMiddleware, (req, res) => {
     try {
         const status = (0, security_1.getSecurityStatus)();
         res.json({
@@ -142,17 +113,90 @@ app.get('/api/security/status', auth_1.authMiddleware, (req, res) => {
     }
 });
 app.use('/api/auth', security_1.authRateLimit);
-app.post('/api/auth/login/email', auth_2.loginSlowDown);
-app.post('/api/auth/login/telegram', auth_2.loginSlowDown);
+app.post('/api/auth/login/email', auth_1.loginSlowDown);
+app.post('/api/auth/login/telegram', auth_1.loginSlowDown);
 app.use('/api/auth/telegram', security_1.bruteForce.prevent);
 app.use('/api/admin', security_1.adminRateLimit);
 app.use('/api/upload', security_1.uploadRateLimit);
 app.use('/api/api', security_1.apiRateLimit);
 app.use('/api/admin', security_1.adminIPWhitelist);
 app.use('/api/security', security_1.adminIPWhitelist);
+app.use((req, res, next) => {
+    if (['GET', 'HEAD', 'OPTIONS', 'DELETE'].includes(req.method)) {
+        return next();
+    }
+    if (req.path.includes('/webhooks/')) {
+        return next();
+    }
+    const contentType = req.get('Content-Type');
+    if (!contentType) {
+        loggerEnhanced_1.logger.warn('Request without Content-Type header', {
+            method: req.method,
+            path: req.path,
+            ip: req.ip
+        });
+        return res.status(415).json({
+            error: 'Unsupported Media Type',
+            message: 'Content-Type header is required'
+        });
+    }
+    const isValidContentType = contentType.includes('application/json') ||
+        contentType.includes('application/x-www-form-urlencoded') ||
+        contentType.includes('multipart/form-data');
+    if (!isValidContentType) {
+        loggerEnhanced_1.logger.warn('Invalid Content-Type header', {
+            method: req.method,
+            path: req.path,
+            contentType,
+            ip: req.ip
+        });
+        return res.status(415).json({
+            error: 'Unsupported Media Type',
+            message: 'Only application/json, application/x-www-form-urlencoded, and multipart/form-data are supported'
+        });
+    }
+    next();
+});
 app.use('/api/cms/webhooks/medusa', webhookQuarantineGuard_1.webhookQuarantineGuard, express_1.default.raw({ type: 'application/json', limit: '2mb' }));
-app.use(express_1.default.json({ limit: '10mb' }));
-app.use(express_1.default.urlencoded({ extended: true }));
+app.use(express_1.default.json({ limit: '1mb' }));
+app.use(express_1.default.urlencoded({ limit: '1mb', extended: true }));
+app.use((0, cookie_parser_1.default)());
+const csrfProtection = (0, csrf_csrf_1.doubleCsrf)({
+    getSecret: () => SecretManager_1.secretManager.getEncryptionSecrets().masterKey,
+    getSessionIdentifier: (req) => {
+        const user = req.user;
+        return user?.id || req.ip || 'anonymous';
+    },
+    cookieName: '__Host-csrf.token',
+    cookieOptions: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/',
+    },
+    size: 64,
+    ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
+});
+const { doubleCsrfProtection } = csrfProtection;
+app.get('/api/csrf-token', (req, res) => {
+    res.json({ message: 'CSRF token set in cookie' });
+});
+app.use('/api/*', (req, res, next) => {
+    const skipPaths = [
+        '/api/health',
+        '/api/csrf-token',
+        '/api/webhooks',
+        '/api/cms/webhooks',
+        '/api/auth/telegram',
+    ];
+    if (skipPaths.some(path => req.path.startsWith(path))) {
+        return next();
+    }
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+        return next();
+    }
+    doubleCsrfProtection(req, res, next);
+});
 app.use('/uploads', express_1.default.static('uploads'));
 app.get('/health', (req, res) => {
     res.json({ status: 'OK', timestamp: new Date().toISOString() });
@@ -160,7 +204,7 @@ app.get('/health', (req, res) => {
 app.get('/health/vault', vaultHealthCheck_1.vaultHealthEndpoint);
 app.get('/metrics', async (req, res) => {
     try {
-        const PrometheusService = (await Promise.resolve().then(() => __importStar(require('./services/prometheusService')))).default;
+        const PrometheusService = (await import('./services/prometheusService')).default;
         const prometheusService = PrometheusService.getInstance();
         const metrics = await prometheusService.getMetrics();
         res.set('Content-Type', prometheusService.registry.contentType);
@@ -171,7 +215,7 @@ app.get('/metrics', async (req, res) => {
         res.status(500).json({ error: 'Failed to generate metrics' });
     }
 });
-app.get('/api/metrics', auth_1.authMiddleware, (req, res) => {
+app.get('/api/metrics', auth_2.authMiddleware, (req, res) => {
     const metrics = (0, metrics_1.getMetrics)();
     res.json(metrics);
 });
@@ -184,10 +228,18 @@ app.get('/api', (req, res) => {
             stores: '/api/stores (GET)',
             products: '/api/products (GET)',
             orders: '/api/orders (GET)',
-            admin: '/api/admin/dashboard (GET)'
+            admin: '/api/admin/dashboard (GET)',
+            csrf: '/api/csrf-token (GET)'
         },
         health: '/health',
         timestamp: new Date().toISOString()
+    });
+});
+const csrfProtection_1 = require("./middleware/csrfProtection");
+app.get('/api/csrf-token', csrfProtection_1.attachCsrfToken, (req, res) => {
+    res.json({
+        csrfToken: res.locals.csrfToken,
+        message: 'CSRF token generated successfully'
     });
 });
 const initializeAdminJS = async () => {
@@ -206,7 +258,7 @@ const initializeAdminJS = async () => {
     }
 })();
 backupService_1.BackupService.initialize().catch(error => {
-    loggerEnhanced_1.logger.error('Failed to initialize backup service:', error);
+    loggerEnhanced_1.logger.error('Failed to initialize backup service:', { error: error instanceof Error ? error.message : String(error) });
 });
 app.use('/health', health_1.default);
 app.use('/api/health', health_1.default);
@@ -219,7 +271,7 @@ app.use('/api/stores', jwtSecurity_1.enhancedAuthMiddleware, stores_1.default);
 app.use('/api/products', jwtSecurity_1.enhancedAuthMiddleware, products_1.default);
 app.use('/api/categories', jwtSecurity_1.enhancedAuthMiddleware, categories_1.default);
 app.use('/api/orders', jwtSecurity_1.enhancedAuthMiddleware, orders_1.default);
-app.use('/api/admin', auth_1.authMiddleware, admin_1.default);
+app.use('/api/admin', auth_2.authMiddleware, admin_1.default);
 app.use('/api/bots', jwtSecurity_1.enhancedAuthMiddleware, bots_1.default);
 app.use('/api/bulk', bulk_1.default);
 app.use('/api/notifications', notifications_1.default);
@@ -254,7 +306,8 @@ const socketAuth_js_1 = require("./middleware/socketAuth.js");
 const socketRoomService_js_1 = require("./services/socketRoomService.js");
 io.use(socketAuth_js_1.socketAuthMiddleware);
 io.on('connection', async (socket) => {
-    loggerEnhanced_1.logger.info(`New authenticated socket connection: ${socket.id} for user ${socket.user?.id} (${socket.user?.role})`);
+    const { sanitizeForLog } = require('./utils/sanitizer');
+    loggerEnhanced_1.logger.info(`New authenticated socket connection: ${sanitizeForLog(socket.id)} for user ${sanitizeForLog(socket.user?.id)} (${sanitizeForLog(socket.user?.role)})`);
     await socketRoomService_js_1.SocketRoomService.joinUserToRooms(socket);
     socket.on('join_room', async (roomName) => {
         if (!socket.user) {
@@ -265,17 +318,17 @@ io.on('connection', async (socket) => {
         if (canJoin) {
             socket.join(roomName);
             socket.emit('room_joined', { room: roomName });
-            loggerEnhanced_1.logger.info(`User ${socket.user.id} joined custom room: ${roomName}`);
+            loggerEnhanced_1.logger.info(`User ${socket.user.id} joined custom room: ${sanitizeForLog(roomName)}`);
         }
         else {
             socket.emit('error', { message: `Access denied to room: ${roomName}` });
-            loggerEnhanced_1.logger.warn(`User ${socket.user.id} denied access to room: ${roomName}`);
+            loggerEnhanced_1.logger.warn(`User ${sanitizeForLog(socket.user.id)} denied access to room: ${sanitizeForLog(roomName)}`);
         }
     });
     socket.on('leave_room', (roomName) => {
         socket.leave(roomName);
         socket.emit('room_left', { room: roomName });
-        loggerEnhanced_1.logger.info(`User ${socket.user?.id} left room: ${roomName}`);
+        loggerEnhanced_1.logger.info(`User ${socket.user?.id} left room: ${sanitizeForLog(roomName)}`);
     });
     socket.on('get_room_info', async (roomName) => {
         if (!socket.user || !['OWNER', 'ADMIN'].includes(socket.user.role)) {
@@ -294,11 +347,11 @@ io.on('connection', async (socket) => {
         socket.emit('socket_stats', stats);
     });
     socket.on('disconnect', (reason) => {
-        loggerEnhanced_1.logger.info(`Socket disconnected: ${socket.id} (${reason}) for user ${socket.user?.id}`);
+        loggerEnhanced_1.logger.info(`Socket disconnected: ${socket.id} (${sanitizeForLog(reason)}) for user ${socket.user?.id}`);
         socketRoomService_js_1.SocketRoomService.leaveUserFromRooms(socket);
     });
     socket.on('error', (error) => {
-        loggerEnhanced_1.logger.error(`Socket error for ${socket.id}:`, (0, loggerEnhanced_1.toLogMetadata)(error));
+        loggerEnhanced_1.logger.error(`Socket error for ${sanitizeForLog(socket.id)}:`, (0, loggerEnhanced_1.toLogMetadata)(error));
     });
 });
 async function validateRoomAccess(user, roomName) {
@@ -345,7 +398,7 @@ async function validateRoomAccess(user, roomName) {
 const initializeServices = async () => {
     try {
         loggerEnhanced_1.logger.info('📊 Initializing Prometheus Service...');
-        const PrometheusService = (await Promise.resolve().then(() => __importStar(require('./services/prometheusService')))).default;
+        const PrometheusService = (await import('./services/prometheusService')).default;
         const prometheusService = PrometheusService.getInstance();
         prometheusService.startPeriodicCollection(10000);
         loggerEnhanced_1.logger.info('✅ Prometheus Service initialized successfully');

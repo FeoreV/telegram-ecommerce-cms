@@ -1,5 +1,5 @@
-import { apiClient, unwrap } from './apiClient'
-import { Store, ListResponse, ApiResponse } from '../types'
+import { ApiResponse, ListResponse, Store } from '../types';
+import { apiClient, unwrap } from './apiClient';
 
 const cache = new Map<string, { value: unknown; expiresAt: number }>()
 
@@ -57,27 +57,23 @@ const request = async <T>(config: {
     }
   }
 
-  try {
-    const response = await apiClient.request({
-      method: config.method,
-      url: config.url,
-      params: config.params,
-      data: config.data,
-    })
-    const result = unwrap<T>(response)
+  const response = await apiClient.request({
+    method: config.method,
+    url: config.url,
+    params: config.params,
+    data: config.data,
+  })
+  const result = unwrap<T>(response)
 
-    if (key && config.cacheTtl) {
-      setCached(key, result, config.cacheTtl)
-    }
-
-    if (config.invalidate?.length) {
-      config.invalidate.forEach((prefix) => clearCached(typeof prefix === 'string' ? prefix : undefined))
-    }
-
-    return result
-  } catch (error) {
-    throw error
+  if (key && config.cacheTtl) {
+    setCached(key, result, config.cacheTtl)
   }
+
+  if (config.invalidate?.length) {
+    config.invalidate.forEach((prefix) => clearCached(typeof prefix === 'string' ? prefix : undefined))
+  }
+
+  return result
 }
 
 export interface CreateStoreRequest {
@@ -197,13 +193,12 @@ export const storeService = {
 
   // Получить магазин по ID
   getStore: async (id: string): Promise<Store> => {
-    const result = await request<{ store: Store }>({
-      method: 'get',
-      url: `/stores/${id}`,
-      cacheKey: cacheKey('store', { id }),
-      cacheTtl: cacheTtl.store,
-    })
-    return result.store
+    if (!id) {
+      throw new Error("Store ID is required to get store details.");
+    }
+
+    const response = await apiClient.request<Store>({ url: `/stores/${id}` });
+    return response.data;
   },
 
   // Создать новый магазин

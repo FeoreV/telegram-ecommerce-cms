@@ -1,21 +1,26 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
+const express_rate_limit_1 = require("express-rate-limit");
 const express_validator_1 = require("express-validator");
-const auth_1 = require("../middleware/auth");
 const authController_1 = require("../controllers/authController");
-const validation_1 = require("../middleware/validation");
-const logger_1 = require("../utils/logger");
-const errorHandler_1 = require("../middleware/errorHandler");
 const auditLog_1 = require("../middleware/auditLog");
+const auth_1 = require("../middleware/auth");
+const errorHandler_1 = require("../middleware/errorHandler");
+const validation_1 = require("../middleware/validation");
+const validationSchemas_1 = require("../schemas/validationSchemas");
 const jwt_1 = require("../utils/jwt");
+const logger_1 = require("../utils/logger");
 const router = (0, express_1.Router)();
-router.post('/telegram', [
-    (0, express_validator_1.body)('telegramId').isNumeric().withMessage('Valid Telegram ID required'),
-    (0, express_validator_1.body)('username').optional().isString(),
-    (0, express_validator_1.body)('firstName').optional().isString(),
-    (0, express_validator_1.body)('lastName').optional().isString(),
-], validation_1.validate, authController_1.telegramAuth);
+const qrRateLimit = (0, express_rate_limit_1.rateLimit)({
+    windowMs: 60 * 1000,
+    max: 5,
+    message: 'Too many QR code generation requests, please try again later',
+    standardHeaders: true,
+    legacyHeaders: false,
+    skipSuccessfulRequests: false
+});
+router.post('/telegram', (0, validation_1.validate)(validationSchemas_1.userSchemas.telegramAuth), authController_1.telegramAuth);
 router.get('/profile', auth_1.authMiddleware, authController_1.getProfile);
 router.put('/profile', auth_1.authMiddleware, [
     (0, express_validator_1.body)('email').optional().isEmail().withMessage('Valid email required'),
@@ -25,6 +30,12 @@ router.post('/promote', auth_1.authMiddleware, (0, auth_1.requireRole)([jwt_1.Us
     (0, express_validator_1.body)('userId').isString().withMessage('User ID required'),
     (0, express_validator_1.body)('role').isIn(['ADMIN', 'VENDOR']).withMessage('Invalid role'),
 ], validation_1.validate, authController_1.promoteUser);
+router.post('/qr-auth', qrRateLimit, authController_1.generateQRAuth);
+router.get('/qr-auth/:sessionId', qrRateLimit, authController_1.checkQRAuth);
+router.post('/refresh', authController_1.refreshToken);
+router.post('/logout', auth_1.authMiddleware, authController_1.logout);
+router.get('/sessions', auth_1.authMiddleware, authController_1.getActiveSessions);
+router.delete('/sessions/:sessionId', auth_1.authMiddleware, authController_1.revokeSession);
 router.get('/adminjs-token', auth_1.authMiddleware, (0, auth_1.requireRole)([jwt_1.UserRole.OWNER, jwt_1.UserRole.ADMIN]), (0, errorHandler_1.asyncHandler)(async (req, res) => {
     if (!req.user) {
         throw new errorHandler_1.AppError('Authentication required', 401);

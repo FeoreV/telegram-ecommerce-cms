@@ -1,6 +1,6 @@
-import { tenantCacheService } from './TenantCacheService';
 import { databaseService } from '../lib/database';
 import { logger } from '../utils/logger';
+import { tenantCacheService } from './TenantCacheService';
 
 export interface RevokedToken {
   tokenId: string;
@@ -23,6 +23,11 @@ export interface RevocationStats {
 export class TokenRevocationService {
   private static instance: TokenRevocationService;
   private memoryRevocationList: Set<string> = new Set();
+  private metrics = {
+    cacheHits: 0,
+    cacheMisses: 0,
+    errors: 0
+  };
   private maxMemorySize: number = 10000; // Maximum tokens to keep in memory
 
   private constructor() {
@@ -43,11 +48,11 @@ export class TokenRevocationService {
   private async loadRecentRevocations(): Promise<void> {
     try {
       const prisma = databaseService.getPrisma();
-      
+
       // Load revocations from last 24 hours
       const recentRevocations = await prisma.$queryRaw<{ token_id: string }[]>`
-        SELECT token_id 
-        FROM revoked_tokens 
+        SELECT token_id
+        FROM revoked_tokens
         WHERE revoked_at > NOW() - INTERVAL '24 hours'
         AND expires_at > NOW()
         ORDER BY revoked_at DESC
@@ -130,44 +135,52 @@ export class TokenRevocationService {
   }
 
   /**
-   * Check if a token is revoked
+   * Check if a token is revoked (Optimized with Redis)
    */
   async isTokenRevoked(tokenId: string): Promise<boolean> {
     try {
-      // Check memory first (fastest)
+      // Check memory first (fastest - L1 cache)
       if (this.memoryRevocationList.has(tokenId)) {
+        this.metrics.cacheHits++;
         return true;
       }
 
-      // Check cache (fast)
-      const cached = await tenantCacheService.exists(
+      // Check Redis cache directly (fast - L2 cache)
+      const cached = await tenantCacheService.get<{ revoked: boolean; expiresAt: string }>(
         'system',
         `revoked_${tokenId}`,
         { namespace: 'revocation' }
       );
 
-      if (cached) {
-        // Add to memory for future fast lookups
-        this.memoryRevocationList.add(tokenId);
-        return true;
+      if (cached !== null) {
+        this.metrics.cacheHits++;
+        if (cached.revoked) {
+          // Add to memory for future fast lookups
+          this.memoryRevocationList.add(tokenId);
+          return true;
+        }
+        // Token is explicitly marked as NOT revoked in cache
+        return false;
       }
 
-      // Check database (slowest, but most reliable)
+      // Cache miss - check database (slowest, but most reliable)
+      this.metrics.cacheMisses++;
       const prisma = databaseService.getPrisma();
       const result = await prisma.$queryRaw<{ exists: boolean }[]>`
         SELECT EXISTS (
-          SELECT 1 FROM revoked_tokens 
-          WHERE token_id = ${tokenId} 
+          SELECT 1 FROM revoked_tokens
+          WHERE token_id = ${tokenId}
           AND expires_at > NOW()
         ) as exists
       `;
 
       const isRevoked = result[0]?.exists || false;
 
+      // Cache the result (both positive and negative results)
       if (isRevoked) {
         // Add to memory and cache for future fast lookups
         this.memoryRevocationList.add(tokenId);
-        
+
         // Get full revocation data for caching
         const revocationData = await this.getRevocationData(tokenId);
         if (revocationData) {
@@ -176,7 +189,7 @@ export class TokenRevocationService {
             await tenantCacheService.set(
               'system',
               `revoked_${tokenId}`,
-              revocationData,
+              { revoked: true, expiresAt: revocationData.expiresAt.toISOString() },
               {
                 ttl,
                 namespace: 'revocation'
@@ -184,15 +197,162 @@ export class TokenRevocationService {
             );
           }
         }
+      } else {
+        // Cache negative result for 5 minutes to reduce database load
+        await tenantCacheService.set(
+          'system',
+          `revoked_${tokenId}`,
+          { revoked: false, expiresAt: new Date(Date.now() + 300000).toISOString() },
+          {
+            ttl: 300, // 5 minutes
+            namespace: 'revocation'
+          }
+        );
       }
 
       return isRevoked;
 
     } catch (error) {
       logger.error('Failed to check token revocation status:', error);
+      this.metrics.errors++;
       // Fail secure - assume token is revoked on error
       return true;
     }
+  }
+
+  /**
+   * Bulk check if multiple tokens are revoked (Optimized)
+   */
+  async areTokensRevoked(tokenIds: string[]): Promise<Map<string, boolean>> {
+    const results = new Map<string, boolean>();
+
+    try {
+      // First, check memory cache for all tokens
+      const uncachedTokenIds: string[] = [];
+      for (const tokenId of tokenIds) {
+        if (this.memoryRevocationList.has(tokenId)) {
+          results.set(tokenId, true);
+          this.metrics.cacheHits++;
+        } else {
+          uncachedTokenIds.push(tokenId);
+        }
+      }
+
+      if (uncachedTokenIds.length === 0) {
+        return results;
+      }
+
+      // Bulk fetch from Redis cache
+      const cacheKeys = uncachedTokenIds.map(id => `revoked_${id}`);
+      const cachedValues = await tenantCacheService.mget<{ revoked: boolean; expiresAt: string }>(
+        'system',
+        cacheKeys,
+        { namespace: 'revocation' }
+      );
+
+      const tokensToCheckInDb: string[] = [];
+      uncachedTokenIds.forEach((tokenId, index) => {
+        const cached = cachedValues[index];
+        if (cached !== null) {
+          this.metrics.cacheHits++;
+          results.set(tokenId, cached.revoked);
+          if (cached.revoked) {
+            this.memoryRevocationList.add(tokenId);
+          }
+        } else {
+          tokensToCheckInDb.push(tokenId);
+          this.metrics.cacheMisses++;
+        }
+      });
+
+      if (tokensToCheckInDb.length === 0) {
+        return results;
+      }
+
+      // Bulk database check for remaining tokens
+      const prisma = databaseService.getPrisma();
+
+      // Check if revokedToken model is available (requires prisma generate)
+      let revokedTokens: any[] = [];
+      try {
+        revokedTokens = await (prisma as any).revokedToken?.findMany({
+          where: {
+            tokenId: { in: tokensToCheckInDb },
+            expiresAt: { gt: new Date() }
+          },
+          select: { tokenId: true, expiresAt: true }
+        }) || [];
+      } catch (error) {
+        logger.debug('RevokedToken model not available, skipping check');
+      }
+
+      const revokedSet = new Set(revokedTokens.map(t => t.tokenId));
+
+      // Cache all results and update memory
+      for (const tokenId of tokensToCheckInDb) {
+        const isRevoked = revokedSet.has(tokenId);
+        results.set(tokenId, isRevoked);
+
+        if (isRevoked) {
+          this.memoryRevocationList.add(tokenId);
+          const token = revokedTokens.find(t => t.tokenId === tokenId);
+          if (token) {
+            const ttl = Math.floor((token.expiresAt.getTime() - Date.now()) / 1000);
+            if (ttl > 0) {
+              await tenantCacheService.set(
+                'system',
+                `revoked_${tokenId}`,
+                { revoked: true, expiresAt: token.expiresAt.toISOString() },
+                { ttl, namespace: 'revocation' }
+              );
+            }
+          }
+        } else {
+          // Cache negative result
+          await tenantCacheService.set(
+            'system',
+            `revoked_${tokenId}`,
+            { revoked: false, expiresAt: new Date(Date.now() + 300000).toISOString() },
+            { ttl: 300, namespace: 'revocation' }
+          );
+        }
+      }
+
+      return results;
+
+    } catch (error) {
+      logger.error('Failed to bulk check token revocation status:', error);
+      this.metrics.errors++;
+      // Fail secure - mark all as revoked on error
+      tokenIds.forEach(id => results.set(id, true));
+      return results;
+    }
+  }
+
+  /**
+   * Get cache metrics
+   */
+  getCacheMetrics(): { cacheHits: number; cacheMisses: number; hitRate: number; errors: number } {
+    const total = this.metrics.cacheHits + this.metrics.cacheMisses;
+    const hitRate = total > 0 ? (this.metrics.cacheHits / total) * 100 : 0;
+
+    return {
+      cacheHits: this.metrics.cacheHits,
+      cacheMisses: this.metrics.cacheMisses,
+      hitRate: Math.round(hitRate * 100) / 100,
+      errors: this.metrics.errors
+    };
+  }
+
+  /**
+   * Reset cache metrics
+   */
+  resetCacheMetrics(): void {
+    this.metrics = {
+      cacheHits: 0,
+      cacheMisses: 0,
+      errors: 0
+    };
   }
 
   /**
@@ -205,11 +365,11 @@ export class TokenRevocationService {
   ): Promise<number> {
     try {
       const prisma = databaseService.getPrisma();
-      
+
       // Get all active sessions for the user
       const sessions = await prisma.$queryRaw<{ session_id: string; refresh_token_hash: string }[]>`
-        SELECT session_id, refresh_token_hash 
-        FROM user_sessions 
+        SELECT session_id, refresh_token_hash
+        FROM user_sessions
         WHERE user_id = ${userId}::UUID AND is_active = true
       `;
 
@@ -232,7 +392,7 @@ export class TokenRevocationService {
 
       // Mark all user sessions as inactive
       await prisma.$executeRaw`
-        UPDATE user_sessions 
+        UPDATE user_sessions
         SET is_active = false, updated_at = NOW()
         WHERE user_id = ${userId}::UUID AND is_active = true
       `;
@@ -262,14 +422,14 @@ export class TokenRevocationService {
   ): Promise<void> {
     try {
       const prisma = databaseService.getPrisma();
-      
+
       // Get session data
-      const session = await prisma.$queryRaw<{ 
-        user_id: string; 
-        refresh_token_hash: string 
+      const session = await prisma.$queryRaw<{
+        user_id: string;
+        refresh_token_hash: string
       }[]>`
-        SELECT user_id, refresh_token_hash 
-        FROM user_sessions 
+        SELECT user_id, refresh_token_hash
+        FROM user_sessions
         WHERE session_id = ${sessionId} AND is_active = true
       `;
 
@@ -293,7 +453,7 @@ export class TokenRevocationService {
 
       // Mark session as inactive
       await prisma.$executeRaw`
-        UPDATE user_sessions 
+        UPDATE user_sessions
         SET is_active = false, updated_at = NOW()
         WHERE session_id = ${sessionId}
       `;
@@ -317,7 +477,7 @@ export class TokenRevocationService {
   private async storeRevocation(revokedToken: RevokedToken): Promise<void> {
     try {
       const prisma = databaseService.getPrisma();
-      
+
       await prisma.$executeRaw`
         INSERT INTO revoked_tokens (
           token_id, token_type, user_id, session_id,
@@ -347,9 +507,9 @@ export class TokenRevocationService {
   private async getRevocationData(tokenId: string): Promise<RevokedToken | null> {
     try {
       const prisma = databaseService.getPrisma();
-      
+
       const result = await prisma.$queryRaw<unknown[]>`
-        SELECT * FROM revoked_tokens 
+        SELECT * FROM revoked_tokens
         WHERE token_id = ${tokenId} AND expires_at > NOW()
       `;
 
@@ -381,7 +541,7 @@ export class TokenRevocationService {
   async cleanupExpiredRevocations(): Promise<number> {
     try {
       const prisma = databaseService.getPrisma();
-      
+
       // Delete expired revocations from database
       const result = await prisma.$executeRaw`
         DELETE FROM revoked_tokens WHERE expires_at <= NOW()
@@ -412,10 +572,10 @@ export class TokenRevocationService {
     try {
       // Keep only the most recent revocations in memory
       const prisma = databaseService.getPrisma();
-      
+
       const recentRevocations = await prisma.$queryRaw<{ token_id: string }[]>`
-        SELECT token_id 
-        FROM revoked_tokens 
+        SELECT token_id
+        FROM revoked_tokens
         WHERE revoked_at > NOW() - INTERVAL '1 hour'
         AND expires_at > NOW()
         ORDER BY revoked_at DESC
@@ -442,7 +602,7 @@ export class TokenRevocationService {
   async getRevocationStats(): Promise<RevocationStats> {
     try {
       const prisma = databaseService.getPrisma();
-      
+
       // Get total revoked tokens
       const totalResult = await prisma.$queryRaw<{ count: number }[]>`
         SELECT COUNT(*) as count FROM revoked_tokens
@@ -450,20 +610,20 @@ export class TokenRevocationService {
 
       // Get tokens revoked today
       const todayResult = await prisma.$queryRaw<{ count: number }[]>`
-        SELECT COUNT(*) as count FROM revoked_tokens 
+        SELECT COUNT(*) as count FROM revoked_tokens
         WHERE revoked_at > CURRENT_DATE
       `;
 
       // Get active revocations (not expired)
       const activeResult = await prisma.$queryRaw<{ count: number }[]>`
-        SELECT COUNT(*) as count FROM revoked_tokens 
+        SELECT COUNT(*) as count FROM revoked_tokens
         WHERE expires_at > NOW()
       `;
 
       // Get revocations by reason
       const reasonResult = await prisma.$queryRaw<{ reason: string; count: number }[]>`
-        SELECT reason, COUNT(*) as count 
-        FROM revoked_tokens 
+        SELECT reason, COUNT(*) as count
+        FROM revoked_tokens
         WHERE revoked_at > NOW() - INTERVAL '30 days'
         GROUP BY reason
         ORDER BY count DESC
@@ -565,7 +725,7 @@ export class TokenRevocationService {
 
       // Mark sessions as inactive
       const updateQuery = `
-        UPDATE user_sessions 
+        UPDATE user_sessions
         SET is_active = false, updated_at = NOW()
         WHERE ${whereClause.replace(/us\./g, '')}
       `;
@@ -597,7 +757,7 @@ export class TokenRevocationService {
   }> {
     try {
       const stats = await this.getRevocationStats();
-      
+
       return {
         status: 'healthy',
         memoryListSize: this.memoryRevocationList.size,

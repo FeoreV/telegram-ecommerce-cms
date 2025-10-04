@@ -1,43 +1,42 @@
-import React, { useState } from 'react'
 import {
-  Card,
-  CardContent,
-  Typography,
-  Box,
-  Chip,
-  Button,
-  IconButton,
-  Menu,
-  MenuItem,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Avatar,
-  Tooltip,
-  Badge,
-  Divider,
-} from '@mui/material'
-import {
-  MoreVert,
-  Edit,
-  Delete,
-  Block,
-  CheckCircle,
-  Person,
-  AdminPanelSettings,
-  Store,
-  ShoppingCart,
-  Business,
-  Telegram,
-  Email,
-  Phone,
-  History,
+    AdminPanelSettings,
+    Block,
+    Business,
+    CheckCircle,
+    Delete,
+    Edit,
+    Email,
+    History,
+    MoreVert,
+    Person,
+    Phone,
+    ShoppingCart,
+    Store,
+    Telegram,
 } from '@mui/icons-material'
-import { User } from '../../types'
-import { userService } from '../../services/userService'
+import {
+    Avatar,
+    Badge,
+    Box,
+    Button,
+    Card,
+    CardContent,
+    Chip,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    Divider,
+    IconButton,
+    Menu,
+    MenuItem,
+    Typography
+} from '@mui/material'
+import React, { useState } from 'react'
 import { toast } from 'react-toastify'
 import { useAuth } from '../../contexts/AuthContext'
+import { userService } from '../../services/userService'
+import { User } from '../../types'
 
 interface UserCardProps {
   user: User
@@ -196,10 +195,10 @@ const UserCard: React.FC<UserCardProps> = ({
 
   return (
     <>
-      <Card 
-        sx={{ 
-          height: '100%', 
-          display: 'flex', 
+      <Card
+        sx={{
+          height: '100%',
+          display: 'flex',
           flexDirection: 'column',
           transition: 'transform 0.2s, box-shadow 0.2s',
           '&:hover': {
@@ -224,11 +223,11 @@ const UserCard: React.FC<UserCardProps> = ({
                   )
                 }
               >
-                <Avatar 
-                  sx={{ 
+                <Avatar
+                  sx={{
                     bgcolor: roleInfo.bgColor,
                     color: roleInfo.color + '.main',
-                    width: 56, 
+                    width: 56,
                     height: 56,
                     fontSize: '1.2rem',
                     fontWeight: 'bold'
@@ -300,7 +299,7 @@ const UserCard: React.FC<UserCardProps> = ({
                 Создан: {formatDate(user.createdAt)}
               </Typography>
             </Box>
-            
+
             <Box display="flex" alignItems="center" gap={1}>
               {user.isActive ? (
                 <CheckCircle fontSize="small" color="success" />
@@ -383,7 +382,7 @@ const UserCard: React.FC<UserCardProps> = ({
             </MenuItem>
           )}
           {canDelete && (
-            <MenuItem 
+            <MenuItem
               onClick={() => {
                 setDeleteDialogOpen(true)
                 handleMenuClose()
@@ -402,7 +401,7 @@ const UserCard: React.FC<UserCardProps> = ({
         <DialogTitle>Подтвердите удаление</DialogTitle>
         <DialogContent>
           <Typography>
-            Вы уверены, что хотите удалить пользователя "<strong>{user.firstName} {user.lastName}</strong>"?
+            Вы уверены, что хотите удалить пользователя &quot;<strong>{user.firstName} {user.lastName}</strong>&quot;?
           </Typography>
           <Typography color="error" sx={{ mt: 1 }}>
             Это действие необратимо. Все данные пользователя будут удалены.
@@ -412,9 +411,9 @@ const UserCard: React.FC<UserCardProps> = ({
           <Button onClick={() => setDeleteDialogOpen(false)} disabled={loading}>
             Отмена
           </Button>
-          <Button 
-            onClick={handleDelete} 
-            color="error" 
+          <Button
+            onClick={handleDelete}
+            color="error"
             variant="contained"
             disabled={loading}
           >

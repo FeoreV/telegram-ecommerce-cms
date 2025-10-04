@@ -1,14 +1,15 @@
 import TelegramBot from 'node-telegram-bot-api';
-import { handleStart } from './startHandler';
-import { handleStores, handleStoreCreationMessage } from './storeHandler';
-import { handleProducts } from './productHandler';
-import { handleOrders } from './orderHandler';
-import { handleAdmin, handlePossibleOrderId } from './adminHandler';
-import { handlePaymentProofFlow, handlePaymentProofCallback } from './paymentProofHandler';
-import { handleBotCreationCallback, handleBotCreationMessage, handleBotCreationSkipCallback } from './botCreationHandler';
-import { handleProfile } from './profileHandler';
-import { handleBalance } from './balanceHandler';
 import { logger } from '../utils/logger';
+import { sanitizeForLog } from '../utils/sanitizer';
+import { handleAdmin, handlePossibleOrderId } from './adminHandler';
+import { handleBalance } from './balanceHandler';
+import { handleBotCreationCallback, handleBotCreationMessage, handleBotCreationSkipCallback } from './botCreationHandler';
+import { handleOrders } from './orderHandler';
+import { handlePaymentProofCallback, handlePaymentProofFlow } from './paymentProofHandler';
+import { handleProducts } from './productHandler';
+import { handleProfile } from './profileHandler';
+import { handleStart } from './startHandler';
+import { handleStoreCreationMessage, handleStores } from './storeHandler';
 
 export function setupHandlers(bot: TelegramBot) {
   // Command handlers
@@ -21,7 +22,7 @@ export function setupHandlers(bot: TelegramBot) {
   // Callback query handlers
   bot.on('callback_query', async (callbackQuery) => {
     const { data, message } = callbackQuery;
-    
+
     if (!data || !message) return;
 
     try {
@@ -36,7 +37,7 @@ export function setupHandlers(bot: TelegramBot) {
       } else if (data.startsWith('profile_')) {
         await handleProfile(bot, message, callbackQuery);
       } else if (data.startsWith('store_')) {
-        logger.debug(`Handling store callback for user ${message.from?.id}: ${data}`);
+        logger.debug(`Handling store callback for user ${message.from?.id}: ${sanitizeForLog(data)}`);
         await handleStores(bot, message, callbackQuery);
       } else if (data.startsWith('product_') || data.startsWith('cms_product_')) {
         await handleProducts(bot, message, callbackQuery);
@@ -60,7 +61,7 @@ export function setupHandlers(bot: TelegramBot) {
         const handled = await handleBotCreationCallback(bot, message.chat.id, data) ||
                        await handleBotCreationSkipCallback(bot, message.chat.id, data);
         if (!handled) {
-          logger.warn(`Unhandled bot callback: ${data}`);
+          logger.warn(`Unhandled bot callback: ${sanitizeForLog(data)}`);
         }
       }
 
@@ -89,10 +90,10 @@ export function setupHandlers(bot: TelegramBot) {
 
       // Handle store creation input
       await handleStoreCreationMessage(bot, msg);
-      
+
       // Handle bot creation input
       await handleBotCreationMessage(bot, msg);
-      
+
       // Handle contact info input during order process
       if (msg.text && msg.contact) {
         await handleOrders(bot, msg);
@@ -156,7 +157,7 @@ async function handleHelp(bot: TelegramBot, msg: TelegramBot.Message) {
     ]
   };
 
-  await bot.sendMessage(msg.chat.id, helpText, { 
+  await bot.sendMessage(msg.chat.id, helpText, {
     parse_mode: 'Markdown',
     reply_markup: keyboard
   });

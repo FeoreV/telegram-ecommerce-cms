@@ -1,19 +1,20 @@
 import express from 'express';
-import { 
-  getUserBots,
-  createBot,
-  removeBot,
-  updateBotSettings,
-  getBotStats,
-  getBotSettings,
-  getGlobalBotStats,
-  restartBot,
-  enableWebhook,
-  disableWebhook,
-  getWebhookStatus,
-  getGlobalWebhookStats
+import {
+    createBot,
+    disableWebhook,
+    enableWebhook,
+    getBotSettings,
+    getBotStats,
+    getGlobalBotStats,
+    getGlobalWebhookStats,
+    getUserBots,
+    getWebhookStatus,
+    removeBot,
+    restartBot,
+    updateBotSettings
 } from '../controllers/botController.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { csrfProtection } from '../middleware/csrfProtection.js';
 
 // Simple role-based middleware
 const requireRole = (roles: string[]) => {
@@ -21,11 +22,11 @@ const requireRole = (roles: string[]) => {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
-    
+
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({ success: false, message: 'Insufficient permissions' });
     }
-    
+
     next();
   };
 };
@@ -46,22 +47,25 @@ router.get('/', requireRole(['OWNER', 'ADMIN']), getUserBots);
  * @route POST /api/bots
  * @desc Create new bot for store
  * @access Private (OWNER, ADMIN)
+ * @security CSRF protected
  */
-router.post('/', requireRole(['OWNER', 'ADMIN']), createBot);
+router.post('/', csrfProtection, requireRole(['OWNER', 'ADMIN']), createBot);
 
 /**
  * @route DELETE /api/bots/:storeId
  * @desc Remove bot from store
  * @access Private (OWNER, ADMIN)
+ * @security CSRF protected
  */
-router.delete('/:storeId', requireRole(['OWNER', 'ADMIN']), removeBot);
+router.delete('/:storeId', csrfProtection, requireRole(['OWNER', 'ADMIN']), removeBot);
 
 /**
  * @route PUT /api/bots/:storeId/settings
  * @desc Update bot settings for store
  * @access Private (OWNER, ADMIN)
+ * @security CSRF protected
  */
-router.put('/:storeId/settings', requireRole(['OWNER', 'ADMIN']), updateBotSettings);
+router.put('/:storeId/settings', csrfProtection, requireRole(['OWNER', 'ADMIN']), updateBotSettings);
 
 /**
  * @route GET /api/bots/:storeId/stats
@@ -81,8 +85,9 @@ router.get('/:storeId/settings', requireRole(['OWNER', 'ADMIN']), getBotSettings
  * @route POST /api/bots/:storeId/restart
  * @desc Restart bot for store
  * @access Private (OWNER, ADMIN)
+ * @security CSRF protected
  */
-router.post('/:storeId/restart', requireRole(['OWNER', 'ADMIN']), restartBot);
+router.post('/:storeId/restart', csrfProtection, requireRole(['OWNER', 'ADMIN']), restartBot);
 
 /**
  * @route GET /api/bots/global/stats
@@ -95,15 +100,17 @@ router.get('/global/stats', requireRole(['OWNER']), getGlobalBotStats);
  * @route POST /api/bots/:storeId/webhook/enable
  * @desc Enable webhook for bot
  * @access Private (OWNER, ADMIN)
+ * @security CSRF protected
  */
-router.post('/:storeId/webhook/enable', requireRole(['OWNER', 'ADMIN']), enableWebhook);
+router.post('/:storeId/webhook/enable', csrfProtection, requireRole(['OWNER', 'ADMIN']), enableWebhook);
 
 /**
  * @route POST /api/bots/:storeId/webhook/disable
  * @desc Disable webhook for bot
  * @access Private (OWNER, ADMIN)
+ * @security CSRF protected
  */
-router.post('/:storeId/webhook/disable', requireRole(['OWNER', 'ADMIN']), disableWebhook);
+router.post('/:storeId/webhook/disable', csrfProtection, requireRole(['OWNER', 'ADMIN']), disableWebhook);
 
 /**
  * @route GET /api/bots/:storeId/webhook/status

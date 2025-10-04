@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import { SecureAuthSystem, AuthenticatedRequest, UserRole } from './SecureAuthSystem';
-import { logger } from '../utils/logger';
 import { prisma } from '../lib/prisma';
 import { asyncHandler } from '../middleware/errorHandler';
+import { logger } from '../utils/logger';
+import { AuthenticatedRequest, SecureAuthSystem, UserRole } from './SecureAuthSystem';
 
 /**
  * Modern Authentication Controllers using SecureAuthSystem
@@ -25,6 +25,7 @@ export const loginWithEmail = asyncHandler(async (req: Request, res: Response) =
   if (typeof email !== 'string' || typeof password !== 'string') {
     return res.status(400).json({
       error: 'Invalid credential format',
+      // NOTE: Error code identifier, not a credential (CWE-798 false positive)
       code: 'INVALID_FORMAT'
     });
   }
@@ -632,7 +633,7 @@ export const verifyToken = asyncHandler(async (req: AuthenticatedRequest, res: R
   // If we reach here, the token is valid (middleware already verified it)
   const token = req.token;
   const needsRefresh = SecureAuthSystem.isTokenNearExpiry(token);
-  
+
   res.json({
     success: true,
     valid: true,
@@ -664,7 +665,7 @@ export const autoRefresh = asyncHandler(async (req: Request, res: Response) => {
 
   try {
     const refreshResult = await SecureAuthSystem.autoRefreshIfNeeded(accessToken, refreshTokenToUse);
-    
+
     if (!refreshResult.needsRefresh) {
       return res.json({
         success: true,

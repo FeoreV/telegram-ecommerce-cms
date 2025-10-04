@@ -1,14 +1,14 @@
 import { Router } from 'express';
-import { 
-  acceptInvitation,
-  rejectInvitation,
-  getInvitationInfo,
-  getEmployeeActivity
-} from '../controllers/invitationController';
 import { handleInvitationAcceptance } from '../controllers/invitationAcceptanceController';
+import {
+    acceptInvitation,
+    getEmployeeActivity,
+    getInvitationInfo,
+    rejectInvitation
+} from '../controllers/invitationController';
 import { authMiddleware } from '../middleware/auth';
-import { requirePermission } from '../middleware/permissions';
-import { Permission } from '../middleware/permissions';
+import { csrfProtection } from '../middleware/csrfProtection';
+import { Permission, requirePermission } from '../middleware/permissions';
 
 const router = Router();
 
@@ -30,15 +30,17 @@ router.get('/:token', getInvitationInfo);
  * @route POST /api/invitations/accept
  * @desc Принять приглашение
  * @access Public
+ * @security CSRF protected (uses invitation token)
  */
-router.post('/accept', acceptInvitation);
+router.post('/accept', csrfProtection, acceptInvitation);
 
 /**
  * @route POST /api/invitations/reject
  * @desc Отклонить приглашение
  * @access Public
+ * @security CSRF protected (uses invitation token)
  */
-router.post('/reject', rejectInvitation);
+router.post('/reject', csrfProtection, rejectInvitation);
 
 // Защищенные маршруты (требуют аутентификации)
 router.use(authMiddleware);

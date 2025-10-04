@@ -1,21 +1,22 @@
 import { Router } from 'express';
 import { body, param, query } from 'express-validator';
-import { validate } from '../middleware/validation';
-import { requirePermission, Permission } from '../middleware/permissions';
 import {
-  getDashboardStats,
-  getAdminLogs,
-  getUsers,
-  updateUserStatus,
-  getRevenueStats,
-  getTopProducts,
-  getTopStores,
-  getOrderStatusStats,
-  getComparisonData,
-  getKPIMetrics,
-  getCustomerAnalytics,
-  getInventoryAnalytics,
+    getAdminLogs,
+    getComparisonData,
+    getCustomerAnalytics,
+    getDashboardStats,
+    getInventoryAnalytics,
+    getKPIMetrics,
+    getOrderStatusStats,
+    getRevenueStats,
+    getTopProducts,
+    getTopStores,
+    getUsers,
+    updateUserStatus,
 } from '../controllers/adminController';
+import { csrfProtection } from '../middleware/csrfProtection';
+import { Permission, requirePermission } from '../middleware/permissions';
+import { validate } from '../middleware/validation';
 
 const router = Router();
 
@@ -42,9 +43,10 @@ router.get(
   getUsers
 );
 
-// Update user status - user management
+// Update user status - user management (SECURITY: CSRF protected)
 router.patch(
   '/users/:userId/status',
+  csrfProtection,
   requirePermission(Permission.USER_UPDATE),
   [
     param('userId').isString().withMessage('Valid user ID required'),

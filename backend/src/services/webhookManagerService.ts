@@ -1,10 +1,10 @@
+import express, { NextFunction, Request, Response } from 'express';
 import TelegramBot from 'node-telegram-bot-api';
-import express, { Request, Response, NextFunction } from 'express';
-import { logger, toLogMetadata } from '../utils/logger.js';
 import { prisma } from '../lib/prisma.js';
-import { botFactoryService } from './botFactoryService.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { logger, toLogMetadata } from '../utils/logger.js';
 import { TelegramWebhookValidator } from '../utils/telegramWebhookValidator.js';
+import { botFactoryService } from './botFactoryService.js';
 
 interface WebhookConfig {
   baseUrl: string;
@@ -77,7 +77,7 @@ export class WebhookManagerService {
             logger.info(`✅ Restored webhook for store: ${store.name}`);
           } catch (error) {
             logger.error(`❌ Failed to restore webhook for store ${store.name}:`, error);
-            
+
             // Отключаем webhook в базе данных при ошибке
             await this.disableWebhook(store.id);
           }
@@ -155,11 +155,12 @@ export class WebhookManagerService {
       });
 
       logger.info(`✅ Successfully set webhook for store ${storeId}: ${webhookUrl}`);
-      
+
       return { success: true, webhookUrl };
 
     } catch (error) {
-      logger.error(`❌ Failed to set webhook for store ${storeId}:`, error);
+      const sanitizedError = error instanceof Error ? error.message.replace(/[\r\n]/g, ' ') : String(error).replace(/[\r\n]/g, ' ');
+      logger.error(`❌ Failed to set webhook for store ${storeId}:`, { error: sanitizedError, storeId });
       return { success: false, error: 'Произошла ошибка при установке webhook' };
     }
   }
@@ -170,7 +171,7 @@ export class WebhookManagerService {
   async removeWebhook(storeId: string): Promise<{ success: boolean; error?: string }> {
     try {
       const webhookInfo = this.webhooks.get(storeId);
-      
+
       if (webhookInfo) {
         // Удаляем webhook через Telegram API
         const activeBot = botFactoryService.getBotByStore(storeId);
@@ -208,7 +209,8 @@ export class WebhookManagerService {
       return { success: true };
 
     } catch (error) {
-      logger.error(`❌ Failed to remove webhook for store ${storeId}:`, error);
+      const sanitizedError = error instanceof Error ? error.message.replace(/[\r\n]/g, ' ') : String(error).replace(/[\r\n]/g, ' ');
+      logger.error(`❌ Failed to remove webhook for store ${storeId}:`, { error: sanitizedError, storeId });
       return { success: false, error: 'Произошла ошибка при удалении webhook' };
     }
   }
@@ -223,7 +225,7 @@ export class WebhookManagerService {
     webhooks: ActiveWebhook[];
   } {
     const webhooks = Array.from(this.webhooks.values());
-    
+
     return {
       totalWebhooks: webhooks.length,
       activeWebhooks: webhooks.filter(w => w.isActive).length,
@@ -237,7 +239,7 @@ export class WebhookManagerService {
    */
   async checkWebhookStatus(storeId: string): Promise<{ isActive: boolean; lastUpdate?: Date; errors?: number }> {
     const webhookInfo = this.webhooks.get(storeId);
-    
+
     if (!webhookInfo) {
       return { isActive: false };
     }
@@ -270,7 +272,7 @@ export class WebhookManagerService {
   private setupMiddleware(): void {
     // Парсинг JSON для webhook запросов
     this.app.use('/webhook', express.json({ limit: '10mb' }));
-    
+
     // Логирование webhook запросов
     this.app.use('/webhook', (req, res, next) => {
       logger.debug(`Webhook request: ${req.method} ${req.path}`, {
@@ -284,7 +286,7 @@ export class WebhookManagerService {
     this.app.use('/webhook', (req: Request, res: Response, next: NextFunction) => {
       // Always validate webhook signatures, not just in production
       const storeId = req.params?.storeId || req.path.split('/')[3]; // Extract from path if not in params yet
-      
+
       if (storeId) {
         const webhook = this.webhooks.get(storeId);
         if (webhook) {
@@ -307,9 +309,9 @@ export class WebhookManagerService {
               hasBody: !!req.body,
               headerKeys: Object.keys(req.headers)
             });
-            return res.status(401).json({ 
+            return res.status(401).json({
               error: 'Invalid webhook signature',
-              details: validationResult.error 
+              details: validationResult.error
             });
           }
 
@@ -319,7 +321,7 @@ export class WebhookManagerService {
           return res.status(404).json({ error: 'Store not found' });
         }
       }
-      
+
       next();
     });
   }
@@ -337,7 +339,9 @@ export class WebhookManagerService {
         // Проверяем, что webhook зарегистрирован
         const webhookInfo = this.webhooks.get(storeId);
         if (!webhookInfo) {
-          logger.warn(`Webhook request for unregistered store: ${storeId}`);
+          // Sanitize storeId to prevent log injection
+          const sanitizedStoreId = String(storeId).replace(/[\r\n]/g, ' ');
+          logger.warn(`Webhook request for unregistered store: ${sanitizedStoreId}`);
           return res.status(404).json({ error: 'Webhook not found' });
         }
 
@@ -359,12 +363,12 @@ export class WebhookManagerService {
 
       } catch (error) {
         logger.error(`Error processing webhook for store ${req.params.storeId}:`, error);
-        
+
         // Увеличиваем счетчик ошибок
         const webhookInfo = this.webhooks.get(req.params.storeId);
         if (webhookInfo) {
           webhookInfo.errorCount++;
-          
+
           // Отключаем webhook при многих ошибках
           if (webhookInfo.errorCount > 10) {
             await this.disableWebhook(req.params.storeId);
@@ -390,9 +394,9 @@ export class WebhookManagerService {
       // Only OWNER and ADMIN roles can view webhook stats
       const userRole = req.user?.role;
       if (!['OWNER', 'ADMIN'].includes(userRole)) {
-        return res.status(403).json({ 
-          success: false, 
-          error: 'Access denied. Owner or Admin role required.' 
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied. Owner or Admin role required.'
         });
       }
 
@@ -439,17 +443,17 @@ export class WebhookManagerService {
   private async disableWebhook(storeId: string): Promise<void> {
     try {
       logger.warn(`Disabling webhook for store ${storeId} due to errors`);
-      
+
       const webhookInfo = this.webhooks.get(storeId);
       if (webhookInfo) {
         webhookInfo.isActive = false;
-        
+
         // Отключаем в базе данных
         await prisma.store.update({
           where: { id: storeId },
           data: { botWebhookUrl: null }
         });
-        
+
         // Возобновляем polling как fallback
         const activeBot = botFactoryService.getBotByStore(storeId);
         if (activeBot) {
@@ -512,12 +516,13 @@ export const getWebhookManager = (config?: WebhookConfig): WebhookManagerService
   if (!webhookManager && config) {
     webhookManager = new WebhookManagerService(config);
   }
-  
+
   if (!webhookManager) {
     throw new Error('Webhook Manager not initialized');
   }
-  
+
   return webhookManager;
 };
 
-export type { WebhookConfig, ActiveWebhook };
+export type { ActiveWebhook, WebhookConfig };
+

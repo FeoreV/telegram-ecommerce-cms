@@ -1,56 +1,45 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SecureAuthSystem = exports.UserRole = void 0;
-const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const bcrypt_1 = __importDefault(require("bcrypt"));
+const crypto_1 = __importDefault(require("crypto"));
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const redis_1 = require("redis");
 const prisma_1 = require("../lib/prisma");
 const logger_1 = require("../utils/logger");
-const redis_1 = require("redis");
-const crypto_1 = __importDefault(require("crypto"));
 const AuthConfig_1 = require("./AuthConfig");
-const JWT_SECRET = process.env.JWT_SECRET || (() => {
-    logger_1.logger.error('JWT_SECRET not set! Generating temporary secret for development');
-    return crypto_1.default.randomBytes(64).toString('hex');
+const JWT_SECRET = (() => {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        if (process.env.NODE_ENV === 'production') {
+            logger_1.logger.error('CRITICAL: JWT_SECRET not set in production!');
+            throw new Error('JWT_SECRET must be set in production environment');
+        }
+        logger_1.logger.warn('JWT_SECRET not set! Generating temporary secret for development');
+        return crypto_1.default.randomBytes(64).toString('hex');
+    }
+    if (secret.length < 32) {
+        throw new Error('JWT_SECRET must be at least 32 characters long');
+    }
+    return secret;
 })();
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || (() => {
-    logger_1.logger.error('JWT_REFRESH_SECRET not set! Generating temporary secret for development');
-    return crypto_1.default.randomBytes(64).toString('hex');
+const JWT_REFRESH_SECRET = (() => {
+    const secret = process.env.JWT_REFRESH_SECRET;
+    if (!secret) {
+        if (process.env.NODE_ENV === 'production') {
+            logger_1.logger.error('CRITICAL: JWT_REFRESH_SECRET not set in production!');
+            throw new Error('JWT_REFRESH_SECRET must be set in production environment');
+        }
+        logger_1.logger.warn('JWT_REFRESH_SECRET not set! Generating temporary secret for development');
+        return crypto_1.default.randomBytes(64).toString('hex');
+    }
+    if (secret.length < 32) {
+        throw new Error('JWT_REFRESH_SECRET must be at least 32 characters long');
+    }
+    return secret;
 })();
 const authConfig = (0, AuthConfig_1.getAuthConfig)();
 const ACCESS_TOKEN_EXPIRY = authConfig.accessTokenExpiry;
@@ -66,9 +55,33 @@ var UserRole;
 let redisClient = null;
 const sessionStore = new Map();
 const tokenBlacklist = new Map();
+const validateRedisUrl = (url) => {
+    try {
+        const parsed = new URL(url);
+        if (!['redis:', 'rediss:'].includes(parsed.protocol)) {
+            logger_1.logger.error('Invalid Redis protocol', { protocol: parsed.protocol });
+            return false;
+        }
+        if (process.env.NODE_ENV === 'production') {
+            const hostname = parsed.hostname;
+            if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.') || hostname.startsWith('10.')) {
+                logger_1.logger.error('Cannot connect to internal Redis URL in production');
+                return false;
+            }
+        }
+        return true;
+    }
+    catch (error) {
+        logger_1.logger.error('Invalid Redis URL format', { error });
+        return false;
+    }
+};
 const initRedis = async () => {
     if (process.env.REDIS_URL) {
         try {
+            if (!validateRedisUrl(process.env.REDIS_URL)) {
+                throw new Error('Invalid or unsafe Redis URL');
+            }
             redisClient = (0, redis_1.createClient)({ url: process.env.REDIS_URL });
             await redisClient.connect();
             logger_1.logger.info('✅ Redis connected for secure authentication');
@@ -130,7 +143,45 @@ class SecureAuthSystem {
             let sessionData;
             if (redisClient) {
                 const data = await redisClient.get(`session:${sessionId}`);
-                sessionData = data ? JSON.parse(data) : null;
+                if (data) {
+                    try {
+                        const parsed = JSON.parse(data);
+                        if (typeof parsed !== 'object' || parsed === null) {
+                            logger_1.logger.warn('Invalid session data: not an object', { sessionId });
+                            return false;
+                        }
+                        if (typeof parsed.userId !== 'string') {
+                            logger_1.logger.warn('Invalid session data: userId must be string', { sessionId });
+                            return false;
+                        }
+                        const allowedKeys = ['userId', 'createdAt', 'lastUsed', 'ipAddress', 'userAgent'];
+                        const keys = Object.keys(parsed);
+                        if (keys.some(key => !allowedKeys.includes(key))) {
+                            logger_1.logger.warn('Invalid session data: unexpected properties', { sessionId, keys });
+                            return false;
+                        }
+                        if (parsed.createdAt !== undefined &&
+                            typeof parsed.createdAt !== 'string' &&
+                            !(parsed.createdAt instanceof Date)) {
+                            logger_1.logger.warn('Invalid session data: createdAt type', { sessionId });
+                            return false;
+                        }
+                        if (parsed.lastUsed !== undefined &&
+                            typeof parsed.lastUsed !== 'string' &&
+                            !(parsed.lastUsed instanceof Date)) {
+                            logger_1.logger.warn('Invalid session data: lastUsed type', { sessionId });
+                            return false;
+                        }
+                        sessionData = parsed;
+                    }
+                    catch (parseError) {
+                        logger_1.logger.error('Failed to parse session data', { error: parseError, sessionId });
+                        return false;
+                    }
+                }
+                else {
+                    sessionData = null;
+                }
             }
             else {
                 sessionData = sessionStore.get(sessionId);
@@ -208,8 +259,7 @@ class SecureAuthSystem {
         }
         catch (error) {
             logger_1.logger.debug('Access token verification failed', {
-                error: error instanceof Error ? error.message : String(error),
-                tokenPreview: token.substring(0, 20) + '...'
+                error: error instanceof Error ? error.message : String(error)
             });
             if (error instanceof Error && error.name === 'TokenExpiredError') {
                 throw new Error('Access token expired');
@@ -506,7 +556,7 @@ class SecureAuthSystem {
                 return true;
             return (0, AuthConfig_1.shouldRefreshToken)(decoded.exp, authConfig.refreshGracePeriod);
         }
-        catch (error) {
+        catch {
             return true;
         }
     }
@@ -541,8 +591,21 @@ class SecureAuthSystem {
             if (redisClient) {
                 const existingData = await redisClient.get(`session:${sessionId}`);
                 if (existingData) {
-                    const parsed = JSON.parse(existingData);
-                    sessionData.createdAt = new Date(parsed.createdAt);
+                    try {
+                        const parsed = JSON.parse(existingData);
+                        if (typeof parsed !== 'object' || parsed === null) {
+                            logger_1.logger.warn('Invalid existing session data: not an object', { sessionId });
+                        }
+                        else if (parsed.createdAt && typeof parsed.createdAt === 'string') {
+                            const date = new Date(parsed.createdAt);
+                            if (!isNaN(date.getTime())) {
+                                sessionData.createdAt = date;
+                            }
+                        }
+                    }
+                    catch (parseError) {
+                        logger_1.logger.warn('Failed to parse existing session data', { error: parseError, sessionId });
+                    }
                 }
                 await redisClient.setEx(`session:${sessionId}`, typeof REFRESH_TOKEN_EXPIRY === 'string' ? (0, AuthConfig_1.parseExpiryToSeconds)(REFRESH_TOKEN_EXPIRY) : REFRESH_TOKEN_EXPIRY, JSON.stringify(sessionData));
             }
@@ -571,7 +634,7 @@ class SecureAuthSystem {
             });
             if (!user)
                 return [];
-            const { ROLE_PERMISSIONS } = await Promise.resolve().then(() => __importStar(require('../middleware/permissions')));
+            const { ROLE_PERMISSIONS } = await import('../middleware/permissions');
             return ROLE_PERMISSIONS[user.role] || [];
         }
         catch (error) {

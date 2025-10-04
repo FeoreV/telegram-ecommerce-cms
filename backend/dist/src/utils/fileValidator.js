@@ -72,7 +72,7 @@ class FileValidator {
             const sanitizedFilename = opts.sanitizeFilename ?
                 this.sanitizeFilename(originalFilename) : originalFilename;
             if (opts.requireMagicByteValidation) {
-                const { fileTypeFromBuffer } = await Promise.resolve().then(() => __importStar(require('file-type')));
+                const { fileTypeFromBuffer } = await import('file-type');
                 const detectedType = await fileTypeFromBuffer(buffer);
                 if (!detectedType) {
                     return {

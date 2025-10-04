@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { databaseService } from '../lib/database';
 import { multiTenantSecurityService } from '../services/MultiTenantSecurityService';
-import { logger } from '../utils/logger';
+import { logger, toLogMetadata } from '../utils/logger';
 
 export interface TenantContext {
   userId: string;
@@ -49,7 +49,7 @@ export abstract class TenantScopedRepository<T = any> {
         storeId: context.storeId
       });
     } catch (error) {
-      logger.error('Failed to set tenant context:', error);
+      logger.error('Failed to set tenant context:', toLogMetadata(error));
       throw error;
     }
   }
@@ -65,7 +65,7 @@ export abstract class TenantScopedRepository<T = any> {
     try {
       return await multiTenantSecurityService.validateStoreAccess(userId, storeId, operation);
     } catch (error) {
-      logger.error('Failed to validate tenant access:', error);
+      logger.error('Failed to validate tenant access:', toLogMetadata(error));
       return false;
     }
   }
@@ -115,7 +115,7 @@ export abstract class TenantScopedRepository<T = any> {
       await this.setTenantContext(context);
 
       // Build tenant-scoped where clause
-      const tenantWhere = context.storeId 
+      const tenantWhere = context.storeId
         ? this.buildTenantWhereClause(context.storeId, where)
         : where;
 
@@ -145,7 +145,7 @@ export abstract class TenantScopedRepository<T = any> {
       return result;
 
     } catch (error) {
-      logger.error(`Failed to find many ${this.tableName}:`, error);
+      logger.error(`Failed to find many ${this.tableName}:`, toLogMetadata(error));
       throw error;
     }
   }
@@ -163,7 +163,7 @@ export abstract class TenantScopedRepository<T = any> {
       await this.setTenantContext(context);
 
       // Build tenant-scoped where clause
-      const tenantWhere = context.storeId 
+      const tenantWhere = context.storeId
         ? this.buildTenantWhereClause(context.storeId, where)
         : where;
 
@@ -190,7 +190,7 @@ export abstract class TenantScopedRepository<T = any> {
       return result;
 
     } catch (error) {
-      logger.error(`Failed to find unique ${this.tableName}:`, error);
+      logger.error(`Failed to find unique ${this.tableName}:`, toLogMetadata(error));
       throw error;
     }
   }
@@ -234,7 +234,7 @@ export abstract class TenantScopedRepository<T = any> {
       return result;
 
     } catch (error) {
-      logger.error(`Failed to create ${this.tableName}:`, error);
+      logger.error(`Failed to create ${this.tableName}:`, toLogMetadata(error));
       throw error;
     }
   }
@@ -253,7 +253,7 @@ export abstract class TenantScopedRepository<T = any> {
       await this.setTenantContext(context);
 
       // Build tenant-scoped where clause
-      const tenantWhere = context.storeId 
+      const tenantWhere = context.storeId
         ? this.buildTenantWhereClause(context.storeId, where)
         : where;
 
@@ -281,7 +281,7 @@ export abstract class TenantScopedRepository<T = any> {
       return result;
 
     } catch (error) {
-      logger.error(`Failed to update ${this.tableName}:`, error);
+      logger.error(`Failed to update ${this.tableName}:`, toLogMetadata(error));
       throw error;
     }
   }
@@ -299,7 +299,7 @@ export abstract class TenantScopedRepository<T = any> {
       await this.setTenantContext(context);
 
       // Build tenant-scoped where clause
-      const tenantWhere = context.storeId 
+      const tenantWhere = context.storeId
         ? this.buildTenantWhereClause(context.storeId, where)
         : where;
 
@@ -325,7 +325,7 @@ export abstract class TenantScopedRepository<T = any> {
       return result;
 
     } catch (error) {
-      logger.error(`Failed to delete ${this.tableName}:`, error);
+      logger.error(`Failed to delete ${this.tableName}:`, toLogMetadata(error));
       throw error;
     }
   }
@@ -342,7 +342,7 @@ export abstract class TenantScopedRepository<T = any> {
       await this.setTenantContext(context);
 
       // Build tenant-scoped where clause
-      const tenantWhere = context.storeId 
+      const tenantWhere = context.storeId
         ? this.buildTenantWhereClause(context.storeId, where)
         : where;
 
@@ -367,7 +367,7 @@ export abstract class TenantScopedRepository<T = any> {
       return result;
 
     } catch (error) {
-      logger.error(`Failed to count ${this.tableName}:`, error);
+      logger.error(`Failed to count ${this.tableName}:`, toLogMetadata(error));
       throw error;
     }
   }
@@ -395,7 +395,7 @@ export abstract class TenantScopedRepository<T = any> {
       return result;
 
     } catch (error) {
-      logger.error(`Failed to execute raw query on ${this.tableName}:`, error);
+      logger.error(`Failed to execute raw query on ${this.tableName}:`, toLogMetadata(error));
       throw error;
     }
   }
@@ -455,7 +455,7 @@ export abstract class TenantScopedRepository<T = any> {
       return results;
 
     } catch (error) {
-      logger.error(`Failed to execute batch operation on ${this.tableName}:`, error);
+      logger.error(`Failed to execute batch operation on ${this.tableName}:`, toLogMetadata(error));
       throw error;
     }
   }
@@ -523,7 +523,7 @@ export abstract class TenantScopedRepository<T = any> {
       };
 
     } catch (error) {
-      logger.error(`Failed to get table stats for ${this.tableName}:`, error);
+      logger.error(`Failed to get table stats for ${this.tableName}:`, toLogMetadata(error));
       return {
         totalRecords: 0,
         tenantRecords: 0,

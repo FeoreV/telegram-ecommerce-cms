@@ -37,10 +37,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.tenantCacheService = exports.TenantCacheService = void 0;
-const redis_1 = require("../lib/redis");
-const logger_1 = require("../utils/logger");
 const crypto_1 = __importDefault(require("crypto"));
 const zlib = __importStar(require("zlib"));
+const redis_1 = require("../lib/redis");
+const logger_1 = require("../utils/logger");
 class TenantCacheService {
     constructor() {
         this.config = {
@@ -338,7 +338,7 @@ class TenantCacheService {
                         namespaces.add(parts[2]);
                     }
                 }
-                catch (error) {
+                catch (_error) {
                 }
             }
             return {

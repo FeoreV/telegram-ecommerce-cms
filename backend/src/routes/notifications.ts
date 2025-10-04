@@ -1,14 +1,15 @@
 import { Router } from 'express';
-import { query, param } from 'express-validator';
-import { authMiddleware } from '../middleware/auth';
-import { validate } from '../middleware/validation';
+import { param, query } from 'express-validator';
 import {
-  getNotifications,
-  markNotificationAsRead,
-  markAllNotificationsAsRead,
-  deleteNotification,
-  getNotificationStats,
+    deleteNotification,
+    getNotifications,
+    getNotificationStats,
+    markAllNotificationsAsRead,
+    markNotificationAsRead,
 } from '../controllers/notificationController';
+import { authMiddleware } from '../middleware/auth';
+import { csrfProtection } from '../middleware/csrfProtection';
+import { validate } from '../middleware/validation';
 
 const router = Router();
 
@@ -32,20 +33,22 @@ router.get(
 // Get notification statistics
 router.get('/stats', getNotificationStats);
 
-// Mark notification as read
+// Mark notification as read (SECURITY: CSRF protected)
 router.patch(
   '/:id/read',
+  csrfProtection,
   [param('id').isString().withMessage('Valid notification ID required')],
   validate,
   markNotificationAsRead
 );
 
-// Mark all notifications as read
-router.patch('/read-all', markAllNotificationsAsRead);
+// Mark all notifications as read (SECURITY: CSRF protected)
+router.patch('/read-all', csrfProtection, markAllNotificationsAsRead);
 
-// Delete notification
+// Delete notification (SECURITY: CSRF protected)
 router.delete(
   '/:id',
+  csrfProtection,
   [param('id').isString().withMessage('Valid notification ID required')],
   validate,
   deleteNotification

@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { honeytokenService } from '../services/HoneytokenService';
 
 // Simple outgoing payload scanner for honeytokens
@@ -10,7 +10,7 @@ export function exfiltrationTrap(req: Request, res: Response, next: NextFunction
     if (honeytokenService.isHoneytoken(bodyStr) || honeytokenService.isHoneytoken(headersStr)) {
       honeytokenService.triggerAlert({ source: 'http_request', sample: bodyStr?.slice(0, 128) }).catch(() => {});
     }
-  } catch (error) {
+  } catch {
     // Ignore trap validation errors to prevent disruption
   }
   next();

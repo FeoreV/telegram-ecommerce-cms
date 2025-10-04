@@ -1,11 +1,11 @@
+import crypto from 'crypto';
+import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { Request, Response, NextFunction } from 'express';
+import { createClient } from 'redis';
+import { parseExpiryToSeconds } from '../auth/AuthConfig';
+import { loadSecurityConfig, SecurityConfig, securityMetrics } from '../config/security';
 import { prisma } from '../lib/prisma';
 import { logger, maskSensitiveData } from '../utils/logger';
-import { createClient } from 'redis';
-import { securityMetrics, loadSecurityConfig, SecurityConfig } from '../config/security';
-import { parseExpiryToSeconds } from '../auth/AuthConfig';
-import crypto from 'crypto';
 
 // Initialize configuration variables
 let JWT_SECRET: string;
@@ -13,7 +13,6 @@ let JWT_REFRESH_SECRET: string;
 let JWT_ACCESS_EXPIRY: string;
 let JWT_REFRESH_EXPIRY: string;
 let JWT_ACCESS_EXPIRY_SECONDS: number;
-let JWT_REFRESH_EXPIRY_SECONDS: number;
 let JWT_CLOCK_SKEW: number;
 let JWT_ISSUER: string;
 let JWT_AUDIENCE: string;
@@ -39,7 +38,7 @@ const initializeSecurityConfig = async (): Promise<SecurityConfig> => {
   }
 
   const config = await loadSecurityConfig();
-  
+
   // Extract configuration values
   JWT_SECRET = config.jwt.secret;
   JWT_REFRESH_SECRET = config.jwt.refreshSecret;
@@ -53,8 +52,7 @@ const initializeSecurityConfig = async (): Promise<SecurityConfig> => {
 
   // Calculate expiry seconds after config is loaded
   JWT_ACCESS_EXPIRY_SECONDS = parseExpiryToSeconds(JWT_ACCESS_EXPIRY);
-  JWT_REFRESH_EXPIRY_SECONDS = parseExpiryToSeconds(JWT_REFRESH_EXPIRY);
-  
+
   securityConfigLoaded = true;
   return config;
 };
@@ -62,7 +60,7 @@ const initializeSecurityConfig = async (): Promise<SecurityConfig> => {
 // Initialize configuration on module load - but don't exit on error in development
 initializeSecurityConfig().catch(error => {
   const isDevelopment = process.env.NODE_ENV === 'development';
-  logger.error('Failed to initialize security configuration:', { 
+  logger.error('Failed to initialize security configuration:', {
     error: error instanceof Error ? error.message : String(error),
     stack: error instanceof Error ? error.stack : undefined
   });
@@ -80,13 +78,13 @@ const tokenBlacklist = new Map<string, { expires: Date; reason: string }>();
 // Initialize Redis if available
 if (REDIS_ENABLED && REDIS_URL) {
   try {
-    redisClient = createClient({ 
+    redisClient = createClient({
       url: REDIS_URL,
       socket: {
         connectTimeout: 2000 // 2 second timeout
       }
     });
-    
+
     // Attempt connection with timeout
     redisClient.connect()
       .then(() => {
@@ -95,7 +93,7 @@ if (REDIS_ENABLED && REDIS_URL) {
       .catch((err: any) => {
         const isDevelopment = process.env.NODE_ENV === 'development';
         if (isDevelopment) {
-          logger.warn('Redis not available for JWT - using memory fallback (development mode)', { 
+          logger.warn('Redis not available for JWT - using memory fallback (development mode)', {
             redisUrl: REDIS_URL?.replace(/\/\/[^@]*@/, '//***@') // Hide credentials in logs
           });
         } else {
@@ -103,7 +101,7 @@ if (REDIS_ENABLED && REDIS_URL) {
         }
         redisClient = null;
       });
-      
+
     // Handle connection errors gracefully
     redisClient.on('error', (err: any) => {
       const isDevelopment = process.env.NODE_ENV === 'development';
@@ -144,7 +142,7 @@ export interface RefreshTokenPayload {
 
 // Enhanced JWT utilities
 export class JWTSecurity {
-  
+
   // Generate access token with enhanced security
   static generateAccessToken(payload: Omit<JWTPayload, 'iat' | 'exp' | 'iss' | 'aud'>): string {
     const jwtPayload: JWTPayload = {
@@ -197,7 +195,7 @@ export class JWTSecurity {
       if (decoded.iat) {
         const tokenAge = Date.now() / 1000 - decoded.iat;
         const maxAge = JWT_ACCESS_EXPIRY_SECONDS * 2; // Allow some flexibility
-        
+
         if (tokenAge > maxAge) {
           logger.warn('Suspicious token age detected', {
             tokenAge,
@@ -210,7 +208,7 @@ export class JWTSecurity {
       return decoded;
     } catch (error) {
       securityMetrics.incrementInvalidTokenAttempts();
-      
+
       if (error instanceof jwt.TokenExpiredError) {
         throw new Error('Token has expired');
       } else if (error instanceof jwt.JsonWebTokenError) {
@@ -254,13 +252,13 @@ export class JWTSecurity {
   // Enhanced token blacklisting with Redis support
   static async blacklistToken(token: string, reason: string = 'manual_logout'): Promise<void> {
     const tokenHash = this.hashToken(token);
-    
+
     try {
       // Extract expiry from token to set appropriate TTL
       const decoded = jwt.decode(token) as any;
       const expires = decoded?.exp ? new Date(decoded.exp * 1000) : new Date(Date.now() + JWT_ACCESS_EXPIRY_SECONDS * 1000);
       const ttlSeconds = Math.max(1, Math.floor((expires.getTime() - Date.now()) / 1000));
-      
+
       if (redisClient) {
         // Store in Redis with expiration
         await redisClient.setEx(`blacklist:${tokenHash}`, ttlSeconds, JSON.stringify({ reason, timestamp: new Date().toISOString() }));
@@ -278,14 +276,14 @@ export class JWTSecurity {
           expires: expires.toISOString()
         });
       }
-      
+
       securityMetrics.incrementBlacklistedTokens();
     } catch (error) {
       logger.error('Failed to blacklist token:', error);
       // Fallback to memory storage
-      tokenBlacklist.set(tokenHash, { 
-        expires: new Date(Date.now() + JWT_ACCESS_EXPIRY_SECONDS * 1000), 
-        reason 
+      tokenBlacklist.set(tokenHash, {
+        expires: new Date(Date.now() + JWT_ACCESS_EXPIRY_SECONDS * 1000),
+        reason
       });
     }
   }
@@ -293,7 +291,7 @@ export class JWTSecurity {
   // Check if token is blacklisted
   static async isTokenBlacklisted(token: string): Promise<boolean> {
     const tokenHash = this.hashToken(token);
-    
+
     try {
       if (redisClient) {
         const result = await redisClient.get(`blacklist:${tokenHash}`);
@@ -321,7 +319,7 @@ export class JWTSecurity {
   // Get token from Authorization header
   static extractTokenFromHeader(authHeader?: string): string | null {
     if (!authHeader) return null;
-    
+
     const matches = authHeader.match(/^Bearer\s+(.+)$/);
     return matches ? matches[1] : null;
   }
@@ -379,14 +377,14 @@ export class JWTSecurity {
       // Clean up expired tokens from memory
       const now = new Date();
       let cleanedCount = 0;
-      
+
       for (const [tokenHash, entry] of tokenBlacklist.entries()) {
         if (entry.expires < now) {
           tokenBlacklist.delete(tokenHash);
           cleanedCount++;
         }
       }
-      
+
       logger.info('Memory blacklist cleanup completed', {
         cleanedCount,
         remainingCount: tokenBlacklist.size
@@ -419,8 +417,8 @@ export class JWTSecurity {
 
 // Enhanced authentication middleware
 export const enhancedAuthMiddleware = async (
-  req: Request, 
-  res: Response, 
+  req: Request,
+  res: Response,
   next: NextFunction
 ) => {
   try {
@@ -439,19 +437,19 @@ export const enhancedAuthMiddleware = async (
     try {
       decoded = await JWTSecurity.verifyAccessToken(token);
     } catch (error) {
+    // SECURITY: Token preview removed to prevent information exposure (CWE-532)
     logger.warn('JWT verification failed', {
       error: error instanceof Error ? error.message : 'Unknown error',
       errorName: error instanceof Error ? error.constructor.name : 'Unknown',
       ip: req.ip,
       userAgent: req.get('User-Agent'),
-      tokenPreview: `${token.substring(0, 6)}...${token.substring(token.length - 6)}`,
       jwtIssuer: JWT_ISSUER,
       jwtAudience: JWT_AUDIENCE
     });
 
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       let code = 'INVALID_TOKEN';
-      
+
       if (errorMessage.includes('expired')) code = 'TOKEN_EXPIRED';
       else if (errorMessage.includes('revoked')) code = 'TOKEN_REVOKED';
       else if (errorMessage.includes('not active')) code = 'TOKEN_NOT_ACTIVE';
@@ -518,13 +516,15 @@ export const enhancedAuthMiddleware = async (
     (req as any).token = token;
     (req as any).sessionId = decoded.sessionId;
 
-    // Log successful authentication for security monitoring
-    logger.debug('User authenticated successfully', {
-      userId: user.id,
-      role: user.role,
-      ip: req.ip,
-      endpoint: req.path
-    });
+    // Log successful authentication for security monitoring (only in production)
+    if (process.env.NODE_ENV === 'production') {
+      logger.debug('User authenticated successfully', {
+        userId: user.id,
+        role: user.role,
+        ip: req.ip,
+        endpoint: req.path
+      });
+    }
 
     next();
   } catch (error) {
@@ -569,7 +569,7 @@ export const tokenRefreshMiddleware = async (
         ip: req.ip,
         userAgent: req.get('User-Agent')
       });
-      
+
       return res.status(401).json({
         error: 'Invalid refresh token',
         code: 'INVALID_REFRESH_TOKEN'
@@ -667,7 +667,7 @@ export const logoutMiddleware = async (req: Request, res: Response) => {
       tokensBlacklisted: promises.length
     });
 
-    res.json({ 
+    res.json({
       message: 'Logged out successfully',
       tokensInvalidated: promises.length
     });

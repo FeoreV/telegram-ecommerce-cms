@@ -1,40 +1,34 @@
-import React, { useState, useEffect } from 'react'
 import {
-  Box,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
-  Avatar,
-  Typography,
-  IconButton,
-  Badge,
-  Chip,
-  Button,
-  Divider,
-  Alert,
-  Switch,
-  FormControlLabel,
-} from '@mui/material'
-import {
-  Notifications,
-  NotificationsActive,
-  NotificationsOff,
-  Circle,
-  CheckCircle,
-  Warning,
-  Error,
-  Info,
-  Clear,
-  MarkEmailRead,
-  Settings,
-  ShoppingCart,
-  Inventory,
-  TrendingUp,
-  Person,
+    Clear,
+    Info,
+    Inventory,
+    MarkEmailRead,
+    Notifications,
+    NotificationsActive,
+    Person,
+    Settings,
+    ShoppingCart,
+    TrendingUp,
 } from '@mui/icons-material'
-import DashboardWidget from '../DashboardWidget'
+import {
+    Avatar,
+    Badge,
+    Box,
+    Button,
+    Chip,
+    Divider,
+    FormControlLabel,
+    IconButton,
+    List,
+    ListItem,
+    ListItemAvatar,
+    ListItemText,
+    Switch,
+    Typography,
+} from '@mui/material'
+import React, { useEffect, useState } from 'react'
 import { useAuth } from '../../../contexts/AuthContext'
+import DashboardWidget from '../DashboardWidget'
 
 interface Notification {
   id: string
@@ -62,67 +56,33 @@ const NotificationsWidget: React.FC<NotificationsWidgetProps> = ({
   const { user } = useAuth()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [showOnlyUnread, setShowOnlyUnread] = useState(false)
-  const [soundEnabled, setSoundEnabled] = useState(true)
+  const [loading, setLoading] = useState(false)
 
-  // Mock notifications data - in real app would come from API
+  // Load real notifications from API
   useEffect(() => {
-    const mockNotifications: Notification[] = [
-      {
-        id: '1',
-        type: 'order',
-        title: 'Новый заказ',
-        message: 'Получен заказ #12345 на сумму 5,500₽',
-        timestamp: new Date(Date.now() - 5 * 60 * 1000),
-        read: false,
-        priority: 'high',
-        action: {
-          label: 'Просмотреть',
-          callback: () => console.log('View order')
-        }
-      },
-      {
-        id: '2',
-        type: 'inventory',
-        title: 'Заканчивается товар',
-        message: 'iPhone 15 Pro: осталось 3 шт.',
-        timestamp: new Date(Date.now() - 15 * 60 * 1000),
-        read: false,
-        priority: 'medium',
-        action: {
-          label: 'Пополнить',
-          callback: () => console.log('Restock item')
-        }
-      },
-      {
-        id: '3',
-        type: 'revenue',
-        title: 'Рост продаж',
-        message: 'Выручка за сегодня превысила план на 25%',
-        timestamp: new Date(Date.now() - 60 * 60 * 1000),
-        read: true,
-        priority: 'low'
-      },
-      {
-        id: '4',
-        type: 'user',
-        title: 'Новый пользователь',
-        message: 'Зарегистрирован новый администратор: Иван Иванов',
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-        read: true,
-        priority: 'low'
-      },
-      {
-        id: '5',
-        type: 'system',
-        title: 'Системное обновление',
-        message: 'Доступна новая версия платформы 2.1.0',
-        timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
-        read: false,
-        priority: 'critical'
-      }
-    ]
-    setNotifications(mockNotifications)
+    loadNotifications()
   }, [])
+
+  const loadNotifications = async () => {
+    setLoading(true)
+    try {
+      // TODO: Implement notification API endpoint
+      // const response = await notificationService.getNotifications()
+      // setNotifications(response.items || [])
+      
+      // For now, show empty state - notifications will be loaded from real API
+      setNotifications([])
+    } catch (error) {
+      console.error('Error loading notifications:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleRefresh = () => {
+    loadNotifications()
+    onRefresh?.()
+  }
 
   const getNotificationIcon = (type: string) => {
     const iconMap = {
@@ -146,15 +106,15 @@ const NotificationsWidget: React.FC<NotificationsWidgetProps> = ({
   }
 
   const handleMarkAsRead = (id: string) => {
-    setNotifications(prev => 
-      prev.map(notif => 
+    setNotifications(prev =>
+      prev.map(notif =>
         notif.id === id ? { ...notif, read: true } : notif
       )
     )
   }
 
   const handleMarkAllAsRead = () => {
-    setNotifications(prev => 
+    setNotifications(prev =>
       prev.map(notif => ({ ...notif, read: true }))
     )
   }
@@ -163,7 +123,7 @@ const NotificationsWidget: React.FC<NotificationsWidgetProps> = ({
     setNotifications(prev => prev.filter(notif => notif.id !== id))
   }
 
-  const filteredNotifications = showOnlyUnread 
+  const filteredNotifications = showOnlyUnread
     ? notifications.filter(n => !n.read)
     : notifications
 
@@ -187,7 +147,7 @@ const NotificationsWidget: React.FC<NotificationsWidgetProps> = ({
       <Badge badgeContent={unreadCount} color="error">
         <NotificationsActive />
       </Badge>
-      
+
       <IconButton size="small" onClick={handleMarkAllAsRead} disabled={unreadCount === 0}>
         <MarkEmailRead />
       </IconButton>
@@ -200,7 +160,7 @@ const NotificationsWidget: React.FC<NotificationsWidgetProps> = ({
       title="Уведомления"
       subtitle={`${unreadCount} непрочитанных`}
       icon={<Notifications />}
-      onRefresh={onRefresh}
+      onRefresh={handleRefresh}
       onSettings={onSettings}
       showRefresh
       showSettings
@@ -226,31 +186,16 @@ const NotificationsWidget: React.FC<NotificationsWidgetProps> = ({
               </Typography>
             }
           />
-
-          <FormControlLabel
-            control={
-              <Switch
-                size="small"
-                checked={soundEnabled}
-                onChange={(e) => setSoundEnabled(e.target.checked)}
-              />
-            }
-            label={
-              <Typography variant="caption">
-                Звук
-              </Typography>
-            }
-          />
         </Box>
 
         <Divider sx={{ mb: 1 }} />
 
         {/* Notifications List */}
         {filteredNotifications.length === 0 ? (
-          <Box 
-            display="flex" 
-            alignItems="center" 
-            justifyContent="center" 
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
             height={150}
             color="text.secondary"
           >
@@ -264,7 +209,7 @@ const NotificationsWidget: React.FC<NotificationsWidgetProps> = ({
               <React.Fragment key={notification.id}>
                 <ListItem
                   alignItems="flex-start"
-                  sx={{ 
+                  sx={{
                     px: 0,
                     py: 1,
                     bgcolor: !notification.read ? 'action.hover' : 'transparent',
@@ -279,9 +224,9 @@ const NotificationsWidget: React.FC<NotificationsWidgetProps> = ({
                       color={getPriorityColor(notification.priority) as any}
                       anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
                     >
-                      <Avatar 
-                        sx={{ 
-                          width: 36, 
+                      <Avatar
+                        sx={{
+                          width: 36,
                           height: 36,
                           bgcolor: `${getPriorityColor(notification.priority)}.main`
                         }}
@@ -294,8 +239,8 @@ const NotificationsWidget: React.FC<NotificationsWidgetProps> = ({
                   <ListItemText
                     primary={
                       <Box display="flex" justifyContent="space-between" alignItems="center">
-                        <Typography 
-                          variant="body2" 
+                        <Typography
+                          variant="body2"
                           fontWeight={!notification.read ? 'medium' : 'normal'}
                           noWrap
                         >
@@ -351,7 +296,7 @@ const NotificationsWidget: React.FC<NotificationsWidgetProps> = ({
                     }
                   />
                 </ListItem>
-                
+
                 {index < filteredNotifications.length - 1 && <Divider />}
               </React.Fragment>
             ))}

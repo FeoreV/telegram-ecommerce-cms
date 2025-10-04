@@ -1,11 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const auth_1 = require("../middleware/auth");
-const permissions_1 = require("../middleware/permissions");
-const validation_1 = require("../middleware/validation");
 const express_validator_1 = require("express-validator");
 const inventoryController_1 = require("../controllers/inventoryController");
+const auth_1 = require("../middleware/auth");
+const csrfProtection_1 = require("../middleware/csrfProtection");
+const permissions_1 = require("../middleware/permissions");
+const validation_1 = require("../middleware/validation");
 const router = (0, express_1.Router)();
 router.use(auth_1.authMiddleware);
 router.get('/alerts', (0, permissions_1.requirePermission)(permissions_1.Permission.PRODUCT_VIEW), [
@@ -22,7 +23,7 @@ router.get('/alerts', (0, permissions_1.requirePermission)(permissions_1.Permiss
         .isInt({ min: 1, max: 100 })
         .withMessage('Limit must be between 1 and 100')
 ], validation_1.validate, inventoryController_1.getInventoryAlerts);
-router.post('/stock/update', (0, permissions_1.requirePermission)(permissions_1.Permission.PRODUCT_UPDATE), [
+router.post('/stock/update', csrfProtection_1.csrfProtection, (0, permissions_1.requirePermission)(permissions_1.Permission.PRODUCT_UPDATE), [
     (0, express_validator_1.body)('productId')
         .optional()
         .isString()
@@ -57,7 +58,7 @@ router.get('/stock/history/:productId/:variantId?', (0, permissions_1.requirePer
         .isInt({ min: 1 })
         .withMessage('Page must be a positive integer')
 ], validation_1.validate, inventoryController_1.getStockHistory);
-router.post('/alerts/config', (0, permissions_1.requirePermission)(permissions_1.Permission.STORE_UPDATE), [
+router.post('/alerts/config', csrfProtection_1.csrfProtection, (0, permissions_1.requirePermission)(permissions_1.Permission.STORE_UPDATE), [
     (0, express_validator_1.body)('storeId')
         .isString()
         .withMessage('Store ID is required'),

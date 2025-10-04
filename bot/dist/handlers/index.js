@@ -1,15 +1,17 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.setupHandlers = setupHandlers;
+const logger_1 = require("../utils/logger");
+const sanitizer_1 = require("../utils/sanitizer");
+const adminHandler_1 = require("./adminHandler");
+const balanceHandler_1 = require("./balanceHandler");
+const botCreationHandler_1 = require("./botCreationHandler");
+const orderHandler_1 = require("./orderHandler");
+const paymentProofHandler_1 = require("./paymentProofHandler");
+const productHandler_1 = require("./productHandler");
+const profileHandler_1 = require("./profileHandler");
 const startHandler_1 = require("./startHandler");
 const storeHandler_1 = require("./storeHandler");
-const productHandler_1 = require("./productHandler");
-const orderHandler_1 = require("./orderHandler");
-const adminHandler_1 = require("./adminHandler");
-const paymentProofHandler_1 = require("./paymentProofHandler");
-const botCreationHandler_1 = require("./botCreationHandler");
-const profileHandler_1 = require("./profileHandler");
-const logger_1 = require("../utils/logger");
 function setupHandlers(bot) {
     bot.onText(/\/start/, (msg) => (0, startHandler_1.handleStart)(bot, msg));
     bot.onText(/\/stores/, (msg) => (0, storeHandler_1.handleStores)(bot, msg));
@@ -27,11 +29,14 @@ function setupHandlers(bot) {
             else if (data === 'help') {
                 await handleHelp(bot, message);
             }
+            else if (data.startsWith('balance_')) {
+                await (0, balanceHandler_1.handleBalance)(bot, message, callbackQuery);
+            }
             else if (data.startsWith('profile_')) {
                 await (0, profileHandler_1.handleProfile)(bot, message, callbackQuery);
             }
             else if (data.startsWith('store_')) {
-                logger_1.logger.debug(`Handling store callback for user ${message.from?.id}: ${data}`);
+                logger_1.logger.debug(`Handling store callback for user ${message.from?.id}: ${(0, sanitizer_1.sanitizeForLog)(data)}`);
                 await (0, storeHandler_1.handleStores)(bot, message, callbackQuery);
             }
             else if (data.startsWith('product_') || data.startsWith('cms_product_')) {
@@ -57,7 +62,7 @@ function setupHandlers(bot) {
                 const handled = await (0, botCreationHandler_1.handleBotCreationCallback)(bot, message.chat.id, data) ||
                     await (0, botCreationHandler_1.handleBotCreationSkipCallback)(bot, message.chat.id, data);
                 if (!handled) {
-                    logger_1.logger.warn(`Unhandled bot callback: ${data}`);
+                    logger_1.logger.warn(`Unhandled bot callback: ${(0, sanitizer_1.sanitizeForLog)(data)}`);
                 }
             }
             await bot.answerCallbackQuery(callbackQuery.id);

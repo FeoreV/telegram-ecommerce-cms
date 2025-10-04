@@ -4,13 +4,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.backupEncryptionService = exports.BackupEncryptionService = void 0;
+const child_process_1 = require("child_process");
+const crypto_1 = __importDefault(require("crypto"));
 const promises_1 = __importDefault(require("fs/promises"));
 const path_1 = __importDefault(require("path"));
-const crypto_1 = __importDefault(require("crypto"));
-const child_process_1 = require("child_process");
+const logger_1 = require("../utils/logger");
 const EncryptionService_1 = require("./EncryptionService");
 const VaultService_1 = require("./VaultService");
-const logger_1 = require("../utils/logger");
 class BackupEncryptionService {
     constructor() {
         this.config = {
@@ -232,8 +232,11 @@ class BackupEncryptionService {
         }
     }
     async compressData(sourcePath) {
+        const { sanitizeFilePath, sanitizeFlagValue } = await import('../utils/commandSanitizer');
+        const safePath = sanitizeFilePath(sourcePath);
+        const safeCompressionLevel = sanitizeFlagValue(this.config.compressionLevel);
         return new Promise((resolve, reject) => {
-            const gzip = (0, child_process_1.spawn)('gzip', ['-c', `-${this.config.compressionLevel}`, sourcePath]);
+            const gzip = (0, child_process_1.spawn)('gzip', ['-c', `-${safeCompressionLevel}`, safePath]);
             const chunks = [];
             gzip.stdout.on('data', (chunk) => {
                 chunks.push(chunk);

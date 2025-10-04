@@ -6,10 +6,41 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getVaultService = exports.VaultService = void 0;
 const axios_1 = __importDefault(require("axios"));
 const logger_1 = require("../utils/logger");
+const sanitizer_1 = require("../utils/sanitizer");
 class VaultService {
+    validateVaultAddress(address) {
+        try {
+            const url = new URL(address);
+            if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+                throw new Error('SECURITY: Only HTTP/HTTPS protocols allowed for Vault');
+            }
+            if (process.env.NODE_ENV === 'production') {
+                const hostname = url.hostname;
+                const blockedPatterns = [
+                    /^127\./,
+                    /^10\./,
+                    /^172\.(1[6-9]|2\d|3[01])\./,
+                    /^192\.168\./,
+                    /^169\.254\./,
+                    /^localhost$/i,
+                ];
+                for (const pattern of blockedPatterns) {
+                    if (pattern.test(hostname)) {
+                        throw new Error('SECURITY: Internal/private IPs not allowed in production');
+                    }
+                }
+            }
+            logger_1.logger.info(`Vault address validated: ${(0, sanitizer_1.sanitizeForLog)(url.origin)}`);
+        }
+        catch (error) {
+            logger_1.logger.error('Invalid Vault address:', (0, sanitizer_1.sanitizeForLog)(address));
+            throw new Error(`Invalid Vault address: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    }
     constructor(config) {
         this.token = null;
         this.tokenExpiry = null;
+        this.validateVaultAddress(config.address);
         this.config = config;
         this.client = axios_1.default.create({
             baseURL: config.address,
@@ -61,28 +92,28 @@ class VaultService {
             return response.data.data.data;
         }
         catch (error) {
-            logger_1.logger.error(`Failed to get secret from path: ${path}`, error);
-            throw new Error(`Failed to retrieve secret: ${path}`);
+            logger_1.logger.error(`Failed to get secret from path: ${(0, sanitizer_1.sanitizeForLog)(path)}`, error);
+            throw new Error(`Failed to retrieve secret: ${(0, sanitizer_1.sanitizeForLog)(path)}`);
         }
     }
     async putSecret(path, data) {
         try {
             await this.client.post(`/v1/kv/data/${path}`, { data });
-            logger_1.logger.info(`Secret stored successfully at path: ${path}`);
+            logger_1.logger.info(`Secret stored successfully at path: ${(0, sanitizer_1.sanitizeForLog)(path)}`);
         }
         catch (error) {
-            logger_1.logger.error(`Failed to store secret at path: ${path}`, error);
-            throw new Error(`Failed to store secret: ${path}`);
+            logger_1.logger.error(`Failed to store secret at path: ${(0, sanitizer_1.sanitizeForLog)(path)}`, error);
+            throw new Error(`Failed to store secret: ${(0, sanitizer_1.sanitizeForLog)(path)}`);
         }
     }
     async deleteSecret(path) {
         try {
             await this.client.delete(`/v1/kv/data/${path}`);
-            logger_1.logger.info(`Secret deleted successfully from path: ${path}`);
+            logger_1.logger.info(`Secret deleted successfully from path: ${(0, sanitizer_1.sanitizeForLog)(path)}`);
         }
         catch (error) {
-            logger_1.logger.error(`Failed to delete secret from path: ${path}`, error);
-            throw new Error(`Failed to delete secret: ${path}`);
+            logger_1.logger.error(`Failed to delete secret from path: ${(0, sanitizer_1.sanitizeForLog)(path)}`, error);
+            throw new Error(`Failed to delete secret: ${(0, sanitizer_1.sanitizeForLog)(path)}`);
         }
     }
     async listSecrets(path) {
@@ -91,8 +122,8 @@ class VaultService {
             return response.data.data.keys || [];
         }
         catch (error) {
-            logger_1.logger.error(`Failed to list secrets at path: ${path}`, error);
-            throw new Error(`Failed to list secrets: ${path}`);
+            logger_1.logger.error(`Failed to list secrets at path: ${(0, sanitizer_1.sanitizeForLog)(path)}`, error);
+            throw new Error(`Failed to list secrets: ${(0, sanitizer_1.sanitizeForLog)(path)}`);
         }
     }
     async getDatabaseCredentials(role) {
@@ -104,8 +135,8 @@ class VaultService {
             };
         }
         catch (error) {
-            logger_1.logger.error(`Failed to get database credentials for role: ${role}`, error);
-            throw new Error(`Failed to get database credentials: ${role}`);
+            logger_1.logger.error(`Failed to get database credentials for role: ${(0, sanitizer_1.sanitizeForLog)(role)}`, error);
+            throw new Error(`Failed to get database credentials: ${(0, sanitizer_1.sanitizeForLog)(role)}`);
         }
     }
     async encrypt(keyName, plaintext) {
@@ -117,8 +148,8 @@ class VaultService {
             return response.data.data.ciphertext;
         }
         catch (error) {
-            logger_1.logger.error(`Failed to encrypt data with key: ${keyName}`, error);
-            throw new Error(`Failed to encrypt data: ${keyName}`);
+            logger_1.logger.error(`Failed to encrypt data with key: ${(0, sanitizer_1.sanitizeForLog)(keyName)}`, error);
+            throw new Error(`Failed to encrypt data: ${(0, sanitizer_1.sanitizeForLog)(keyName)}`);
         }
     }
     async decrypt(keyName, ciphertext) {
@@ -129,8 +160,8 @@ class VaultService {
             return Buffer.from(response.data.data.plaintext, 'base64').toString();
         }
         catch (error) {
-            logger_1.logger.error(`Failed to decrypt data with key: ${keyName}`, error);
-            throw new Error(`Failed to decrypt data: ${keyName}`);
+            logger_1.logger.error(`Failed to decrypt data with key: ${(0, sanitizer_1.sanitizeForLog)(keyName)}`, error);
+            throw new Error(`Failed to decrypt data: ${(0, sanitizer_1.sanitizeForLog)(keyName)}`);
         }
     }
     async healthCheck() {

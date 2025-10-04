@@ -1,8 +1,8 @@
-import { URL } from 'url';
 import dns from 'dns/promises';
 import net from 'net';
-import { logger } from '../utils/logger';
+import { URL } from 'url';
 import { getErrorMessage } from '../utils/errorUtils';
+import { logger } from '../utils/logger';
 
 export interface SSRFConfig {
   enableProtection: boolean;
@@ -105,7 +105,7 @@ export class SSRFProtectionService {
       try {
         parsedURL = new URL(url);
         result.normalizedURL = parsedURL.toString();
-      } catch (error) {
+      } catch (_error) {
         result.reason = 'Invalid URL format';
         return result;
       }
@@ -120,10 +120,10 @@ export class SSRFProtectionService {
 
       // Check domain allowlist first
       if (this.config.allowedDomains.length > 0) {
-        const isAllowedDomain = this.config.allowedDomains.some(domain => 
+        const isAllowedDomain = this.config.allowedDomains.some(domain =>
           this.matchesDomain(parsedURL.hostname, domain)
         );
-        
+
         if (isAllowedDomain) {
           result.isAllowed = true;
           return result;
@@ -131,10 +131,10 @@ export class SSRFProtectionService {
       }
 
       // Check blocked domains
-      const isBlockedDomain = this.config.blockedDomains.some(domain => 
+      const isBlockedDomain = this.config.blockedDomains.some(domain =>
         this.matchesDomain(parsedURL.hostname, domain)
       );
-      
+
       if (isBlockedDomain) {
         result.reason = `Domain '${parsedURL.hostname}' is blocked`;
         return result;
@@ -152,10 +152,10 @@ export class SSRFProtectionService {
 
         // Check IP allowlist
         if (this.config.allowedIPs.length > 0) {
-          const isAllowedIP = this.config.allowedIPs.some(ip => 
+          const isAllowedIP = this.config.allowedIPs.some(ip =>
             this.matchesIP(resolvedIP, ip)
           );
-          
+
           if (isAllowedIP) {
             result.isAllowed = true;
             return result;
@@ -163,10 +163,10 @@ export class SSRFProtectionService {
         }
 
         // Check blocked IPs
-        const isBlockedIP = this.config.blockedIPs.some(ip => 
+        const isBlockedIP = this.config.blockedIPs.some(ip =>
           this.matchesIP(resolvedIP, ip)
         );
-        
+
         if (isBlockedIP) {
           result.reason = `IP address '${resolvedIP}' is blocked`;
           return result;
@@ -214,7 +214,7 @@ export class SSRFProtectionService {
       }
 
       const ip = addresses[0];
-      
+
       // Cache result
       this.dnsCache.set(hostname, {
         ip,
@@ -252,7 +252,7 @@ export class SSRFProtectionService {
 
     // IPv4 validation
     const ipParts = ip.split('.').map(Number);
-    
+
     // Loopback (127.x.x.x)
     if (ipParts[0] === 127) {
       if (!this.config.allowLoopback) {
@@ -305,13 +305,13 @@ export class SSRFProtectionService {
   private isPrivateIP(ipParts: number[]): boolean {
     // 10.x.x.x
     if (ipParts[0] === 10) return true;
-    
+
     // 172.16.x.x - 172.31.x.x
     if (ipParts[0] === 172 && ipParts[1] >= 16 && ipParts[1] <= 31) return true;
-    
+
     // 192.168.x.x
     if (ipParts[0] === 192 && ipParts[1] === 168) return true;
-    
+
     return false;
   }
 
@@ -321,13 +321,13 @@ export class SSRFProtectionService {
   private matchesDomain(hostname: string, pattern: string): boolean {
     // Exact match
     if (hostname === pattern) return true;
-    
+
     // Wildcard support (*.example.com)
     if (pattern.startsWith('*.')) {
       const baseDomain = pattern.slice(2);
       return hostname === baseDomain || hostname.endsWith('.' + baseDomain);
     }
-    
+
     return false;
   }
 
@@ -337,25 +337,25 @@ export class SSRFProtectionService {
   private matchesIP(ip: string, pattern: string): boolean {
     // Exact match
     if (ip === pattern) return true;
-    
+
     // CIDR support (basic implementation)
     if (pattern.includes('/')) {
       const [networkIP, prefixLength] = pattern.split('/');
       const prefix = parseInt(prefixLength, 10);
-      
+
       if (prefix < 0 || prefix > 32) return false;
-      
+
       try {
         const ipInt = this.ipToInt(ip);
         const networkInt = this.ipToInt(networkIP);
         const mask = (0xFFFFFFFF << (32 - prefix)) >>> 0;
-        
+
         return (ipInt & mask) === (networkInt & mask);
-      } catch (error) {
+      } catch (_error) {
         return false;
       }
     }
-    
+
     return false;
   }
 
@@ -392,7 +392,7 @@ export class SSRFProtectionService {
     try {
       // Import fetch dynamically (if using node-fetch)
       const fetch = (await import('node-fetch')).default;
-      
+
       const requestOptions = {
         method: options.method || 'GET',
         headers: {
@@ -405,7 +405,7 @@ export class SSRFProtectionService {
       };
 
       const response = await fetch(targetURL, requestOptions);
-      
+
       // Log successful request
       logger.debug('Secure HTTP request completed', {
         url: targetURL,
@@ -429,19 +429,19 @@ export class SSRFProtectionService {
    */
   async validateWebhookURL(url: string): Promise<ValidationResult> {
     const result = await this.validateURL(url);
-    
+
     // Additional webhook-specific validations
     if (result.isAllowed) {
       try {
         const parsedURL = new URL(url);
-        
+
         // Ensure HTTPS for webhooks in production
         if (process.env.NODE_ENV === 'production' && parsedURL.protocol !== 'https:') {
           result.isAllowed = false;
           result.reason = 'HTTPS required for webhooks in production';
           return result;
         }
-        
+
         // Check for suspicious paths
         const suspiciousPaths = ['/admin', '/internal', '/debug', '/test'];
         if (suspiciousPaths.some(path => parsedURL.pathname.includes(path))) {
@@ -449,13 +449,13 @@ export class SSRFProtectionService {
           result.reason = 'Webhook URL contains suspicious path';
           return result;
         }
-        
-      } catch (error) {
+
+      } catch (_error) {
         result.isAllowed = false;
         result.reason = 'Invalid webhook URL';
       }
     }
-    
+
     return result;
   }
 
@@ -497,14 +497,14 @@ export class SSRFProtectionService {
     setInterval(() => {
       const now = Date.now();
       let cleanedCount = 0;
-      
+
       for (const [hostname, data] of this.dnsCache.entries()) {
         if (now - data.timestamp > this.dnsCacheTTL) {
           this.dnsCache.delete(hostname);
           cleanedCount++;
         }
       }
-      
+
       if (cleanedCount > 0) {
         logger.debug('DNS cache cleaned up', {
           cleanedCount,
@@ -544,7 +544,7 @@ export class SSRFProtectionService {
   }> {
     try {
       const stats = this.getStats();
-      
+
       return {
         status: 'healthy',
         stats

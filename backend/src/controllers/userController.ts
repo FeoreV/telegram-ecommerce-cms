@@ -1,11 +1,13 @@
-import { Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/auth';
-import { prisma } from '../lib/prisma';
-import { AppError, asyncHandler } from '../middleware/errorHandler';
-import { logger, toLogMetadata } from '../utils/logger';
-import { UserRole } from '../utils/jwt';
-import { NotificationService, NotificationPriority, NotificationType, NotificationChannel } from '../services/notificationService';
 import { Prisma } from '@prisma/client';
+import { Response } from 'express';
+import { prisma } from '../lib/prisma';
+import { AuthenticatedRequest } from '../middleware/auth';
+import { AppError, asyncHandler } from '../middleware/errorHandler';
+import { NotificationChannel, NotificationPriority, NotificationService, NotificationType } from '../services/notificationService';
+import { UserRole } from '../utils/jwt';
+import { logger, toLogMetadata } from '../utils/logger';
+// SECURITY FIX: Import sanitization for XSS and Log Injection protection
+import { sanitizeHtml, sanitizeForLog } from '../utils/sanitizer';
 
 // Get all users with role-based filtering
 export const getUsers = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
@@ -21,7 +23,7 @@ export const getUsers = asyncHandler(async (req: AuthenticatedRequest, res: Resp
   }
 
   const skip = (Number(page) - 1) * Number(limit);
-  
+
   // Build where clause
   const whereClause: Prisma.UserWhereInput = {};
 
@@ -267,7 +269,7 @@ export const updateUserRole = asyncHandler(async (req: AuthenticatedRequest, res
       if (storeAssignments && Array.isArray(storeAssignments)) {
         for (const assignment of storeAssignments) {
           const { storeId, role: assignmentRole } = assignment;
-          
+
           // Verify store exists and user has access to assign
           const store = await tx.store.findUnique({
             where: { id: storeId }
@@ -303,8 +305,8 @@ export const updateUserRole = asyncHandler(async (req: AuthenticatedRequest, res
       return updated;
     });
 
-    // Log role change
-    logger.info(`User role updated: ${id} changed from ${user.role} to ${role} by ${req.user.id}`);
+    // SECURITY FIX: CWE-117 - Sanitize log data
+    logger.info(`User role updated: ${sanitizeForLog(id)} changed from ${sanitizeForLog(user.role)} to ${sanitizeForLog(role)} by ${sanitizeForLog(req.user.id)}`);
 
     // Notify user about role change
     NotificationService.send({
@@ -321,9 +323,9 @@ export const updateUserRole = asyncHandler(async (req: AuthenticatedRequest, res
       }
     });
 
-    res.json({ 
-      user: updatedUser, 
-      message: 'User role updated successfully' 
+    res.json({
+      user: updatedUser,
+      message: 'User role updated successfully'
     });
 
   } catch (error: unknown) {
@@ -370,7 +372,8 @@ export const toggleUserStatus = asyncHandler(async (req: AuthenticatedRequest, r
     }
   });
 
-  logger.info(`User status toggled: ${id} ${user.isActive ? 'deactivated' : 'activated'} by ${req.user.id}`);
+  // SECURITY FIX: CWE-117 - Sanitize log data
+  logger.info(`User status toggled: ${sanitizeForLog(id)} ${user.isActive ? 'deactivated' : 'activated'} by ${sanitizeForLog(req.user.id)}`);
 
   // Notify user about status change
   if (updatedUser.isActive) {
@@ -387,9 +390,9 @@ export const toggleUserStatus = asyncHandler(async (req: AuthenticatedRequest, r
     });
   }
 
-  res.json({ 
-    user: updatedUser, 
-    message: `User ${updatedUser.isActive ? 'activated' : 'deactivated'} successfully` 
+  res.json({
+    user: updatedUser,
+    message: `User ${updatedUser.isActive ? 'activated' : 'deactivated'} successfully`
   });
 });
 
@@ -493,7 +496,8 @@ export const assignUserToStore = asyncHandler(async (req: AuthenticatedRequest, 
       }) as any;
     }
 
-    logger.info(`User ${userId} assigned as ${role} to store ${storeId} by ${req.user.id}`);
+    // SECURITY FIX: CWE-117 - Sanitize log data
+    logger.info(`User ${sanitizeForLog(userId)} assigned as ${sanitizeForLog(role)} to store ${sanitizeForLog(storeId)} by ${sanitizeForLog(req.user.id)}`);
 
     // Notify user about assignment
     NotificationService.send({
@@ -511,9 +515,9 @@ export const assignUserToStore = asyncHandler(async (req: AuthenticatedRequest, 
       }
     });
 
-    res.json({ 
-      assignment, 
-      message: 'User assigned to store successfully' 
+    res.json({
+      assignment,
+      message: 'User assigned to store successfully'
     });
 
   } catch (error: unknown) {
@@ -561,7 +565,8 @@ export const removeUserFromStore = asyncHandler(async (req: AuthenticatedRequest
       throw new AppError('Assignment not found', 404);
     }
 
-    logger.info(`User ${userId} removed as ${role} from store ${storeId} by ${req.user.id}`);
+    // SECURITY FIX: CWE-117 - Sanitize log data
+    logger.info(`User ${sanitizeForLog(userId)} removed as ${sanitizeForLog(role)} from store ${sanitizeForLog(storeId)} by ${sanitizeForLog(req.user.id)}`);
 
     // Get store info for notification
     const store = await prisma.store.findUnique({
@@ -571,16 +576,20 @@ export const removeUserFromStore = asyncHandler(async (req: AuthenticatedRequest
 
     // Notify user about removal
     if (store) {
+      // SECURITY FIX: Sanitize store name to prevent XSS (CWE-79)
+      const safeStoreName = sanitizeHtml(store.name);
+      const safeRole = role === 'ADMIN' ? 'администратор' : 'продавец';
+
       NotificationService.send({
         title: 'Доступ к магазину отозван',
-        message: `Ваш доступ к магазину "${store.name}" как ${role === 'ADMIN' ? 'администратор' : 'продавец'} был отозван`,
+        message: `Ваш доступ к магазину "${safeStoreName}" как ${safeRole} был отозван`,
         type: NotificationType.USER_REGISTERED,
         priority: NotificationPriority.MEDIUM,
         recipients: [userId],
         channels: [NotificationChannel.TELEGRAM, NotificationChannel.SOCKET],
         data: {
           storeId,
-          storeName: store.name,
+          storeName: safeStoreName,
           role,
           removedBy: req.user.id
         }
@@ -699,7 +708,8 @@ export const deleteUser = asyncHandler(async (req: AuthenticatedRequest, res: Re
       where: { id }
     });
 
-    logger.info(`User deleted: ${id} by ${req.user.id}`);
+    // SECURITY FIX: CWE-117 - Sanitize log data
+    logger.info(`User deleted: ${sanitizeForLog(id)} by ${sanitizeForLog(req.user.id)}`);
 
     res.json({ message: 'User deleted successfully' });
 
@@ -1004,8 +1014,8 @@ export const banUser = asyncHandler(async (req: AuthenticatedRequest, res: Respo
       await tx.adminLog.create({
         data: {
           action: 'USER_BANNED',
-          details: JSON.stringify({ 
-            userId: id, 
+          details: JSON.stringify({
+            userId: id,
             reason: reason || 'No reason provided',
             bannedBy: req.user.id
           }),
@@ -1016,7 +1026,8 @@ export const banUser = asyncHandler(async (req: AuthenticatedRequest, res: Respo
       return banned;
     });
 
-    logger.info(`User banned: ${id} by ${req.user.id}, reason: ${reason || 'No reason'}`);
+    // SECURITY FIX: CWE-117 - Sanitize log data
+    logger.info(`User banned: ${sanitizeForLog(id)} by ${sanitizeForLog(req.user.id)}, reason: ${sanitizeForLog(reason || 'No reason')}`);
 
     // Notify user about ban
     NotificationService.send({
@@ -1032,9 +1043,9 @@ export const banUser = asyncHandler(async (req: AuthenticatedRequest, res: Respo
       }
     });
 
-    res.json({ 
-      user: updatedUser, 
-      message: 'User banned successfully' 
+    res.json({
+      user: updatedUser,
+      message: 'User banned successfully'
     });
 
   } catch (error: unknown) {
@@ -1080,7 +1091,7 @@ export const unbanUser = asyncHandler(async (req: AuthenticatedRequest, res: Res
       await tx.adminLog.create({
         data: {
           action: 'USER_UNBANNED',
-          details: JSON.stringify({ 
+          details: JSON.stringify({
             userId: id,
             unbannedBy: req.user.id
           }),
@@ -1091,7 +1102,8 @@ export const unbanUser = asyncHandler(async (req: AuthenticatedRequest, res: Res
       return unbanned;
     });
 
-    logger.info(`User unbanned: ${id} by ${req.user.id}`);
+    // SECURITY FIX: CWE-117 - Sanitize log data
+    logger.info(`User unbanned: ${sanitizeForLog(id)} by ${sanitizeForLog(req.user.id)}`);
 
     // Notify user about unban
     NotificationService.send({
@@ -1106,9 +1118,9 @@ export const unbanUser = asyncHandler(async (req: AuthenticatedRequest, res: Res
       }
     });
 
-    res.json({ 
-      user: updatedUser, 
-      message: 'User unbanned successfully' 
+    res.json({
+      user: updatedUser,
+      message: 'User unbanned successfully'
     });
 
   } catch (error: unknown) {
@@ -1187,7 +1199,7 @@ export const bulkUserActions = asyncHandler(async (req: AuthenticatedRequest, re
         });
         break;
 
-      case 'delete':
+      case 'delete': {
         // Check if any user owns stores
         const usersWithStores = await prisma.user.findMany({
           where: {
@@ -1210,16 +1222,19 @@ export const bulkUserActions = asyncHandler(async (req: AuthenticatedRequest, re
           }
         });
         break;
+      }
 
       default:
         throw new AppError('Invalid action', 400);
     }
 
-    logger.info(`Bulk action ${action} performed on ${userIds.length} users by ${req.user.id}`);
+    // SECURITY FIX: CWE-117 - Sanitize log data
+    logger.info(`Bulk action ${sanitizeForLog(action)} performed on ${userIds.length} users by ${sanitizeForLog(req.user.id)}`);
 
-    res.json({ 
-      message: `Bulk action ${action} completed successfully`,
-      affectedCount: result.count 
+    // SECURITY FIX: CWE-79 - Sanitize message in JSON response
+    res.json({
+      message: `Bulk action ${sanitizeHtml(action)} completed successfully`,
+      affectedCount: result.count
     });
 
   } catch (error: unknown) {

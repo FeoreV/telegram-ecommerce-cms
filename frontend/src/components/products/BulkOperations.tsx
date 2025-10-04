@@ -1,49 +1,40 @@
-import React, { useState } from 'react'
 import {
-  Box,
-  Button,
-  Checkbox,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Typography,
-  Chip,
-  Alert,
-  Divider,
-  Grid,
-  Paper,
-  IconButton,
-  Tooltip,
-  Fab,
-  Badge,
-  Menu,
-  ListItemIcon,
-  ListItemText,
-} from '@mui/material'
-import {
-  SelectAll,
-  Deselect,
-  Edit,
-  Visibility,
-  VisibilityOff,
-  Delete,
-  Category,
-  LocalOffer,
-  Inventory,
-  CheckCircle,
-  Cancel,
-  MoreHoriz,
-  Close,
+    Cancel,
+    Category,
+    Delete,
+    Inventory,
+    LocalOffer,
+    MoreHoriz,
+    Visibility,
+    VisibilityOff
 } from '@mui/icons-material'
-import { Product, Category as CategoryType } from '../../types'
-import { productService } from '../../services/productService'
+import {
+    Alert,
+    Badge,
+    Box,
+    Button,
+    Checkbox,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    Divider,
+    Fab,
+    FormControl,
+    Grid,
+    InputLabel,
+    ListItemIcon,
+    ListItemText,
+    Menu,
+    MenuItem,
+    Select,
+    TextField,
+    Typography
+} from '@mui/material'
+import React, { useState } from 'react'
 import { toast } from 'react-toastify'
+import { productService } from '../../services/productService'
+import { Category as CategoryType, Product } from '../../types'
 
 interface BulkOperationsProps {
   products: Product[]
@@ -53,7 +44,7 @@ interface BulkOperationsProps {
   onRefresh: () => void
 }
 
-type BulkOperation = 'activate' | 'deactivate' | 'delete' | 'update_category' | 'update_price' | 'update_stock'
+type BulkOperation = 'activate' | 'deactivate' | 'delete' | 'update_category' | 'update_price' | 'update_stock' | 'toggle_visibility'
 
 interface BulkUpdateData {
   operation: BulkOperation
@@ -62,6 +53,7 @@ interface BulkUpdateData {
   fixedPrice?: number
   stockAdjustment?: number
   setStock?: number
+  targetVisibility?: boolean
 }
 
 const BulkOperations: React.FC<BulkOperationsProps> = ({
@@ -99,9 +91,9 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
     }
   }
 
-  const openBulkDialog = (operation: BulkOperation) => {
+  const openBulkDialog = (operation: BulkOperation, targetVisibility?: boolean) => {
     setCurrentOperation(operation)
-    setBulkData({ operation })
+    setBulkData({ operation, targetVisibility })
     setDialogOpen(true)
     setAnchorEl(null)
   }
@@ -114,21 +106,26 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
       const promises = selectedProducts.map(async (productId) => {
         switch (currentOperation) {
           case 'activate':
+            return productService.updateVisibility(productId, true)
+
           case 'deactivate':
-            return productService.toggleActive(productId)
-          
+            return productService.updateVisibility(productId, false)
+
+          case 'toggle_visibility':
+            return productService.updateVisibility(productId, bulkData.targetVisibility === true)
+
           case 'delete':
             return productService.deleteProduct(productId)
-          
+
           case 'update_category':
-            return productService.updateProduct(productId, { 
-              categoryId: bulkData.categoryId 
+            return productService.updateProduct(productId, {
+              categoryId: bulkData.categoryId
             })
-          
-          case 'update_price':
+
+          case 'update_price': {
             const product = products.find(p => p.id === productId)
             if (!product) return Promise.resolve()
-            
+
             let newPrice: number
             if (bulkData.fixedPrice !== undefined) {
               newPrice = bulkData.fixedPrice
@@ -137,13 +134,13 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
             } else {
               return Promise.resolve()
             }
-            
+
             return productService.updateProduct(productId, { price: newPrice })
-          
-          case 'update_stock':
+          }
+          case 'update_stock': {
             const currentProduct = products.find(p => p.id === productId)
             if (!currentProduct) return Promise.resolve()
-            
+
             let newStock: number
             if (bulkData.setStock !== undefined) {
               newStock = bulkData.setStock
@@ -152,9 +149,10 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
             } else {
               return Promise.resolve()
             }
-            
+
             return productService.updateStock(productId, Math.max(0, newStock))
-          
+          }
+
           default:
             return Promise.resolve()
         }
@@ -169,16 +167,17 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
         update_category: 'категория обновлена',
         update_price: 'цены обновлены',
         update_stock: 'остатки обновлены',
+        toggle_visibility: 'видимость обновлена',
       }
 
       toast.success(`Товары ${operationNames[currentOperation]} (${selectedProducts.length} шт.)`)
-      
+
       // Очищаем выделение
       onSelectionChange([])
-      
+
       // Обновляем список
       onRefresh()
-      
+
       // Закрываем диалог
       setDialogOpen(false)
       setCurrentOperation(null)
@@ -197,6 +196,7 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
       update_category: 'Изменить категорию',
       update_price: 'Изменить цены',
       update_stock: 'Изменить остатки',
+      toggle_visibility: 'Изменить видимость',
     }
     return titles[operation]
   }
@@ -205,11 +205,16 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
     switch (currentOperation) {
       case 'activate':
       case 'deactivate':
+      case 'toggle_visibility':
         return (
           <Alert severity="info">
-            {currentOperation === 'activate' 
+            {currentOperation === 'activate'
               ? 'Выбранные товары станут видимыми для покупателей'
-              : 'Выбранные товары будут скрыты от покупателей'
+              : currentOperation === 'deactivate'
+              ? 'Выбранные товары будут скрыты от покупателей'
+              : bulkData.targetVisibility
+                ? 'Выбранные товары станут видимыми для покупателей'
+                : 'Выбранные товары будут скрыты от покупателей'
             }
           </Alert>
         )
@@ -218,7 +223,7 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
         return (
           <Alert severity="error">
             <Typography variant="body2">
-              <strong>Внимание!</strong> Это действие необратимо. 
+              <strong>Внимание!</strong> Это действие необратимо.
               Все выбранные товары и их данные будут удалены навсегда.
             </Typography>
           </Alert>
@@ -257,10 +262,10 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
                 type="number"
                 fullWidth
                 value={bulkData.fixedPrice || ''}
-                onChange={(e) => setBulkData(prev => ({ 
-                  ...prev, 
-                  fixedPrice: Number(e.target.value), 
-                  priceMultiplier: undefined 
+                onChange={(e) => setBulkData(prev => ({
+                  ...prev,
+                  fixedPrice: Number(e.target.value),
+                  priceMultiplier: undefined
                 }))}
                 inputProps={{ min: 0, step: 0.01 }}
                 helperText="Установит одинаковую цену для всех товаров"
@@ -272,10 +277,10 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
                 type="number"
                 fullWidth
                 value={bulkData.priceMultiplier || ''}
-                onChange={(e) => setBulkData(prev => ({ 
-                  ...prev, 
-                  priceMultiplier: Number(e.target.value), 
-                  fixedPrice: undefined 
+                onChange={(e) => setBulkData(prev => ({
+                  ...prev,
+                  priceMultiplier: Number(e.target.value),
+                  fixedPrice: undefined
                 }))}
                 inputProps={{ min: 0, step: 0.1 }}
                 helperText="1.0 = без изменений, 1.1 = +10%, 0.9 = -10%"
@@ -298,10 +303,10 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
                 type="number"
                 fullWidth
                 value={bulkData.setStock || ''}
-                onChange={(e) => setBulkData(prev => ({ 
-                  ...prev, 
-                  setStock: Number(e.target.value), 
-                  stockAdjustment: undefined 
+                onChange={(e) => setBulkData(prev => ({
+                  ...prev,
+                  setStock: Number(e.target.value),
+                  stockAdjustment: undefined
                 }))}
                 inputProps={{ min: 0 }}
                 helperText="Установит одинаковое количество для всех товаров"
@@ -313,10 +318,10 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
                 type="number"
                 fullWidth
                 value={bulkData.stockAdjustment || ''}
-                onChange={(e) => setBulkData(prev => ({ 
-                  ...prev, 
-                  stockAdjustment: Number(e.target.value), 
-                  setStock: undefined 
+                onChange={(e) => setBulkData(prev => ({
+                  ...prev,
+                  stockAdjustment: Number(e.target.value),
+                  setStock: undefined
                 }))}
                 helperText="+ для добавления, - для уменьшения"
               />
@@ -339,9 +344,9 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
           onChange={handleSelectAll}
           inputProps={{ 'aria-label': 'select all products' }}
         />
-        
+
         <Typography variant="body2" color="text.secondary">
-          {selectedCount > 0 
+          {selectedCount > 0
             ? `Выбrano: ${selectedCount} из ${products.length}`
             : 'Выбрать все товары'
           }
@@ -358,7 +363,7 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
             >
               Активировать
             </Button>
-            
+
             <Button
               size="small"
               startIcon={<VisibilityOff />}
@@ -414,30 +419,45 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
         open={Boolean(anchorEl)}
         onClose={() => setAnchorEl(null)}
       >
+        <MenuItem onClick={() => openBulkDialog('toggle_visibility', true)}>
+          <ListItemIcon>
+            <Visibility fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Установить видимым</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => openBulkDialog('toggle_visibility', false)}>
+          <ListItemIcon>
+            <VisibilityOff fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Установить скрытым</ListItemText>
+        </MenuItem>
+
+        <Divider />
+
         <MenuItem onClick={() => openBulkDialog('update_category')}>
           <ListItemIcon>
             <Category fontSize="small" />
           </ListItemIcon>
           <ListItemText>Изменить категорию</ListItemText>
         </MenuItem>
-        
+
         <MenuItem onClick={() => openBulkDialog('update_price')}>
           <ListItemIcon>
             <LocalOffer fontSize="small" />
           </ListItemIcon>
           <ListItemText>Изменить цены</ListItemText>
         </MenuItem>
-        
+
         <MenuItem onClick={() => openBulkDialog('update_stock')}>
           <ListItemIcon>
             <Inventory fontSize="small" />
           </ListItemIcon>
           <ListItemText>Изменить остатки</ListItemText>
         </MenuItem>
-        
+
         <Divider />
-        
-        <MenuItem 
+
+        <MenuItem
           onClick={() => openBulkDialog('delete')}
           sx={{ color: 'error.main' }}
         >
@@ -449,8 +469,8 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
       </Menu>
 
       {/* Диалог массовых операций */}
-      <Dialog 
-        open={dialogOpen} 
+      <Dialog
+        open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         maxWidth="sm"
         fullWidth
@@ -461,11 +481,11 @@ const BulkOperations: React.FC<BulkOperationsProps> = ({
             Применить к {selectedCount} товарам
           </Typography>
         </DialogTitle>
-        
+
         <DialogContent>
           {currentOperation && renderOperationContent()}
         </DialogContent>
-        
+
         <DialogActions>
           <Button onClick={() => setDialogOpen(false)} disabled={loading}>
             Отмена

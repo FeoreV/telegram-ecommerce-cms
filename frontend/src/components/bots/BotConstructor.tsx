@@ -1,71 +1,58 @@
-import React, { useState, useEffect } from 'react';
 import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Grid,
-  Stepper,
-  Step,
-  StepLabel,
-  StepContent,
-  Alert,
-  Chip,
-  IconButton,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Switch,
-  FormControlLabel,
-  Divider,
-  Avatar,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  ListItemSecondaryAction,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Tooltip,
-  Paper,
-  Tab,
-  Tabs,
-  CircularProgress,
-  LinearProgress,
-} from '@mui/material';
-import {
-  SmartToy as BotIcon,
-  Store as StoreIcon,
-  Palette as DesignIcon,
-  ChatBubble as ChatIcon,
-  Inventory as CatalogIcon,
-  Notifications as NotificationIcon,
-  Preview as PreviewIcon,
-  PlayArrow as TestIcon,
-  ExpandMore as ExpandMoreIcon,
-  Add as AddIcon,
-  Delete as DeleteIcon,
-  Edit as EditIcon,
-  Check as CheckIcon,
-  Warning as WarningIcon,
-  Info as InfoIcon,
-  ColorLens as ColorIcon,
-  Image as ImageIcon,
-  Settings as SettingsIcon,
-  Payment as PaymentIcon,
-  Language as LanguageIcon,
+    Add as AddIcon,
+    SmartToy as BotIcon,
+    ChatBubble as ChatIcon,
+    Check as CheckIcon,
+    Delete as DeleteIcon,
+    Palette as DesignIcon,
+    Edit as EditIcon,
+    Image as ImageIcon,
+    Notifications as NotificationIcon,
+    Payment as PaymentIcon,
+    Preview as PreviewIcon,
+    Settings as SettingsIcon,
+    Store as StoreIcon
 } from '@mui/icons-material';
+import {
+    Alert,
+    Avatar,
+    Box,
+    Button,
+    Card,
+    CardContent,
+    Chip,
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    Divider,
+    FormControl,
+    FormControlLabel,
+    Grid,
+    IconButton,
+    InputLabel,
+    LinearProgress,
+    List,
+    ListItem,
+    ListItemIcon,
+    ListItemSecondaryAction,
+    ListItemText,
+    MenuItem,
+    Paper,
+    Select,
+    Switch,
+    Tab,
+    Tabs,
+    TextField,
+    Tooltip,
+    Typography
+} from '@mui/material';
+import { useTheme } from '@mui/material/styles';
+import React, { useEffect, useState } from 'react';
 import { apiClient } from '../../services/apiClient';
-import BotTemplates from './BotTemplates';
 import StoreDialog from '../stores/StoreDialog';
+import BotTemplates from './BotTemplates';
 
 interface BotTemplate {
   id: string;
@@ -85,13 +72,13 @@ interface BotTemplate {
   features: string[];
 }
 
-interface BotSettings {
+export interface BotSettings {
   // Basic settings
   welcomeMessage: string;
   language: string;
   currency: string;
   timezone: string;
-  
+
   // Start customization
   startCustomization?: {
     emoji?: string;
@@ -106,14 +93,14 @@ interface BotSettings {
     helpButton?: { text: string; emoji?: string };
     extraButtons?: Array<{ text: string; url?: string; callback_data?: string }>;
   };
-  
+
   // Appearance
   theme: 'light' | 'dark' | 'custom';
   primaryColor: string;
   accentColor: string;
   botAvatar?: string;
   storelogo?: string;
-  
+
   // Catalog settings
   catalogStyle: 'grid' | 'list' | 'carousel';
   showPrices: boolean;
@@ -121,7 +108,7 @@ interface BotSettings {
   enableSearch: boolean;
   categoriesPerPage: number;
   productsPerPage: number;
-  
+
   // Auto-responses
   autoResponses: {
     enabled: boolean;
@@ -132,7 +119,7 @@ interface BotSettings {
     };
     responses: AutoResponse[];
   };
-  
+
   // Notifications
   notifications: {
     newOrder: boolean;
@@ -141,7 +128,7 @@ interface BotSettings {
     orderStatusUpdate: boolean;
     customNotifications: CustomNotification[];
   };
-  
+
   // Payment
   paymentMethods: string[];
   paymentInstructions: string;
@@ -151,7 +138,7 @@ interface BotSettings {
     receiver?: string;
     comment?: string;
   };
-  
+
   // Advanced
   enableAnalytics: boolean;
   enableReferralSystem: boolean;
@@ -392,6 +379,7 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
   onBotCreated,
   editBot
 }) => {
+  const theme = useTheme();
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedStore, setSelectedStore] = useState('');
   const [botToken, setBotToken] = useState('');
@@ -404,6 +392,11 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
   const [showStoreDialog, setShowStoreDialog] = useState(false);
   const [extraButton, setExtraButton] = useState({ text: '', url: '', callback_data: '' });
 
+  // States for FAQ/Auto-responses management
+  const [newFaq, setNewFaq] = useState({ trigger: '', response: '' });
+  const [editingFaq, setEditingFaq] = useState<string | null>(null);
+  const [editingData, setEditingData] = useState({ trigger: '', response: '' });
+
   // Validation functions
   const isValidBotToken = (token: string): boolean => {
     const tokenPattern = /^\d+:[A-Za-z0-9_-]+$/;
@@ -415,14 +408,47 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
     return !username || usernamePattern.test(username.trim());
   };
 
-  // Available stores without bots
-  const availableStores = stores.filter(store => !store.hasBot);
+  // Available stores without bots (or the current store being edited)
+  const availableStores = editBot
+    ? stores.filter(store => store.id === editBot.storeId || !store.hasBot)
+    : stores.filter(store => !store.hasBot);
 
   useEffect(() => {
     if (editBot) {
-      // Load existing bot settings for editing
+      // Load existing bot settings for editing with defaults for undefined values
       setSelectedStore(editBot.storeId);
-      setSettings(editBot.settings);
+      setSettings({
+        ...editBot.settings,
+        // Ensure all boolean fields have default values
+        startCustomization: {
+          showStats: editBot.settings.startCustomization?.showStats ?? true,
+          showDescription: editBot.settings.startCustomization?.showDescription ?? true,
+          ...editBot.settings.startCustomization
+        },
+        showPrices: editBot.settings.showPrices ?? true,
+        showStock: editBot.settings.showStock ?? true,
+        enableSearch: editBot.settings.enableSearch ?? true,
+        autoResponses: {
+          enabled: editBot.settings.autoResponses?.enabled ?? true,
+          workingHours: editBot.settings.autoResponses?.workingHours,
+          responses: editBot.settings.autoResponses?.responses ?? []
+        },
+        notifications: {
+          newOrder: editBot.settings.notifications?.newOrder ?? true,
+          lowStock: editBot.settings.notifications?.lowStock ?? false,
+          paymentConfirmation: editBot.settings.notifications?.paymentConfirmation ?? true,
+          orderStatusUpdate: editBot.settings.notifications?.orderStatusUpdate ?? true,
+          customNotifications: editBot.settings.notifications?.customNotifications ?? []
+        },
+        enableAnalytics: editBot.settings.enableAnalytics ?? true,
+        enableReferralSystem: editBot.settings.enableReferralSystem ?? false,
+        enableReviews: editBot.settings.enableReviews ?? true
+      });
+      // Skip basic and template steps when editing
+      setCurrentStep(2); // Start at customization step
+    } else {
+      // Reset to first step when creating new bot
+      setCurrentStep(0);
     }
   }, [editBot]);
 
@@ -442,7 +468,9 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
   };
 
   const handleBack = () => {
-    setCurrentStep(prev => Math.max(prev - 1, 0));
+    // When editing, don't go back before step 2 (customization)
+    const minStep = editBot ? 2 : 0;
+    setCurrentStep(prev => Math.max(prev - 1, minStep));
   };
 
   const validateCurrentStep = (): boolean => {
@@ -451,9 +479,12 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
     switch (STEPS[currentStep].id) {
       case 'basic':
         if (!selectedStore) errors.store = 'Выберите магазин';
-        if (!botToken) errors.token = 'Введите токен бота';
-        else if (!isValidBotToken(botToken)) errors.token = 'Неверный формат токена';
-        if (botUsername && !isValidBotUsername(botUsername)) errors.username = 'Неверный формат username';
+        // Skip token validation when editing
+        if (!editBot) {
+          if (!botToken) errors.token = 'Введите токен бота';
+          else if (!isValidBotToken(botToken)) errors.token = 'Неверный формат токена';
+          if (botUsername && !isValidBotUsername(botUsername)) errors.username = 'Неверный формат username';
+        }
         break;
       case 'template':
         if (!selectedTemplate && !editBot) errors.template = 'Выберите шаблон';
@@ -496,8 +527,8 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
 
       onBotCreated();
       onClose();
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Ошибка создания бота';
+    } catch (error: unknown) {
+      const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Ошибка создания бота';
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -509,7 +540,7 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
       <Typography variant="h6" gutterBottom>
         🤖 Основные настройки бота
       </Typography>
-      
+
       <Grid container spacing={3}>
         <Grid item xs={12}>
           <FormControl fullWidth error={!!validationErrors.store}>
@@ -534,9 +565,9 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
             {availableStores.length === 0 && !editBot && (
               <Alert severity="warning" sx={{ mt: 1 }}
                 action={
-                  <Button 
-                    color="inherit" 
-                    size="small" 
+                  <Button
+                    color="inherit"
+                    size="small"
                     startIcon={<StoreIcon />}
                     onClick={() => setShowStoreDialog(true)}
                   >
@@ -622,14 +653,14 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
   const renderCustomizationStep = () => {
     const customization = settings.startCustomization || {};
 
-    const handleCustomizationChange = (field: string, value: any) => {
-      setSettings({
-        ...settings,
+    const handleCustomizationChange = (field: string, value: unknown) => {
+      setSettings(prev => ({
+        ...prev,
         startCustomization: {
           ...customization,
           [field]: value
         }
-      });
+      }));
     };
 
     const handleButtonChange = (buttonType: string, field: string, value: string) => {
@@ -642,7 +673,7 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
 
     const addExtraButton = () => {
       if (!extraButton.text || (!extraButton.url && !extraButton.callback_data)) return;
-      
+
       const currentButtons = customization.extraButtons || [];
       handleCustomizationChange('extraButtons', [
         ...currentButtons,
@@ -662,11 +693,11 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
           🎨 Кастомизация внешнего вида и интерфейса бота
         </Typography>
         <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
-          Настройте внешний вид, язык, цветовую схему и стартовое сообщение бота
+          Настройте язык, валюту и стартовое сообщение бота
         </Typography>
 
         <Tabs value={0} sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}>
-          <Tab label="Локализация и цвета" />
+          <Tab label="Настройки и локализация" />
         </Tabs>
 
         <Grid container spacing={3}>
@@ -742,56 +773,6 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
             </FormControl>
           </Grid>
 
-          {/* Тема и цвета */}
-          <Grid item xs={12}>
-            <Divider sx={{ my: 2 }}>
-              <Chip label="🎨 Тема и цвета" />
-            </Divider>
-          </Grid>
-
-          <Grid item xs={12} md={4}>
-            <FormControl fullWidth>
-              <InputLabel>Тема оформления</InputLabel>
-              <Select
-                value={settings.theme}
-                onChange={(e) => handleSettingsChange('theme', e.target.value as 'light' | 'dark' | 'custom')}
-                label="Тема оформления"
-              >
-                <MenuItem value="light">☀️ Светлая</MenuItem>
-                <MenuItem value="dark">🌙 Темная</MenuItem>
-                <MenuItem value="custom">🎨 Пользовательская</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-
-          <Grid item xs={12} md={4}>
-            <TextField
-              label="Основной цвет"
-              value={settings.primaryColor}
-              onChange={(e) => handleSettingsChange('primaryColor', e.target.value)}
-              type="color"
-              fullWidth
-              helperText="Цвет кнопок и акцентов"
-              InputProps={{
-                startAdornment: <ColorIcon sx={{ mr: 1 }} />
-              }}
-            />
-          </Grid>
-
-          <Grid item xs={12} md={4}>
-            <TextField
-              label="Акцентный цвет"
-              value={settings.accentColor}
-              onChange={(e) => handleSettingsChange('accentColor', e.target.value)}
-              type="color"
-              fullWidth
-              helperText="Цвет важных элементов"
-              InputProps={{
-                startAdornment: <ColorIcon sx={{ mr: 1 }} />
-              }}
-            />
-          </Grid>
-
           {/* Стартовое сообщение */}
           <Grid item xs={12}>
             <Divider sx={{ my: 2 }}>
@@ -855,7 +836,7 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
             <FormControlLabel
               control={
                 <Switch
-                  checked={customization.showStats !== false}
+                  checked={customization.showStats ?? true}
                   onChange={(e) => handleCustomizationChange('showStats', e.target.checked)}
                 />
               }
@@ -867,7 +848,7 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
             <FormControlLabel
               control={
                 <Switch
-                  checked={customization.showDescription !== false}
+                  checked={customization.showDescription ?? true}
                   onChange={(e) => handleCustomizationChange('showDescription', e.target.checked)}
                 />
               }
@@ -923,7 +904,7 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
             <Grid item xs={12}>
               <List>
                 {customization.extraButtons.map((btn, index) => (
-                  <ListItem key={index} sx={{ bgcolor: 'action.hover', mb: 1, borderRadius: 1 }}>
+                  <ListItem key={`extra-button-${index}-${btn.text}`} sx={{ bgcolor: 'action.hover', mb: 1, borderRadius: 1 }}>
                     <ListItemIcon>
                       <AddIcon />
                     </ListItemIcon>
@@ -983,39 +964,39 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
           </Grid>
 
           <Grid item xs={12}>
-            <Paper sx={{ 
-              p: 3, 
-              bgcolor: settings.theme === 'dark' ? '#1e1e1e' : 'background.default', 
-              border: '1px solid', 
+            <Paper sx={{
+              p: 3,
+              bgcolor: theme.palette.mode === 'dark' ? '#1e1e1e' : 'background.default',
+              border: '1px solid',
               borderColor: 'divider',
-              color: settings.theme === 'dark' ? '#fff' : 'text.primary'
+              color: theme.palette.mode === 'dark' ? '#fff' : 'text.primary'
             }}>
               <Typography variant="body2" component="div" sx={{ whiteSpace: 'pre-wrap' }}>
                 {customization.emoji || '🛍️'} <strong>{settings.welcomeMessage || 'Добро пожаловать!'}</strong>
                 {'\n\n'}
-                {customization.showDescription !== false && '📝 Описание магазина\n\n'}
+                {(customization.showDescription ?? true) && '📝 Современный магазин с быстрой доставкой\n\n'}
                 {customization.additionalText && `${customization.additionalText}\n\n`}
-                {customization.showStats !== false && '📊 О магазине:\n• Товаров в наличии: 120\n• Выполненных заказов: 450\n\n'}
+                {(customization.showStats ?? true) && '📊 О магазине:\n• Товаров в наличии: 120\n• Выполненных заказов: 450\n• ⭐ Рейтинг: 4.8/5\n\n'}
                 Выберите действие:
                 {'\n\n'}
                 <Box component="div" sx={{ mt: 2 }}>
-                  <Chip 
-                    label={customization.catalogButton?.text || '🛒 Каталог товаров'} 
-                    sx={{ m: 0.5, bgcolor: settings.primaryColor, color: 'white' }} 
+                  <Chip
+                    label={customization.catalogButton?.text || '🛒 Каталог товаров'}
+                    sx={{ m: 0.5, bgcolor: 'primary.main', color: 'white' }}
                   />
-                  <Chip 
-                    label={customization.profileButton?.text || '👤 Профиль'} 
-                    sx={{ m: 0.5, bgcolor: settings.primaryColor, color: 'white' }} 
+                  <Chip
+                    label={customization.profileButton?.text || '👤 Профиль'}
+                    sx={{ m: 0.5, bgcolor: 'primary.main', color: 'white' }}
                   />
-                  <Chip 
-                    label={customization.helpButton?.text || '❓ Помощь и контакты'} 
-                    sx={{ m: 0.5, bgcolor: settings.primaryColor, color: 'white' }} 
+                  <Chip
+                    label={customization.helpButton?.text || '❓ Помощь и контакты'}
+                    sx={{ m: 0.5, bgcolor: 'primary.main', color: 'white' }}
                   />
                   {customization.extraButtons?.map((btn, i) => (
-                    <Chip 
-                      key={i} 
-                      label={btn.text} 
-                      sx={{ m: 0.5, bgcolor: settings.accentColor, color: 'white' }} 
+                    <Chip
+                      key={`extra-btn-${i}`}
+                      label={btn.text}
+                      sx={{ m: 0.5, bgcolor: 'secondary.main', color: 'white' }}
                     />
                   ))}
                 </Box>
@@ -1026,7 +1007,7 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
           <Grid item xs={12}>
             <Alert severity="info">
               <Typography variant="body2">
-                <strong>💡 Совет:</strong> Выберите цвета, соответствующие вашему бренду. 
+                <strong>💡 Совет:</strong> Выберите цвета, соответствующие вашему бренду.
                 Добавьте языки и валюту для работы на международном рынке.
               </Typography>
             </Alert>
@@ -1044,25 +1025,21 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
 
 
   const renderResponsesStep = () => {
-    const [newFaq, setNewFaq] = useState({ trigger: '', response: '' });
-    const [editingFaq, setEditingFaq] = useState<string | null>(null);
-    const [editingData, setEditingData] = useState({ trigger: '', response: '' });
-
     const addFaq = () => {
       if (!newFaq.trigger.trim() || !newFaq.response.trim()) return;
-      
+
       const newResponse: AutoResponse = {
         id: Date.now().toString(),
         trigger: newFaq.trigger.trim(),
         response: newFaq.response.trim(),
         enabled: true
       };
-      
+
       handleSettingsChange('autoResponses', {
         ...settings.autoResponses,
         responses: [...settings.autoResponses.responses, newResponse]
       });
-      
+
       setNewFaq({ trigger: '', response: '' });
     };
 
@@ -1079,7 +1056,7 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
     };
 
     const saveEdit = (id: string) => {
-      const updatedResponses = settings.autoResponses.responses.map(r => 
+      const updatedResponses = settings.autoResponses.responses.map(r =>
         r.id === id ? { ...r, trigger: editingData.trigger, response: editingData.response } : r
       );
       handleSettingsChange('autoResponses', {
@@ -1090,7 +1067,7 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
     };
 
     const toggleFaq = (id: string, enabled: boolean) => {
-      const updatedResponses = settings.autoResponses.responses.map(r => 
+      const updatedResponses = settings.autoResponses.responses.map(r =>
         r.id === id ? { ...r, enabled } : r
       );
       handleSettingsChange('autoResponses', {
@@ -1189,6 +1166,11 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
                   <MenuItem value="Europe/Moscow">Москва</MenuItem>
                   <MenuItem value="Europe/Kiev">Киев</MenuItem>
                   <MenuItem value="Asia/Almaty">Алматы</MenuItem>
+                  <MenuItem value="Europe/Istanbul">Стамбул</MenuItem>
+                  <MenuItem value="America/New_York">Нью-Йорк</MenuItem>
+                  <MenuItem value="America/Los_Angeles">Лос-Анджелес</MenuItem>
+                  <MenuItem value="Asia/Dubai">Дубай</MenuItem>
+                  <MenuItem value="Asia/Tokyo">Токио</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -1204,11 +1186,11 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
               <Grid item xs={12}>
                 <List>
                   {settings.autoResponses.responses.map((response) => (
-                    <ListItem 
+                    <ListItem
                       key={response.id}
-                      sx={{ 
+                      sx={{
                         bgcolor: response.enabled ? 'action.hover' : 'action.disabledBackground',
-                        mb: 1, 
+                        mb: 1,
                         borderRadius: 1,
                         border: '1px solid',
                         borderColor: 'divider'
@@ -1239,16 +1221,18 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
                             </Grid>
                             <Grid item xs={12}>
                               <Box display="flex" gap={1}>
-                                <Button 
-                                  variant="contained" 
-                                  size="small" 
+                                <Button
+                                  key="save"
+                                  variant="contained"
+                                  size="small"
                                   startIcon={<CheckIcon />}
                                   onClick={() => saveEdit(response.id)}
                                 >
                                   Сохранить
                                 </Button>
-                                <Button 
-                                  variant="outlined" 
+                                <Button
+                                  key="cancel"
+                                  variant="outlined"
                                   size="small"
                                   onClick={() => setEditingFaq(null)}
                                 >
@@ -1266,33 +1250,33 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
                           <ListItemText
                             primary={
                               <Box display="flex" alignItems="center" gap={1}>
-                                <Chip label={response.trigger} size="small" color="primary" variant="outlined" />
-                                {!response.enabled && <Chip label="Выключено" size="small" color="default" />}
+                                <Chip key="trigger" label={response.trigger} size="small" color="primary" variant="outlined" />
+                                {!response.enabled && <Chip key="disabled" label="Выключено" size="small" color="default" />}
                               </Box>
                             }
                             secondary={response.response}
                           />
                           <ListItemSecondaryAction>
                             <Box display="flex" gap={1}>
-                              <Tooltip title={response.enabled ? "Отключить" : "Включить"}>
+                              <Tooltip key="toggle" title={response.enabled ? "Отключить" : "Включить"}>
                                 <Switch
                                   checked={response.enabled}
                                   onChange={(e) => toggleFaq(response.id, e.target.checked)}
                                   size="small"
                                 />
                               </Tooltip>
-                              <Tooltip title="Редактировать">
-                                <IconButton 
-                                  edge="end" 
+                              <Tooltip key="edit" title="Редактировать">
+                                <IconButton
+                                  edge="end"
                                   onClick={() => startEdit(response)}
                                   size="small"
                                 >
                                   <EditIcon />
                                 </IconButton>
                               </Tooltip>
-                              <Tooltip title="Удалить">
-                                <IconButton 
-                                  edge="end" 
+                              <Tooltip key="delete" title="Удалить">
+                                <IconButton
+                                  edge="end"
                                   onClick={() => deleteFaq(response.id)}
                                   color="error"
                                   size="small"
@@ -1636,7 +1620,7 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
 
   const renderPreviewStep = () => {
     const customization = settings.startCustomization || {};
-    
+
     return (
       <Box>
         <Typography variant="h6" gutterBottom>
@@ -1649,29 +1633,29 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
         <Grid container spacing={3}>
           {/* Симуляция Telegram интерфейса */}
           <Grid item xs={12} lg={6}>
-            <Paper 
-              elevation={3} 
-              sx={{ 
+            <Paper
+              elevation={3}
+              sx={{
                 p: 0,
-                maxWidth: 450, 
+                maxWidth: 450,
                 mx: 'auto',
-                bgcolor: settings.theme === 'dark' ? '#1e1e1e' : '#fff',
+                bgcolor: theme.palette.mode === 'dark' ? '#1e1e1e' : '#fff',
                 borderRadius: 3,
                 overflow: 'hidden'
               }}
             >
               {/* Хедер бота */}
-              <Box 
-                sx={{ 
-                  p: 2, 
-                  bgcolor: settings.primaryColor, 
+              <Box
+                sx={{
+                  p: 2,
+                  bgcolor: 'primary.main',
                   color: 'white',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 2
                 }}
               >
-                <Avatar sx={{ bgcolor: 'white', color: settings.primaryColor }}>
+                <Avatar sx={{ bgcolor: 'white', color: 'primary.main' }}>
                   {customization.emoji || '🤖'}
                 </Avatar>
                 <Box>
@@ -1685,91 +1669,59 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
               </Box>
 
               {/* Сообщение бота */}
-              <Box sx={{ p: 3, bgcolor: settings.theme === 'dark' ? '#2a2a2a' : 'grey.50' }}>
+              <Box sx={{ p: 3, bgcolor: theme.palette.mode === 'dark' ? '#2a2a2a' : 'grey.50' }}>
                 {customization.headerImage && (
-                  <Box 
-                    component="img" 
-                    src={customization.headerImage} 
-                    sx={{ 
-                      width: '100%', 
-                      borderRadius: 2, 
+                  <Box
+                    component="img"
+                    src={customization.headerImage}
+                    sx={{
+                      width: '100%',
+                      borderRadius: 2,
                       mb: 2,
                       maxHeight: 200,
                       objectFit: 'cover'
                     }}
                     alt="Header"
-                    onError={(e: any) => { e.target.style.display = 'none'; }}
+                    onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                   />
                 )}
-                
-                <Paper sx={{ 
-                  p: 2, 
-                  bgcolor: settings.theme === 'dark' ? '#363636' : 'white',
+
+                <Paper sx={{
+                  p: 2,
+                  bgcolor: theme.palette.mode === 'dark' ? '#363636' : 'white',
                   borderRadius: 2,
-                  color: settings.theme === 'dark' ? '#fff' : 'text.primary'
+                  color: theme.palette.mode === 'dark' ? '#fff' : 'text.primary'
                 }}>
-                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                    {customization.emoji || '🛍️'} <strong>{settings.welcomeMessage}</strong>
+                  <Typography variant="body2" component="div" sx={{ whiteSpace: 'pre-wrap' }}>
+                    {customization.emoji || '🛍️'} <strong>{settings.welcomeMessage || 'Добро пожаловать!'}</strong>
                     {'\n\n'}
-                    {customization.showDescription !== false && '📝 Современный магазин с быстрой доставкой\n\n'}
+                    {(customization.showDescription ?? true) && '📝 Современный магазин с быстрой доставкой\n\n'}
                     {customization.additionalText && `${customization.additionalText}\n\n`}
-                    {customization.showStats !== false && '📊 О магазине:\n• 🛍️ Товаров: 120\n• ✅ Заказов: 450\n• ⭐ Рейтинг: 4.8/5\n\n'}
+                    {(customization.showStats ?? true) && '📊 О магазине:\n• 🛍️ Товаров: 120\n• ✅ Заказов: 450\n• ⭐ Рейтинг: 4.8/5\n\n'}
                     Выберите действие:
+                    {'\n\n'}
+                    <Box component="div" sx={{ mt: 2 }}>
+                      <Chip
+                        label={customization.catalogButton?.text || '🛒 Каталог товаров'}
+                        sx={{ m: 0.5, bgcolor: 'primary.main', color: 'white' }}
+                      />
+                      <Chip
+                        label={customization.profileButton?.text || '👤 Профиль'}
+                        sx={{ m: 0.5, bgcolor: 'primary.main', color: 'white' }}
+                      />
+                      <Chip
+                        label={customization.helpButton?.text || '❓ Помощь и контакты'}
+                        sx={{ m: 0.5, bgcolor: 'primary.main', color: 'white' }}
+                      />
+                      {customization.extraButtons?.map((btn, i) => (
+                        <Chip
+                          key={`extra-btn-${i}`}
+                          label={btn.text}
+                          sx={{ m: 0.5, bgcolor: 'secondary.main', color: 'white' }}
+                        />
+                      ))}
+                    </Box>
                   </Typography>
-                  
-                  <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    <Button 
-                      variant="contained" 
-                      fullWidth 
-                      sx={{ 
-                        bgcolor: settings.primaryColor, 
-                        color: 'white',
-                        justifyContent: 'flex-start',
-                        textTransform: 'none'
-                      }}
-                    >
-                      {customization.catalogButton?.text || '🛒 Каталог товаров'}
-                    </Button>
-                    <Button 
-                      variant="outlined" 
-                      fullWidth 
-                      sx={{ 
-                        borderColor: settings.primaryColor,
-                        color: settings.primaryColor,
-                        justifyContent: 'flex-start',
-                        textTransform: 'none'
-                      }}
-                    >
-                      {customization.profileButton?.text || '👤 Профиль'}
-                    </Button>
-                    <Button 
-                      variant="outlined" 
-                      fullWidth 
-                      sx={{ 
-                        borderColor: settings.primaryColor,
-                        color: settings.primaryColor,
-                        justifyContent: 'flex-start',
-                        textTransform: 'none'
-                      }}
-                    >
-                      {customization.helpButton?.text || '❓ Помощь и контакты'}
-                    </Button>
-                    {customization.extraButtons?.map((btn, i) => (
-                      <Button 
-                        key={i}
-                        variant="outlined" 
-                        fullWidth 
-                        sx={{ 
-                          borderColor: settings.accentColor,
-                          color: settings.accentColor,
-                          justifyContent: 'flex-start',
-                          textTransform: 'none'
-                        }}
-                      >
-                        {btn.text}
-                      </Button>
-                    ))}
-                  </Box>
                 </Paper>
               </Box>
             </Paper>
@@ -1784,36 +1736,36 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
                 </Typography>
 
                 <List>
-                  <ListItem>
+                  <ListItem key="summary-basic">
                     <ListItemIcon><SettingsIcon color="primary" /></ListItemIcon>
-                    <ListItemText 
+                    <ListItemText
                       primary="Основные настройки"
                       secondary={`Язык: ${settings.language.toUpperCase()} • Валюта: ${settings.currency}`}
                     />
                   </ListItem>
 
-                  <ListItem>
+                  <ListItem key="summary-design">
                     <ListItemIcon><DesignIcon color="primary" /></ListItemIcon>
-                    <ListItemText 
+                    <ListItemText
                       primary="Внешний вид"
-                      secondary={`Тема: ${settings.theme === 'light' ? 'Светлая' : settings.theme === 'dark' ? 'Темная' : 'Кастомная'}`}
+                      secondary="Стандартное оформление"
                     />
                   </ListItem>
 
-                  <ListItem>
+                  <ListItem key="summary-autoresponses">
                     <ListItemIcon><ChatIcon color="primary" /></ListItemIcon>
-                    <ListItemText 
+                    <ListItemText
                       primary="Автоответы"
-                      secondary={settings.autoResponses.enabled 
+                      secondary={settings.autoResponses.enabled
                         ? `Включено • ${settings.autoResponses.responses.length} ответов`
                         : 'Выключено'
                       }
                     />
                   </ListItem>
 
-                  <ListItem>
+                  <ListItem key="summary-notifications">
                     <ListItemIcon><NotificationIcon color="primary" /></ListItemIcon>
-                    <ListItemText 
+                    <ListItemText
                       primary="Уведомления"
                       secondary={`${[
                         settings.notifications.newOrder && 'Новые заказы',
@@ -1824,11 +1776,11 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
                     />
                   </ListItem>
 
-                  <ListItem>
-                    <ListItemIcon><ColorIcon color="primary" /></ListItemIcon>
-                    <ListItemText 
+                  <ListItem key="summary-payment">
+                    <ListItemIcon><PaymentIcon color="primary" /></ListItemIcon>
+                    <ListItemText
                       primary="Реквизиты оплаты"
-                      secondary={settings.paymentRequisites?.card 
+                      secondary={settings.paymentRequisites?.card
                         ? `Карта: ${settings.paymentRequisites.card.slice(0, 4)}...${settings.paymentRequisites.card.slice(-4)}`
                         : 'Не указаны'
                       }
@@ -1841,7 +1793,7 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
                 <Alert severity="success">
                   <Typography variant="body2">
                     <strong>✅ Готово к созданию!</strong>
-                    <br />Ваш бот настроен и готов к работе. Нажмите "Создать бота" для завершения.
+                    <br />Ваш бот настроен и готов к работе. Нажмите &quot;Создать бота&quot; для завершения.
                   </Typography>
                 </Alert>
 
@@ -1878,10 +1830,10 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
   const isFirstStep = currentStep === 0;
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={onClose} 
-      maxWidth="lg" 
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="lg"
       fullWidth
       PaperProps={{ sx: { minHeight: '80vh' } }}
     >
@@ -1907,10 +1859,10 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
                 <Typography variant="h6" gutterBottom>
                   Шаги создания
                 </Typography>
-                
+
                 <List dense>
                   {STEPS.map((step, index) => (
-                    <ListItem 
+                    <ListItem
                       key={step.id}
                       button
                       selected={currentStep === index}
@@ -1920,7 +1872,7 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
                       <ListItemIcon>
                         {step.icon}
                       </ListItemIcon>
-                      <ListItemText 
+                      <ListItemText
                         primary={step.label}
                         primaryTypographyProps={{
                           color: currentStep === index ? 'primary' : 'text.primary',
@@ -1936,8 +1888,8 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
                   ))}
                 </List>
 
-                <LinearProgress 
-                  variant="determinate" 
+                <LinearProgress
+                  variant="determinate"
                   value={(currentStep + 1) / STEPS.length * 100}
                   sx={{ mt: 2 }}
                 />
@@ -1960,7 +1912,7 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
         <Button onClick={onClose} disabled={loading}>
           Отмена
         </Button>
-        
+
         {!isFirstStep && (
           <Button onClick={handleBack} disabled={loading}>
             Назад
@@ -1968,8 +1920,8 @@ const BotConstructor: React.FC<BotConstructorProps> = ({
         )}
 
         {!isLastStep ? (
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             onClick={handleNext}
             disabled={loading}
           >

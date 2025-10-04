@@ -1,5 +1,5 @@
+import { ListResponse, Order } from '../types'
 import { apiClient } from './apiClient'
-import { Order, ListResponse } from '../types'
 
 const buildSearchParams = (values: Record<string, string | number | undefined>) => {
   const params = new URLSearchParams()
@@ -57,6 +57,7 @@ const postAndUnwrapOrder = async (url: string, payload?: unknown): Promise<Order
 export interface OrderFilters {
   storeId?: string
   status?: 'PENDING_ADMIN' | 'PAID' | 'REJECTED' | 'CANCELLED' | 'SHIPPED' | 'DELIVERED'
+  statuses?: string[]
   customerId?: string
   search?: string
   dateFrom?: string
@@ -98,6 +99,13 @@ export const orderService = {
       sortBy: filters.sortBy,
       sortOrder: filters.sortOrder,
     })
+
+    // Add statuses as separate query parameters if provided
+    if (filters.statuses && filters.statuses.length > 0) {
+      filters.statuses.forEach(status => {
+        params.append('statuses', status)
+      })
+    }
 
     const response = await apiClient.get(`/orders?${params.toString()}`)
     return toListResponse(response.data, filters)
@@ -157,6 +165,13 @@ export const orderService = {
       dateFrom: filters.dateFrom,
       dateTo: filters.dateTo,
     })
+
+    // Add statuses as separate query parameters if provided
+    if (filters.statuses && filters.statuses.length > 0) {
+      filters.statuses.forEach(status => {
+        params.append('statuses', status)
+      })
+    }
 
     const response = await apiClient.get(`/orders/export?${params.toString()}`, {
       responseType: 'blob',

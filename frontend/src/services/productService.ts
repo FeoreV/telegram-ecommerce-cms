@@ -1,5 +1,5 @@
+import { Category, ListResponse, Product, ProductVariant } from '../types'
 import { apiClient } from './apiClient'
-import { Product, ProductVariant, Category, ListResponse } from '../types'
 
 const buildSearchParams = (values: Record<string, string | number | boolean | undefined>) => {
   const params = new URLSearchParams()
@@ -116,6 +116,12 @@ export const productService = {
   // Активировать/деактивировать товар
   toggleActive: async (id: string): Promise<Product> => {
     const response = await apiClient.patch(`/products/${id}/toggle-active`)
+    return unwrapProduct(response.data)
+  },
+
+  // Обновить видимость товара
+  updateVisibility: async (id: string, isVisible: boolean): Promise<Product> => {
+    const response = await apiClient.patch(`/products/${id}/visibility`, { isVisible })
     return unwrapProduct(response.data)
   },
 

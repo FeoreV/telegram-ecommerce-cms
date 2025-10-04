@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.responseDLP = responseDLP;
 const DataClassificationService_1 = require("../services/DataClassificationService");
 const SecretLeakDetectionService_1 = require("../services/SecretLeakDetectionService");
+const sanitizer_1 = require("../utils/sanitizer");
 const dataClassificationService = DataClassificationService_1.DataClassificationService.getInstance();
 const secretLeakDetectionService = SecretLeakDetectionService_1.SecretLeakDetectionService.getInstance();
 const AUTH_ENDPOINTS = [
@@ -34,14 +35,14 @@ function responseDLP(req, res, next) {
             const dlpPromise = performDLPScan(serialized, req, 'json_response');
             dlpPromise.then((shouldBlock) => {
                 if (shouldBlock) {
-                    console.warn(`DLP violation detected in response after sending - Request ID: ${req.requestId}`);
+                    console.warn(`DLP violation detected in response after sending - Request ID: ${(0, sanitizer_1.sanitizeForLog)(req.requestId || '')}`);
                 }
             }).catch((err) => {
-                console.error('DLP scan error:', err);
+                console.error('DLP scan error:', (0, sanitizer_1.sanitizeObjectForLog)(err));
             });
             const classification = dataClassificationService.classifyData(serialized);
             if (classification === DataClassificationService_1.DataClassification.RESTRICTED || classification === DataClassificationService_1.DataClassification.TOP_SECRET) {
-                console.warn(`Blocking ${classification} data in response - Request ID: ${req.requestId}`);
+                console.warn(`Blocking ${(0, sanitizer_1.sanitizeForLog)(classification)} data in response - Request ID: ${(0, sanitizer_1.sanitizeForLog)(req.requestId || '')}`);
                 return originalJson({
                     error: 'Response blocked by DLP policy',
                     requestId: req.requestId,
@@ -50,7 +51,7 @@ function responseDLP(req, res, next) {
                 });
             }
             if (!isAuthEndpoint(req.path) && containsSensitiveData(serialized)) {
-                console.warn(`Sensitive data detected in response - Request ID: ${req.requestId}`);
+                console.warn(`Sensitive data detected in response - Request ID: ${(0, sanitizer_1.sanitizeForLog)(req.requestId || '')}`);
                 return originalJson({
                     error: 'Response contains sensitive data and has been blocked',
                     requestId: req.requestId,
@@ -59,7 +60,7 @@ function responseDLP(req, res, next) {
             }
         }
         catch (err) {
-            console.error('DLP processing error:', err);
+            console.error('DLP processing error:', (0, sanitizer_1.sanitizeObjectForLog)(err));
         }
         return originalJson(body);
     }.bind(res);
@@ -73,15 +74,15 @@ function responseDLP(req, res, next) {
                 return originalSend(body);
             }
             performDLPScan(str, req, 'text_response').catch((err) => {
-                console.error('DLP scan error for text response:', err);
+                console.error('DLP scan error for text response:', (0, sanitizer_1.sanitizeObjectForLog)(err));
             });
             if (containsSensitiveData(str)) {
-                console.warn(`Sensitive data detected in text response - Request ID: ${req.requestId}`);
+                console.warn(`Sensitive data detected in text response - Request ID: ${(0, sanitizer_1.sanitizeForLog)(req.requestId || '')}`);
                 return originalSend('Response blocked by DLP policy');
             }
         }
         catch (err) {
-            console.error('DLP processing error for text response:', err);
+            console.error('DLP processing error for text response:', (0, sanitizer_1.sanitizeObjectForLog)(err));
         }
         return originalSend(body);
     }.bind(res);
@@ -94,19 +95,19 @@ async function performDLPScan(data, req, responseType) {
         const shouldBlock = classification === DataClassificationService_1.DataClassification.RESTRICTED ||
             classification === DataClassificationService_1.DataClassification.TOP_SECRET;
         if (shouldBlock) {
-            console.error('DLP Policy Violation', {
+            console.error('DLP Policy Violation', (0, sanitizer_1.sanitizeObjectForLog)({
                 requestId: req.requestId,
                 classification,
                 responseType,
                 userAgent: req.headers['user-agent'],
                 ip: req.ip,
                 timestamp: new Date().toISOString()
-            });
+            }));
         }
         return shouldBlock;
     }
     catch (err) {
-        console.error('DLP scan failed:', err);
+        console.error('DLP scan failed:', (0, sanitizer_1.sanitizeObjectForLog)(err));
         return false;
     }
 }

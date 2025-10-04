@@ -1,7 +1,7 @@
-import winston from 'winston';
-import DailyRotateFile from 'winston-daily-rotate-file';
 import fs from 'fs';
 import path from 'path';
+import winston from 'winston';
+import DailyRotateFile from 'winston-daily-rotate-file';
 import { env } from './env';
 
 // Log levels with priorities
@@ -110,7 +110,7 @@ export const maskSensitiveData = (data: unknown, depth = 0): unknown => {
     const masked: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
       const lowerKey = key.toLowerCase();
-      
+
       // Check if field should be masked
       if (SENSITIVE_FIELDS.some(field => lowerKey.includes(field))) {
         masked[key] = maskValue(value);
@@ -126,14 +126,19 @@ export const maskSensitiveData = (data: unknown, depth = 0): unknown => {
 
 /**
  * Mask sensitive strings
+ * SECURITY FIX: Also sanitizes for log injection (CWE-117)
  */
 const maskSensitiveString = (str: unknown): string => {
   // Ensure we have a string
   if (typeof str !== 'string') {
     return String(str);
   }
-  
-  let masked = str;
+
+  // SECURITY: Remove newlines and control characters to prevent log injection
+  let masked = str
+    .replace(/[\r\n]/g, ' ')
+    .replace(/[\x00-\x1F\x7F]/g, '')
+    .trim();
 
   try {
     // JWT tokens
@@ -198,12 +203,12 @@ const maskValue = (value: unknown): string => {
 // Utility function to serialize errors properly
 export const serializeError = (error: unknown): Record<string, unknown> => {
   if (error instanceof Error) {
-    const errorWithExtras = error as Error & { 
-      code?: string; 
-      statusCode?: number; 
-      details?: unknown; 
+    const errorWithExtras = error as Error & {
+      code?: string;
+      statusCode?: number;
+      details?: unknown;
     };
-    
+
     const serialized = {
       message: error.message,
       name: error.name,
@@ -212,7 +217,7 @@ export const serializeError = (error: unknown): Record<string, unknown> => {
       ...(errorWithExtras.statusCode && { statusCode: errorWithExtras.statusCode }),
       ...(errorWithExtras.details && { details: errorWithExtras.details }),
     };
-    
+
     // Mask sensitive data in error details
     return maskSensitiveData(serialized) as Record<string, unknown>;
   }
@@ -235,11 +240,11 @@ const productionFormat = winston.format.combine(
       service: 'telegram-ecommerce-backend',
       environment: env.NODE_ENV,
     };
-    
+
     if (typeof metadata === 'object' && metadata) {
       Object.assign(base, maskSensitiveData(metadata));
     }
-    
+
     return JSON.stringify(base);
   })
 );
@@ -255,12 +260,12 @@ const developmentFormat = winston.format.combine(
   winston.format.printf(({ timestamp, level, message, metadata }: { timestamp: string; level: string; message: string; metadata?: unknown }) => {
     const safeMetadata = typeof metadata === 'object' && metadata ? metadata : {};
     // In development, mask only highly sensitive data (tokens, passwords)
-    const filteredMetadata = env.NODE_ENV === 'development' ? 
+    const filteredMetadata = env.NODE_ENV === 'development' ?
       maskSensitiveData(safeMetadata) : safeMetadata;
     const category = (filteredMetadata as { category?: string }).category ? `[${(filteredMetadata as { category: string }).category.toUpperCase()}]` : '';
-    const metaStr = Object.keys(filteredMetadata as Record<string, unknown>).length > 0 ? 
+    const metaStr = Object.keys(filteredMetadata as Record<string, unknown>).length > 0 ?
       `\n${JSON.stringify(filteredMetadata, null, 2)}` : '';
-    
+
     return `${timestamp} ${level} ${category} ${maskSensitiveString(message)}${metaStr}`;
   })
 );
@@ -288,11 +293,15 @@ const purgeLogsDirectory = (directory: string) => {
           fs.unlinkSync(target);
         }
       } catch (entryError) {
-        console.warn('Failed to remove log artifact:', target, entryError);
+        // Sanitize error to prevent log injection
+        const errorMsg = entryError instanceof Error ? entryError.message.replace(/[\r\n]/g, ' ') : String(entryError);
+        console.warn('Failed to remove log artifact:', target.replace(/[\r\n]/g, ' '), errorMsg);
       }
     }
   } catch (purgeError) {
-    console.warn('Failed to purge logs directory:', directory, purgeError);
+    // Sanitize error to prevent log injection
+    const errorMsg = purgeError instanceof Error ? purgeError.message.replace(/[\r\n]/g, ' ') : String(purgeError);
+    console.warn('Failed to purge logs directory:', directory.replace(/[\r\n]/g, ' '), errorMsg);
   }
 };
 
@@ -306,7 +315,7 @@ const createTransports = (): winston.transport[] => {
   if (env.NODE_ENV !== 'production') {
     transports.push(
       new winston.transports.Console({
-        level: 'debug',
+        level: 'warn', // Changed from 'debug' to reduce console spam
         format: developmentFormat,
       })
     );
@@ -405,7 +414,9 @@ class EnhancedLogger {
 
       // Handle transport errors gracefully
       this.winston.on('error', (error) => {
-        console.error('Logger error:', error);
+        // Sanitize error to prevent log injection
+        const errorMsg = error instanceof Error ? error.message.replace(/[\r\n]/g, ' ') : String(error);
+        console.error('Logger error:', errorMsg);
       });
     }
 

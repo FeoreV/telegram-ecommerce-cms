@@ -1,46 +1,14 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.encryptionService = exports.EncryptionService = void 0;
 const crypto_1 = __importDefault(require("crypto"));
-const VaultService_1 = require("./VaultService");
 const SecretManager_1 = require("../utils/SecretManager");
 const logger_1 = require("../utils/logger");
+const sanitizer_1 = require("../utils/sanitizer");
+const VaultService_1 = require("./VaultService");
 class EncryptionService {
     constructor() {
         this.transitKeyName = 'telegram-ecommerce-key';
@@ -93,7 +61,7 @@ class EncryptionService {
             const encryptionSecrets = SecretManager_1.secretManager.getEncryptionSecrets();
             const key = Buffer.from(encryptionSecrets.dataEncryptionKey, 'hex');
             const iv = crypto_1.default.randomBytes(16);
-            const cipher = crypto_1.default.createCipher('aes-256-gcm', key);
+            const cipher = crypto_1.default.createCipheriv('aes-256-gcm', key, iv);
             let ciphertext = cipher.update(plaintext, 'utf8', 'hex');
             ciphertext += cipher.final('hex');
             const tag = cipher.getAuthTag();
@@ -114,7 +82,7 @@ class EncryptionService {
             const encryptionSecrets = SecretManager_1.secretManager.getEncryptionSecrets();
             const key = Buffer.from(encryptionSecrets.dataEncryptionKey, 'hex');
             const data = JSON.parse(Buffer.from(encryptedData, 'base64').toString());
-            const decipher = crypto_1.default.createDecipher('aes-256-gcm', key);
+            const decipher = crypto_1.default.createDecipheriv('aes-256-gcm', key, Buffer.from(data.iv, 'hex'));
             decipher.setAuthTag(Buffer.from(data.tag, 'hex'));
             let plaintext = decipher.update(data.ciphertext, 'hex', 'utf8');
             plaintext += decipher.final('utf8');
@@ -152,12 +120,12 @@ class EncryptionService {
                 const vault = (0, VaultService_1.getVaultService)();
                 await vault.putSecret(`data-keys/${keyId}`, { key: newKey });
             }
-            logger_1.logger.info(`Generated new data key: ${keyId}`);
+            logger_1.logger.info(`Generated new data key: ${(0, sanitizer_1.sanitizeForLog)(keyId)}`);
             return newKey;
         }
         catch (err) {
-            logger_1.logger.error(`Failed to generate data key ${keyId}:`, err);
-            throw new Error(`Failed to generate data key: ${keyId}`);
+            logger_1.logger.error(`Failed to generate data key ${(0, sanitizer_1.sanitizeForLog)(keyId)}:`, err);
+            throw new Error(`Failed to generate data key: ${(0, sanitizer_1.sanitizeForLog)(keyId)}`);
         }
     }
     async encryptPII(data) {
@@ -193,7 +161,10 @@ class EncryptionService {
     verifyPassword(password, hashedPassword) {
         const [salt, hash] = hashedPassword.split(':');
         const verifyHash = crypto_1.default.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
-        return hash === verifyHash;
+        const hashBuffer = Buffer.from(hash, 'hex');
+        const verifyHashBuffer = Buffer.from(verifyHash, 'hex');
+        return hashBuffer.length === verifyHashBuffer.length &&
+            crypto_1.default.timingSafeEqual(hashBuffer, verifyHashBuffer);
     }
     generateSecureToken(length = 32) {
         return crypto_1.default.randomBytes(length).toString('hex');
@@ -207,14 +178,26 @@ class EncryptionService {
         const expectedSignature = crypto_1.default.createHmac('sha256', key).update(data).digest('hex');
         return crypto_1.default.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
     }
+    validateFilePath(filePath) {
+        const path = require('path');
+        const resolvedPath = path.resolve(filePath);
+        const allowedDir = path.resolve(process.cwd());
+        if (!resolvedPath.startsWith(allowedDir)) {
+            throw new Error('Invalid file path: Path traversal detected');
+        }
+    }
     async encryptFile(filePath, outputPath) {
-        const fs = await Promise.resolve().then(() => __importStar(require('fs'))).then(m => m.promises);
+        this.validateFilePath(filePath);
+        this.validateFilePath(outputPath);
+        const fs = await import('fs').then(m => m.promises);
         const content = await fs.readFile(filePath, 'utf8');
         const encrypted = await this.encryptData(content);
         await fs.writeFile(outputPath, encrypted, 'utf8');
     }
     async decryptFile(filePath, outputPath) {
-        const fs = await Promise.resolve().then(() => __importStar(require('fs'))).then(m => m.promises);
+        this.validateFilePath(filePath);
+        this.validateFilePath(outputPath);
+        const fs = await import('fs').then(m => m.promises);
         const encrypted = await fs.readFile(filePath, 'utf8');
         const decrypted = await this.decryptData(encrypted);
         await fs.writeFile(outputPath, decrypted, 'utf8');

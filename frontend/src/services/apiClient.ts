@@ -21,6 +21,7 @@ const AUTH_BASE = (() => {
 export const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE,
   timeout: 30_000,
+  withCredentials: true, // Enable credentials for CORS
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -95,7 +96,7 @@ apiClient.interceptors.response.use(
             throw new Error('No refresh token available')
           }
 
-          const response = await axios.post(`${AUTH_BASE}/auth/refresh-token`, { refreshToken })
+          const response = await axios.post(`${AUTH_BASE}/auth/refresh-token`, { refreshToken }, { withCredentials: true })
           const { accessToken, refreshToken: newRefreshToken } = response.data as {
             accessToken: string
             refreshToken?: string

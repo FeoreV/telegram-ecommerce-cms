@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.asyncHandler = exports.errorHandler = exports.AppError = void 0;
-const logger_1 = require("../utils/logger");
 const notificationService_1 = require("../services/notificationService");
+const logger_1 = require("../utils/logger");
 class AppError extends Error {
     constructor(message, statusCode) {
         super(message);
@@ -15,17 +15,19 @@ exports.AppError = AppError;
 const errorHandler = (err, req, res, _next) => {
     let { statusCode = 500, message } = err;
     const reqLogger = req.logger || logger_1.logger;
+    const { sanitizeObjectForLog, sanitizeError } = require('../utils/sanitizer');
+    const sanitizedError = sanitizeError(err);
     reqLogger.error({
         error: {
-            message: err.message,
-            stack: err.stack,
+            message: sanitizedError.message,
+            stack: sanitizedError.stack,
             statusCode,
         },
         request: {
             method: req.method,
-            url: req.url,
-            headers: req.headers,
-            body: req.body,
+            url: sanitizeObjectForLog(req.url),
+            headers: sanitizeObjectForLog(req.headers),
+            body: sanitizeObjectForLog(req.body),
         },
     });
     if (statusCode >= 500 && process.env.NODE_ENV === 'production') {
@@ -63,10 +65,25 @@ const errorHandler = (err, req, res, _next) => {
         statusCode = 401;
         message = 'Invalid or expired token';
     }
-    res.status(statusCode).json({
-        error: message,
-        ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
-    });
+    if (process.env.NODE_ENV === 'production') {
+        if (statusCode >= 500) {
+            message = 'Internal server error';
+        }
+        res.status(statusCode).json({
+            error: message,
+            statusCode,
+            timestamp: new Date().toISOString()
+        });
+    }
+    else {
+        res.status(statusCode).json({
+            error: message,
+            statusCode,
+            stack: err.stack,
+            name: err.name,
+            timestamp: new Date().toISOString()
+        });
+    }
 };
 exports.errorHandler = errorHandler;
 const asyncHandler = (fn) => {

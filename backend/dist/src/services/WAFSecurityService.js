@@ -4,9 +4,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.wafSecurityService = exports.WAFSecurityService = void 0;
+const axios_1 = __importDefault(require("axios"));
 const logger_1 = require("../utils/logger");
 const TenantCacheService_1 = require("./TenantCacheService");
-const axios_1 = __importDefault(require("axios"));
 class WAFSecurityService {
     constructor() {
         this.threatIntelligence = new Map();
@@ -302,28 +302,42 @@ class WAFSecurityService {
                 ipAddress.startsWith('fe80:')) {
                 return 'LOCAL';
             }
+            const allowedGeoAPIs = ['ip-api.com', 'ipapi.co', 'ipinfo.io'];
+            if (!/^(\d{1,3}\.){3}\d{1,3}$/.test(ipAddress)) {
+                logger_1.logger.warn(`SECURITY: Invalid IP address format: ${ipAddress}`);
+                return 'UNKNOWN';
+            }
             const geoSources = [
                 {
                     name: 'ip-api',
                     url: `http://ip-api.com/json/${ipAddress}`,
-                    parser: (data) => data.countryCode
+                    parser: (data) => data.countryCode,
+                    domain: 'ip-api.com'
                 },
                 {
                     name: 'ipapi',
                     url: `https://ipapi.co/${ipAddress}/country_code/`,
-                    parser: (data) => data.trim()
+                    parser: (data) => data.trim(),
+                    domain: 'ipapi.co'
                 },
                 {
                     name: 'ipinfo',
                     url: `https://ipinfo.io/${ipAddress}/country`,
-                    parser: (data) => data.trim()
+                    parser: (data) => data.trim(),
+                    domain: 'ipinfo.io'
                 }
             ];
             for (const source of geoSources) {
                 try {
+                    const url = new URL(source.url);
+                    if (!allowedGeoAPIs.includes(url.hostname)) {
+                        logger_1.logger.warn(`SECURITY: Blocked geolocation request to non-whitelisted domain: ${url.hostname}`);
+                        continue;
+                    }
                     const response = await axios_1.default.get(source.url, {
                         timeout: 2000,
-                        headers: { 'User-Agent': 'WAF-Security-Service/1.0' }
+                        headers: { 'User-Agent': 'WAF-Security-Service/1.0' },
+                        maxRedirects: 0
                     });
                     if (response.status === 200) {
                         const country = source.parser(response.data);

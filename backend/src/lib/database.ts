@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { tlsService } from '../services/TLSService';
 import { secretManager } from '../utils/SecretManager';
 import { logger } from '../utils/logger';
+import { sanitizeObjectForLog } from '../utils/sanitizer';
 
 export class DatabaseService {
   private static instance: DatabaseService;
@@ -30,14 +31,14 @@ export class DatabaseService {
 
       // Build connection URL with TLS parameters
       let connectionUrl = dbSecrets.url;
-      
+
       if (tlsService.isEnabled()) {
         const urlParams = new URLSearchParams();
         urlParams.set('sslmode', 'require');
         urlParams.set('sslcert', process.env.TLS_CLIENT_CERT_PATH || '/certs/backend.client.cert.pem');
         urlParams.set('sslkey', process.env.TLS_CLIENT_KEY_PATH || '/certs/backend.client.key.pem');
         urlParams.set('sslrootcert', process.env.TLS_CA_PATH || '/certs/ca.cert.pem');
-        
+
         // Add TLS parameters to connection URL
         const separator = connectionUrl.includes('?') ? '&' : '?';
         connectionUrl += separator + urlParams.toString();
@@ -71,15 +72,15 @@ export class DatabaseService {
 
       // Set up logging - with proper typing for Prisma events
       (this.prisma as any).$on('error', (e: any) => {
-        logger.error('Database error:', e);
+        logger.error('Database error:', sanitizeObjectForLog(e));
       });
 
       (this.prisma as any).$on('warn', (e: any) => {
-        logger.warn('Database warning:', e);
+        logger.warn('Database warning:', sanitizeObjectForLog(e));
       });
 
       (this.prisma as any).$on('info', (e: any) => {
-        logger.info('Database info:', e);
+        logger.info('Database info:', sanitizeObjectForLog(e));
       });
 
       (this.prisma as any).$on('query', (e: any) => {
@@ -182,7 +183,7 @@ export class DatabaseService {
 
     try {
       const startTime = Date.now();
-      const result = await this.prisma.$queryRaw`SELECT 
+      const result = await this.prisma.$queryRaw`SELECT
         version() as version,
         current_database() as database,
         current_user as user,
@@ -193,7 +194,7 @@ export class DatabaseService {
       ` as any[];
 
       const latency = Date.now() - startTime;
-      
+
       return {
         status: 'connected',
         latency,
@@ -219,23 +220,23 @@ export class DatabaseService {
     maxRetries = 3
   ): Promise<T> {
     const prisma = this.getPrisma();
-    
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         return await prisma.$transaction(fn as any) as T;
       } catch (error) {
         logger.warn(`Transaction attempt ${attempt} failed:`, error);
-        
+
         if (attempt === maxRetries) {
           logger.error('Transaction failed after all retries:', error);
           throw error;
         }
-        
+
         // Wait before retry
         await new Promise(resolve => setTimeout(resolve, attempt * 1000));
       }
     }
-    
+
     throw new Error('Transaction failed after all retries');
   }
 

@@ -20,21 +20,23 @@ export const httpLogger = (req: RequestWithTiming, res: Response, next: NextFunc
     return next();
   }
 
-  // Log incoming request
-  logger.http('Incoming request', {
-    category: LogCategory.API,
-    method: req.method,
-    url: req.originalUrl || req.url,
-    path: req.path,
-    ip: getClientIP(req),
-    userAgent: req.get('User-Agent') || 'Unknown',
-    requestId: req.requestId,
-    contentLength: req.get('Content-Length'),
-    referer: req.get('Referer'),
-    acceptEncoding: req.get('Accept-Encoding'),
-    acceptLanguage: req.get('Accept-Language'),
-    host: req.get('Host'),
-  });
+  // Log incoming request (only in production to reduce console spam)
+  if (process.env.NODE_ENV === 'production') {
+    logger.http('Incoming request', {
+      category: LogCategory.API,
+      method: req.method,
+      url: req.originalUrl || req.url,
+      path: req.path,
+      ip: getClientIP(req),
+      userAgent: req.get('User-Agent') || 'Unknown',
+      requestId: req.requestId,
+      contentLength: req.get('Content-Length'),
+      referer: req.get('Referer'),
+      acceptEncoding: req.get('Accept-Encoding'),
+      acceptLanguage: req.get('Accept-Language'),
+      host: req.get('Host'),
+    });
+  }
 
   // Capture response data
   const originalSend = res.send;
@@ -79,12 +81,12 @@ export const httpLogger = (req: RequestWithTiming, res: Response, next: NextFunc
       };
     }
 
-    // Log based on determined level
+    // Log based on determined level (only errors/warnings in development)
     if (logLevel === 'error') {
       logger.error('Request failed', logData);
     } else if (logLevel === 'warn') {
       logger.warn('Request warning', logData);
-    } else {
+    } else if (process.env.NODE_ENV === 'production') {
       logger.http('Request completed', logData);
     }
 

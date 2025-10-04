@@ -12,29 +12,29 @@ export interface ThreatDetectionConfig {
   enableNetworkMonitoring: boolean;
   enableFileSystemMonitoring: boolean;
   enableMemoryMonitoring: boolean;
-  
+
   // Detection sensitivity
   detectionSensitivity: 'low' | 'medium' | 'high' | 'paranoid';
   falsePositiveThreshold: number;
   anomalyScoreThreshold: number;
-  
+
   // Monitoring intervals
   processMonitoringIntervalMs: number;
   networkMonitoringIntervalMs: number;
   fileSystemMonitoringIntervalMs: number;
   memoryMonitoringIntervalMs: number;
-  
+
   // Response actions
   enableAutoQuarantine: boolean;
   enableAutoTermination: boolean;
   enableNetworkIsolation: boolean;
   enableForensicCapture: boolean;
-  
+
   // Machine learning
   enableMLDetection: boolean;
   anomalyDetectionWindow: number;
   baselineLearningPeriod: number;
-  
+
   // Integration
   edrEndpoint?: string;
   edrApiKey?: string;
@@ -46,36 +46,36 @@ export interface ThreatIndicator {
   timestamp: Date;
   type: 'process' | 'network' | 'filesystem' | 'memory' | 'registry' | 'api' | 'behavior';
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  
+
   // Indicator details
   name: string;
   description: string;
   mitreTactic?: string;
   mitreTechnique?: string;
-  
+
   // Context
   processId?: number;
   processName?: string;
   commandLine?: string;
   parentProcessId?: number;
   userId?: string;
-  
+
   // Network context
   sourceIP?: string;
   destinationIP?: string;
   port?: number;
   protocol?: string;
-  
+
   // File context
   filePath?: string;
   fileHash?: string;
   fileSize?: number;
-  
+
   // Behavioral context
   anomalyScore: number;
   riskScore: number;
   confidence: number;
-  
+
   // Detection metadata
   detectionRule: string;
   detectionEngine: string;
@@ -87,38 +87,38 @@ export interface RuntimeAlert {
   timestamp: Date;
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   status: 'open' | 'investigating' | 'mitigated' | 'resolved' | 'false_positive';
-  
+
   // Alert details
   title: string;
   description: string;
   category: string;
-  
+
   // Threat classification
   threatType: 'malware' | 'apt' | 'insider' | 'dos' | 'data_exfiltration' | 'privilege_escalation' | 'lateral_movement' | 'persistence' | 'unknown';
   attackStage: 'reconnaissance' | 'initial_access' | 'execution' | 'persistence' | 'privilege_escalation' | 'defense_evasion' | 'credential_access' | 'discovery' | 'lateral_movement' | 'collection' | 'exfiltration' | 'impact';
-  
+
   // Related indicators
   indicators: ThreatIndicator[];
   indicatorCount: number;
-  
+
   // Impact assessment
   impactLevel: 'minimal' | 'moderate' | 'significant' | 'severe';
   affectedAssets: string[];
-  
+
   // Response actions
   responseActions: string[];
   autoActionsEnabled: boolean;
   quarantined: boolean;
   isolated: boolean;
-  
+
   // Timeline
   firstDetected: Date;
   lastDetected: Date;
-  
+
   // Investigation
   investigationNotes: string[];
   assignee?: string;
-  
+
   // Machine learning
   anomalyScore: number;
   baselineDeviation: number;
@@ -182,25 +182,25 @@ export class RuntimeThreatDetectionService {
       enableNetworkMonitoring: process.env.ENABLE_NETWORK_MONITORING !== 'false',
       enableFileSystemMonitoring: process.env.ENABLE_FILESYSTEM_MONITORING !== 'false',
       enableMemoryMonitoring: process.env.ENABLE_MEMORY_MONITORING === 'true',
-      
+
       detectionSensitivity: (process.env.THREAT_DETECTION_SENSITIVITY as any) || 'high',
       falsePositiveThreshold: parseFloat(process.env.FALSE_POSITIVE_THRESHOLD || '0.3'),
       anomalyScoreThreshold: parseFloat(process.env.ANOMALY_SCORE_THRESHOLD || '0.7'),
-      
+
       processMonitoringIntervalMs: parseInt(process.env.PROCESS_MONITORING_INTERVAL || '10000'),
       networkMonitoringIntervalMs: parseInt(process.env.NETWORK_MONITORING_INTERVAL || '5000'),
       fileSystemMonitoringIntervalMs: parseInt(process.env.FILESYSTEM_MONITORING_INTERVAL || '5000'),
       memoryMonitoringIntervalMs: parseInt(process.env.MEMORY_MONITORING_INTERVAL || '30000'),
-      
+
       enableAutoQuarantine: process.env.ENABLE_AUTO_QUARANTINE === 'true',
       enableAutoTermination: process.env.ENABLE_AUTO_TERMINATION === 'true',
       enableNetworkIsolation: process.env.ENABLE_NETWORK_ISOLATION === 'true',
       enableForensicCapture: process.env.ENABLE_FORENSIC_CAPTURE !== 'false',
-      
+
       enableMLDetection: process.env.ENABLE_ML_DETECTION !== 'false',
       anomalyDetectionWindow: parseInt(process.env.ANOMALY_DETECTION_WINDOW || '300000'), // 5 minutes
       baselineLearningPeriod: parseInt(process.env.BASELINE_LEARNING_PERIOD || '3600000'), // 1 hour
-      
+
       edrEndpoint: process.env.EDR_ENDPOINT,
       edrApiKey: process.env.EDR_API_KEY,
       siemIntegration: process.env.THREAT_DETECTION_SIEM_INTEGRATION !== 'false'
@@ -238,10 +238,10 @@ export class RuntimeThreatDetectionService {
 
       // Initialize threat detection rules
       this.initializeThreatRules();
-      
+
       // Initialize baselines
       this.initializeBaselines();
-      
+
       // Setup learning mode
       this.setupLearningMode();
 
@@ -351,7 +351,7 @@ export class RuntimeThreatDetectionService {
           logger.error('Process monitoring error:', err as Record<string, unknown>);
         });
       }, this.config.processMonitoringIntervalMs);
-      
+
       this.monitoringIntervals.push(processInterval);
     }
 
@@ -362,7 +362,7 @@ export class RuntimeThreatDetectionService {
           logger.error('Network monitoring error:', err as Record<string, unknown>);
         });
       }, this.config.networkMonitoringIntervalMs);
-      
+
       this.monitoringIntervals.push(networkInterval);
     }
 
@@ -373,7 +373,7 @@ export class RuntimeThreatDetectionService {
           logger.error('Filesystem monitoring error:', err as Record<string, unknown>);
         });
       }, this.config.fileSystemMonitoringIntervalMs);
-      
+
       this.monitoringIntervals.push(filesystemInterval);
     }
 
@@ -384,7 +384,7 @@ export class RuntimeThreatDetectionService {
           logger.error('Memory monitoring error:', err as Record<string, unknown>);
         });
       }, this.config.memoryMonitoringIntervalMs);
-      
+
       this.monitoringIntervals.push(memoryInterval);
     }
 
@@ -395,7 +395,7 @@ export class RuntimeThreatDetectionService {
     try {
       // Get current process list (simplified implementation)
       const processes = await this.getCurrentProcesses();
-      
+
       for (const process of processes) {
         await this.analyzeProcess(process);
       }
@@ -484,7 +484,7 @@ export class RuntimeThreatDetectionService {
     try {
       // Get current network connections (simplified)
       const connections = await this.getCurrentNetworkConnections();
-      
+
       for (const connection of connections) {
         await this.analyzeNetworkConnection(connection);
       }
@@ -559,7 +559,7 @@ export class RuntimeThreatDetectionService {
   private async monitorMemory(): Promise<void> {
     try {
       const memUsage = process.memoryUsage();
-      
+
       // Check for memory anomalies
       if (memUsage.external > 50 * 1024 * 1024) { // 50MB external memory
         await this.createThreatIndicator({
@@ -720,6 +720,7 @@ export class RuntimeThreatDetectionService {
 
     // Execute automated response if enabled
     if (indicator.severity === 'CRITICAL') {
+      // NOTE: Internal method with predefined response actions, not dynamic code execution (CWE-94 false positive)
       await this.executeAutomatedResponse(alert);
     }
 
@@ -762,10 +763,10 @@ export class RuntimeThreatDetectionService {
         'TA0010': 'exfiltration',
         'TA0011': 'lateral_movement'
       };
-      
+
       return tacticMap[indicator.mitreTactic] || 'execution';
     }
-    
+
     return 'execution';
   }
 
@@ -778,7 +779,7 @@ export class RuntimeThreatDetectionService {
 
   private identifyAffectedAssets(indicator: ThreatIndicator): string[] {
     const assets: string[] = [];
-    
+
     if (indicator.processName) {
       assets.push(`Process: ${indicator.processName}`);
     }
@@ -788,32 +789,32 @@ export class RuntimeThreatDetectionService {
     if (indicator.destinationIP) {
       assets.push(`Network: ${indicator.destinationIP}`);
     }
-    
+
     return assets;
   }
 
   private generateResponseActions(indicator: ThreatIndicator): string[] {
     const actions: string[] = [];
-    
+
     actions.push('Investigate the threat indicator immediately');
     actions.push('Review associated process and network activity');
     actions.push('Check for additional indicators of compromise');
-    
+
     if (indicator.type === 'process') {
       actions.push('Consider terminating suspicious process');
       actions.push('Review process execution context');
     }
-    
+
     if (indicator.type === 'network') {
       actions.push('Block suspicious network connections');
       actions.push('Review network traffic logs');
     }
-    
+
     if (indicator.type === 'filesystem') {
       actions.push('Quarantine suspicious files');
       actions.push('Scan for additional malicious files');
     }
-    
+
     return actions;
   }
 
@@ -896,7 +897,7 @@ export class RuntimeThreatDetectionService {
    * Get active alerts
    */
   getActiveAlerts(): RuntimeAlert[] {
-    return Array.from(this.alerts.values()).filter(alert => 
+    return Array.from(this.alerts.values()).filter(alert =>
       alert.status === 'open' || alert.status === 'investigating'
     );
   }
@@ -911,7 +912,7 @@ export class RuntimeThreatDetectionService {
     const stats = this.getStats();
     const activeAlerts = this.getActiveAlerts();
     const criticalAlerts = activeAlerts.filter(alert => alert.severity === 'CRITICAL').length;
-    
+
     let status = 'healthy';
     if (criticalAlerts > 0) {
       status = 'critical';

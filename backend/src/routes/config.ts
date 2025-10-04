@@ -1,19 +1,19 @@
-import { Router } from 'express';
-import { Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/auth';
-import { asyncHandler, AppError } from '../middleware/errorHandler';
-import { requireRole } from '../middleware/auth';
-import { UserRole } from '../utils/jwt';
-import { logger } from '../utils/loggerEnhanced';
-import { 
-  getSupportedCurrencies, 
-  getCurrencyConfig, 
-  formatCurrency, 
-  isValidCurrencyCode,
-  getDisplayPrice 
+import { Response, Router } from 'express';
+import { prisma } from '../lib/prisma';
+import { AuthenticatedRequest, requireRole } from '../middleware/auth';
+import { csrfProtection } from '../middleware/csrfProtection';
+import { AppError, asyncHandler } from '../middleware/errorHandler';
+import {
+    formatCurrency,
+    getCurrencyConfig,
+    getDisplayPrice,
+    getSupportedCurrencies,
+    isValidCurrencyCode
 } from '../utils/currency';
 import InventoryConfigManager, { DEFAULT_THRESHOLDS } from '../utils/inventoryConfig';
-import { prisma } from '../lib/prisma';
+import { UserRole } from '../utils/jwt';
+import { logger } from '../utils/loggerEnhanced';
+import { sanitizeInput } from '../utils/sanitizer';
 
 const router = Router();
 
@@ -22,7 +22,7 @@ const router = Router();
 // Get supported currencies
 router.get('/currencies', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const currencies = getSupportedCurrencies();
-  
+
   res.json({
     success: true,
     currencies: currencies.map(currency => ({
@@ -37,13 +37,13 @@ router.get('/currencies', asyncHandler(async (req: AuthenticatedRequest, res: Re
 // Get currency configuration
 router.get('/currencies/:code', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { code } = req.params;
-  
+
   if (!isValidCurrencyCode(code)) {
     throw new AppError(`Unsupported currency: ${code}`, 400);
   }
-  
+
   const config = getCurrencyConfig(code);
-  
+
   res.json({
     success: true,
     currency: config
@@ -51,29 +51,32 @@ router.get('/currencies/:code', asyncHandler(async (req: AuthenticatedRequest, r
 }));
 
 // Format currency value
-router.post('/currencies/:code/format', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.post('/currencies/:code/format', csrfProtection, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { code } = req.params;
   const { amount, showDecimals, useLocale, customSymbol } = req.body;
-  
+
   if (!isValidCurrencyCode(code)) {
-    throw new AppError(`Unsupported currency: ${code}`, 400);
+    throw new AppError(`Unsupported currency: ${sanitizeInput(code)}`, 400);
   }
-  
+
   if (typeof amount !== 'number') {
     throw new AppError('Amount must be a number', 400);
   }
-  
+
+  // Sanitize user-provided custom symbol to prevent XSS
+  const safeCustomSymbol = customSymbol ? sanitizeInput(customSymbol) : undefined;
+
   const formatted = formatCurrency(amount, code, {
     showDecimals,
     useLocale,
-    customSymbol
+    customSymbol: safeCustomSymbol
   });
-  
+
   const displayFormatted = getDisplayPrice(amount, code, {
     showDecimals,
     useSymbol: true
   });
-  
+
   res.json({
     success: true,
     formatted,
@@ -86,11 +89,11 @@ router.post('/currencies/:code/format', asyncHandler(async (req: AuthenticatedRe
 // Inventory configuration endpoints
 
 // Get store inventory configuration
-router.get('/inventory/stores/:storeId', 
+router.get('/inventory/stores/:storeId',
   requireRole([UserRole.OWNER, UserRole.ADMIN]),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { storeId } = req.params;
-    
+
     // Check store access
     if (req.user!.role !== 'OWNER') {
       const hasAccess = await prisma.store.findFirst({
@@ -102,14 +105,14 @@ router.get('/inventory/stores/:storeId',
           ]
         }
       });
-      
+
       if (!hasAccess) {
         throw new AppError('No access to this store', 403);
       }
     }
-    
+
     const config = InventoryConfigManager.getStoreConfig(storeId);
-    
+
     res.json({
       success: true,
       config
@@ -119,11 +122,12 @@ router.get('/inventory/stores/:storeId',
 
 // Update store inventory configuration
 router.put('/inventory/stores/:storeId',
+  csrfProtection,
   requireRole([UserRole.OWNER, UserRole.ADMIN]),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { storeId } = req.params;
     const updates = req.body;
-    
+
     // Check store access
     if (req.user!.role !== 'OWNER') {
       const hasAccess = await prisma.store.findFirst({
@@ -135,12 +139,12 @@ router.put('/inventory/stores/:storeId',
           ]
         }
       });
-      
+
       if (!hasAccess) {
         throw new AppError('No access to this store', 403);
       }
     }
-    
+
     // Validate updates
     const allowedFields = [
       'enableStockAlerts',
@@ -151,25 +155,25 @@ router.put('/inventory/stores/:storeId',
       'currency',
       'timezone'
     ];
-    
+
     const filteredUpdates = Object.keys(updates)
       .filter(key => allowedFields.includes(key))
       .reduce((obj, key) => {
         obj[key] = updates[key];
         return obj;
       }, {} as Record<string, unknown>);
-    
+
     if (Object.keys(filteredUpdates).length === 0) {
       throw new AppError('No valid updates provided', 400);
     }
-    
+
     // Validate currency if provided
     if (filteredUpdates.currency && !isValidCurrencyCode(filteredUpdates.currency as string)) {
       throw new AppError(`Unsupported currency: ${filteredUpdates.currency}`, 400);
     }
-    
+
     const updatedConfig = InventoryConfigManager.updateStoreConfig(storeId, filteredUpdates);
-    
+
     // Also update database if needed
     try {
       await prisma.store.update({
@@ -184,13 +188,13 @@ router.put('/inventory/stores/:storeId',
     } catch (dbError) {
       logger.warn('Failed to update store in database', { storeId, error: dbError });
     }
-    
+
     logger.info('Store inventory configuration updated', {
       storeId,
       userId: req.user!.id,
       updates: Object.keys(filteredUpdates)
     });
-    
+
     res.json({
       success: true,
       message: 'Store inventory configuration updated',
@@ -205,7 +209,7 @@ router.get('/inventory/products/:productId',
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { productId } = req.params;
     const { variantId } = req.query;
-    
+
     // Check product access
     if (req.user!.role !== 'OWNER') {
       const product = await prisma.product.findFirst({
@@ -220,14 +224,14 @@ router.get('/inventory/products/:productId',
           }
         }
       });
-      
+
       if (!product) {
         throw new AppError('Product not found or no access', 404);
       }
     }
-    
+
     const config = InventoryConfigManager.getProductConfig(productId, variantId as string);
-    
+
     res.json({
       success: true,
       config
@@ -237,12 +241,13 @@ router.get('/inventory/products/:productId',
 
 // Update product inventory configuration
 router.put('/inventory/products/:productId',
+  csrfProtection,
   requireRole([UserRole.OWNER, UserRole.ADMIN, UserRole.VENDOR]),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { productId } = req.params;
     const { variantId } = req.query;
     const updates = req.body;
-    
+
     // Check product access
     if (req.user!.role !== 'OWNER') {
       const product = await prisma.product.findFirst({
@@ -257,12 +262,12 @@ router.put('/inventory/products/:productId',
           }
         }
       });
-      
+
       if (!product) {
         throw new AppError('Product not found or no access', 404);
       }
     }
-    
+
     const allowedFields = [
       'customThresholds',
       'trackStock',
@@ -272,31 +277,31 @@ router.put('/inventory/products/:productId',
       'supplierId',
       'leadTimeDays'
     ];
-    
+
     const filteredUpdates = Object.keys(updates)
       .filter(key => allowedFields.includes(key))
       .reduce((obj, key) => {
         obj[key] = updates[key];
         return obj;
       }, {} as Record<string, unknown>);
-    
+
     if (Object.keys(filteredUpdates).length === 0) {
       throw new AppError('No valid updates provided', 400);
     }
-    
+
     const updatedConfig = InventoryConfigManager.updateProductConfig(
-      productId, 
-      filteredUpdates, 
+      productId,
+      filteredUpdates,
       variantId as string
     );
-    
+
     logger.info('Product inventory configuration updated', {
       productId,
       variantId,
       userId: req.user!.id,
       updates: Object.keys(filteredUpdates)
     });
-    
+
     res.json({
       success: true,
       message: 'Product inventory configuration updated',
@@ -311,7 +316,7 @@ router.get('/inventory/thresholds/:storeId/:productId',
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { storeId, productId } = req.params;
     const { variantId } = req.query;
-    
+
     // Check access
     if (req.user!.role !== 'OWNER') {
       const product = await prisma.product.findFirst({
@@ -327,18 +332,18 @@ router.get('/inventory/thresholds/:storeId/:productId',
           }
         }
       });
-      
+
       if (!product) {
         throw new AppError('Product not found or no access', 404);
       }
     }
-    
+
     const thresholds = InventoryConfigManager.getEffectiveThresholds(
-      storeId, 
-      productId, 
+      storeId,
+      productId,
       variantId as string
     );
-    
+
     res.json({
       success: true,
       thresholds,
@@ -372,7 +377,7 @@ router.get('/inventory/health/:storeId/:productId',
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { storeId, productId } = req.params;
     const { variantId } = req.query;
-    
+
     // Get product data
     const product = await prisma.product.findFirst({
       where: {
@@ -404,40 +409,40 @@ router.get('/inventory/health/:storeId/:productId',
         }
       }
     });
-    
+
     if (!product) {
       throw new AppError('Product not found or no access', 404);
     }
-    
-    const currentStock = variantId 
+
+    const currentStock = variantId
       ? (product.variants[0]?.stock || 0)
       : product.stock;
-    
+
     const thresholds = InventoryConfigManager.getEffectiveThresholds(
-      storeId, 
-      productId, 
+      storeId,
+      productId,
       variantId as string
     );
-    
+
     // Calculate basic metrics
     const recentSales = product._count.orderItems;
     const salesVelocity = recentSales / 30; // daily average
     const daysInStock = salesVelocity > 0 ? currentStock / salesVelocity : 0;
-    
+
     const healthScore = InventoryConfigManager.calculateInventoryHealthScore(
       currentStock,
       thresholds,
       salesVelocity,
       daysInStock
     );
-    
+
     const severity = InventoryConfigManager.determineAlertSeverity(currentStock, thresholds);
     const reorderQuantity = InventoryConfigManager.calculateReorderQuantity(
       currentStock,
       thresholds,
       salesVelocity
     );
-    
+
     res.json({
       success: true,
       healthData: {
@@ -451,8 +456,8 @@ router.get('/inventory/health/:storeId/:productId',
         reorderQuantity,
         thresholds,
         recommendations: {
-          action: healthScore < 30 ? 'immediate_reorder' : 
-                  healthScore < 60 ? 'monitor_closely' : 
+          action: healthScore < 30 ? 'immediate_reorder' :
+                  healthScore < 60 ? 'monitor_closely' :
                   healthScore < 80 ? 'normal_monitoring' : 'optimal',
           message: healthScore < 30 ? 'Immediate attention required - stock critically low' :
                    healthScore < 60 ? 'Monitor stock levels closely' :
@@ -469,7 +474,7 @@ router.get('/export',
   requireRole([UserRole.OWNER]),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const configurations = InventoryConfigManager.exportConfigurations();
-    
+
     res.json({
       success: true,
       configurations,

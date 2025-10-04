@@ -1,10 +1,51 @@
+import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
-import crypto from 'crypto';
-import { spawn } from 'child_process';
+import { promisify } from 'util';
+import zlib from 'zlib';
+import { logger } from '../utils/logger';
 import { encryptionService } from './EncryptionService';
 import { getVaultService } from './VaultService';
-import { logger } from '../utils/logger';
+
+const gzipAsync = promisify(zlib.gzip);
+const gunzipAsync = promisify(zlib.gunzip);
+
+// SECURITY: Helper function to safely resolve paths and prevent traversal (CWE-22/23)
+function safePathJoin(basePath: string, ...paths: string[]): string {
+  // Validate that no path component contains traversal sequences
+  for (const p of paths) {
+    if (p.includes('..') || p.includes('/') || p.includes('\\')) {
+      throw new Error('SECURITY: Path traversal detected in path component');
+    }
+  }
+
+  const joined = path.join(basePath, ...paths);
+  const normalized = path.normalize(joined);
+
+  // Ensure the normalized path still starts with the base path
+  if (!normalized.startsWith(path.normalize(basePath))) {
+    throw new Error('SECURITY: Path traversal attempt detected');
+  }
+
+  return normalized;
+}
+
+// SECURITY: Validate backup ID format to prevent path traversal
+function validateBackupId(backupId: string): void {
+  if (!backupId || typeof backupId !== 'string') {
+    throw new Error('Invalid backup ID: must be a non-empty string');
+  }
+
+  // Only allow alphanumeric characters, hyphens, and underscores
+  if (!/^[a-zA-Z0-9_-]+$/.test(backupId)) {
+    throw new Error('Invalid backup ID format: only alphanumeric, hyphens, and underscores allowed');
+  }
+
+  // Prevent path traversal attempts
+  if (backupId.includes('..') || backupId.includes('/') || backupId.includes('\\')) {
+    throw new Error('SECURITY: Path traversal detected in backup ID');
+  }
+}
 
 export interface BackupEncryptionConfig {
   enabled: boolean;
@@ -69,10 +110,10 @@ export class BackupEncryptionService {
     try {
       // Create necessary directories
       await this.ensureDirectories();
-      
+
       // Verify encryption capabilities
       await this.verifyEncryption();
-      
+
       logger.info('Backup encryption service initialized', {
         enabled: this.config.enabled,
         compressionEnabled: this.config.compressionEnabled,
@@ -116,7 +157,7 @@ export class BackupEncryptionService {
     const testData = Buffer.from('backup-encryption-test');
     const encrypted = await this.encryptData(testData);
     const decrypted = await this.decryptData(encrypted.data, encrypted.keyVersion, encrypted.iv, encrypted.tag);
-    
+
     if (!testData.equals(decrypted)) {
       throw new Error('Backup encryption verification failed');
     }
@@ -137,7 +178,7 @@ export class BackupEncryptionService {
 
       const backupId = this.generateBackupId();
       const originalName = backupName || path.basename(sourcePath);
-      
+
       logger.info('Starting encrypted backup creation', {
         backupId,
         sourcePath,
@@ -158,7 +199,7 @@ export class BackupEncryptionService {
 
       // Encrypt the data
       const encrypted = await this.encryptData(sourceData);
-      
+
       // Generate encrypted filename
       const encryptedName = `${backupId}.backup`;
       const encryptedPath = path.join(this.config.encryptedBackupPath, backupType, encryptedName);
@@ -236,14 +277,14 @@ export class BackupEncryptionService {
 
       // Load metadata
       const metadata = await this.loadBackupMetadata(backupId);
-      
+
       // Read encrypted backup
       const encryptedPath = path.join(
         this.config.encryptedBackupPath,
         metadata.backupType,
         metadata.encryptedName
       );
-      
+
       const encryptedContent = await fs.readFile(encryptedPath, 'utf8');
       const encryptedBackupData = JSON.parse(encryptedContent);
 
@@ -294,11 +335,11 @@ export class BackupEncryptionService {
   }> {
     try {
       const useVault = process.env.USE_VAULT === 'true';
-      
+
       if (useVault) {
         const vault = getVaultService();
         const encryptedData = await vault.encrypt('backup-key', data.toString('base64'));
-        
+
         return {
           data: Buffer.from(encryptedData),
           keyVersion: 'vault-backup-1',
@@ -309,10 +350,10 @@ export class BackupEncryptionService {
         // Local encryption with dedicated backup key
         const key = encryptionService.getEncryptionSecrets().masterKey;
         const iv = crypto.randomBytes(16);
-        
+
         const cipher = crypto.createCipher('aes-256-gcm', Buffer.from(key, 'hex'));
         cipher.setAAD(Buffer.from('backup-encryption', 'utf8'));
-        
+
         let encrypted = cipher.update(data);
         encrypted = Buffer.concat([encrypted, cipher.final()]);
         const tag = cipher.getAuthTag();
@@ -348,14 +389,14 @@ export class BackupEncryptionService {
       } else {
         // Local decryption
         const key = encryptionService.getEncryptionSecrets().masterKey;
-        
+
         const decipher = crypto.createDecipher('aes-256-gcm', Buffer.from(key, 'hex'));
         decipher.setAAD(Buffer.from('backup-encryption', 'utf8'));
         decipher.setAuthTag(tag);
-        
+
         let decrypted = decipher.update(encryptedData);
         decrypted = Buffer.concat([decrypted, decipher.final()]);
-        
+
         return decrypted;
       }
 
@@ -366,55 +407,20 @@ export class BackupEncryptionService {
   }
 
   /**
-   * Compress data using gzip
+   * Compress data using zlib (CWE-94 fix: no command execution)
    */
   private async compressData(sourcePath: string): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
-      const gzip = spawn('gzip', ['-c', `-${this.config.compressionLevel}`, sourcePath]);
-      const chunks: Buffer[] = [];
-
-      gzip.stdout.on('data', (chunk) => {
-        chunks.push(chunk);
-      });
-
-      gzip.on('close', (code) => {
-        if (code === 0) {
-          resolve(Buffer.concat(chunks));
-        } else {
-          reject(new Error(`Compression failed with code ${code}`));
-        }
-      });
-
-      gzip.on('error', reject);
-    });
+    const data = await fs.readFile(sourcePath);
+    // Clamp compression level to valid range (0-9)
+    const level = Math.max(0, Math.min(9, this.config.compressionLevel));
+    return await gzipAsync(data, { level });
   }
 
   /**
-   * Decompress data using gunzip
+   * Decompress data using zlib (CWE-94 fix: no command execution)
    */
   private async decompressData(compressedData: Buffer): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
-      const gunzip = spawn('gunzip', ['-c']);
-      const chunks: Buffer[] = [];
-
-      gunzip.stdout.on('data', (chunk) => {
-        chunks.push(chunk);
-      });
-
-      gunzip.on('close', (code) => {
-        if (code === 0) {
-          resolve(Buffer.concat(chunks));
-        } else {
-          reject(new Error(`Decompression failed with code ${code}`));
-        }
-      });
-
-      gunzip.on('error', reject);
-
-      // Send compressed data to gunzip
-      gunzip.stdin.write(compressedData);
-      gunzip.stdin.end();
-    });
+    return await gunzipAsync(compressedData);
   }
 
   /**
@@ -430,7 +436,10 @@ export class BackupEncryptionService {
    * Store backup metadata
    */
   private async storeBackupMetadata(metadata: BackupMetadata): Promise<void> {
-    const metadataPath = path.join(
+    // SECURITY: Validate backup ID to prevent path traversal (CWE-22/23)
+    validateBackupId(metadata.backupId);
+
+    const metadataPath = safePathJoin(
       this.config.encryptedBackupPath,
       'metadata',
       `${metadata.backupId}.json`
@@ -442,7 +451,10 @@ export class BackupEncryptionService {
    * Load backup metadata
    */
   private async loadBackupMetadata(backupId: string): Promise<BackupMetadata> {
-    const metadataPath = path.join(
+    // SECURITY: Validate backup ID to prevent path traversal (CWE-22/23)
+    validateBackupId(backupId);
+
+    const metadataPath = safePathJoin(
       this.config.encryptedBackupPath,
       'metadata',
       `${backupId}.json`
@@ -456,9 +468,9 @@ export class BackupEncryptionService {
    */
   async listBackups(backupType?: BackupMetadata['backupType']): Promise<BackupMetadata[]> {
     try {
-      const metadataDir = path.join(this.config.encryptedBackupPath, 'metadata');
+      const metadataDir = safePathJoin(this.config.encryptedBackupPath, 'metadata');
       const files = await fs.readdir(metadataDir);
-      
+
       const metadataFiles = files.filter(file => file.endsWith('.json'));
       const backupList: BackupMetadata[] = [];
 
@@ -466,7 +478,7 @@ export class BackupEncryptionService {
         try {
           const backupId = metaFile.replace('.json', '');
           const metadata = await this.loadBackupMetadata(backupId);
-          
+
           if (!backupType || metadata.backupType === backupType) {
             backupList.push(metadata);
           }
@@ -498,7 +510,7 @@ export class BackupEncryptionService {
           try {
             await this.deleteBackup(backup.backupId);
             deletedCount++;
-            
+
             logger.info('Deleted expired backup', {
               backupId: backup.backupId,
               createdAt: backup.createdAt,
@@ -525,13 +537,13 @@ export class BackupEncryptionService {
   async deleteBackup(backupId: string): Promise<void> {
     try {
       const metadata = await this.loadBackupMetadata(backupId);
-      
+
       const backupPath = path.join(
         this.config.encryptedBackupPath,
         metadata.backupType,
         metadata.encryptedName
       );
-      
+
       const metadataPath = path.join(
         this.config.encryptedBackupPath,
         'metadata',
@@ -558,7 +570,7 @@ export class BackupEncryptionService {
   async getBackupStats(): Promise<BackupStats> {
     try {
       const backups = await this.listBackups();
-      
+
       if (backups.length === 0) {
         return {
           totalBackups: 0,
@@ -603,7 +615,7 @@ export class BackupEncryptionService {
   }> {
     try {
       const stats = await this.getBackupStats();
-      
+
       // Check if directories exist
       const directories = {
         backup: await this.directoryExists(this.config.backupPath),

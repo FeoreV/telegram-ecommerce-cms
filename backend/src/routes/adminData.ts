@@ -1,7 +1,8 @@
 import express from 'express';
+import { requireRole, UserRole } from '../auth';
 import { prisma } from '../lib/prisma';
 import { authMiddleware } from '../middleware/auth';
-import { requireRole, UserRole } from '../auth';
+import { csrfProtection } from '../middleware/csrfProtection';
 import { Permission, requirePermission } from '../middleware/permissions';
 import { logger } from '../utils/logger';
 
@@ -300,8 +301,8 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-// Update user
-router.patch('/users/:id', requirePermission(Permission.USER_UPDATE), async (req, res) => {
+// Update user (SECURITY: CSRF protected)
+router.patch('/users/:id', csrfProtection, requirePermission(Permission.USER_UPDATE), async (req, res) => {
   try {
     const { id } = req.params;
     const { role, isActive, email } = req.body;
@@ -334,8 +335,8 @@ router.patch('/users/:id', requirePermission(Permission.USER_UPDATE), async (req
   }
 });
 
-// Update order status
-router.patch('/orders/:id', requirePermission(Permission.ORDER_UPDATE), async (req, res) => {
+// Update order status (SECURITY: CSRF protected)
+router.patch('/orders/:id', csrfProtection, requirePermission(Permission.ORDER_UPDATE), async (req, res) => {
   try {
     const { id } = req.params;
     const { status, notes, trackingNumber, carrier } = req.body;

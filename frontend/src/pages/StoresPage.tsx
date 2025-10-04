@@ -1,50 +1,33 @@
-import React, { useState, useEffect, useCallback } from 'react'
 import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Typography,
-  IconButton,
-  Fab,
-  Dialog,
-  Grid,
-  Chip,
-  Tooltip,
-  Alert,
-  CircularProgress,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Pagination,
-  Checkbox,
-  FormControlLabel,
-  Menu,
-  ListItemIcon,
-  ListItemText,
-} from '@mui/material'
-import {
-  Add,
-  Search,
-  FilterList,
-  Refresh,
-  MoreVert,
-  Edit,
-  Delete,
-  Visibility,
-  VisibilityOff,
-  ContentCopy,
-  Launch,
+    Add,
+    Delete,
+    Refresh
 } from '@mui/icons-material'
-import { useAuth } from '../contexts/AuthContext'
-import { storeService } from '../services/storeService'
-import { Store as StoreType } from '../types'
+import {
+    Alert,
+    Box,
+    Button,
+    Card,
+    CardContent,
+    Checkbox,
+    CircularProgress,
+    FormControl,
+    FormControlLabel,
+    Grid,
+    InputLabel,
+    MenuItem,
+    Pagination,
+    Select,
+    Typography
+} from '@mui/material'
+import React, { useCallback, useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
 import StoreCard from '../components/stores/StoreCard'
 import StoreDialog from '../components/stores/StoreDialog'
-import StoreTemplatesDialog from '../components/stores/StoreTemplatesDialog'
+import { useAuth } from '../contexts/AuthContext'
 import { useStoresRealTime } from '../hooks/useRealTimeUpdates'
+import { storeService } from '../services/storeService'
+import { Store as StoreType } from '../types'
 
 interface StoreFilters {
   search?: string
@@ -61,7 +44,6 @@ const StoresPage: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [templatesDialogOpen, setTemplatesDialogOpen] = useState(false)
   const [editingStore, setEditingStore] = useState<StoreType | null>(null)
   const [selectedStores, setSelectedStores] = useState<string[]>([])
   const [filters, setFilters] = useState<StoreFilters>({
@@ -72,7 +54,6 @@ const StoresPage: React.FC = () => {
     status: undefined,
   })
   const [totalPages, setTotalPages] = useState(0)
-  const [totalCount, setTotalCount] = useState(0)
 
   const canCreateStore = user?.role === 'OWNER' || user?.role === 'ADMIN' || false
 
@@ -81,7 +62,7 @@ const StoresPage: React.FC = () => {
     setError('')
     try {
       const response = await storeService.getStores(filters || {})
-      
+
       // Ensure response is valid
       if (!response) {
         throw new Error('Не удалось получить ответ от сервера')
@@ -89,23 +70,21 @@ const StoresPage: React.FC = () => {
 
       // Safely extract data with fallbacks
       const storesData = Array.isArray(response.items) ? response.items : []
-      
+
       setStores(storesData)
       setTotalPages(response?.pagination?.totalPages || Math.ceil(storesData.length / (filters?.limit || 12)))
-      setTotalCount(response?.pagination?.total || storesData.length)
       setSelectedStores([]) // Clear selection when stores change
-      
+
     } catch (error: any) {
       console.error('Error loading stores:', error)
       const errorMessage = error?.response?.data?.error || error?.message || 'Ошибка при загрузке магазинов'
       setError(errorMessage)
       toast.error(errorMessage)
-      
+
       // Reset all arrays to empty on error
       setStores([])
       setSelectedStores([])
       setTotalPages(0)
-      setTotalCount(0)
     } finally {
       setLoading(false)
     }
@@ -115,7 +94,7 @@ const StoresPage: React.FC = () => {
     if (filters) {
       loadStores()
     }
-  }, [loadStores])
+  }, [loadStores, filters])
 
   // Real-time updates
   useStoresRealTime(loadStores)
@@ -123,10 +102,6 @@ const StoresPage: React.FC = () => {
   const handleCreateStore = () => {
     setEditingStore(null)
     setDialogOpen(true)
-  }
-
-  const handleCreateFromTemplate = () => {
-    setTemplatesDialogOpen(true)
   }
 
   const handleEditStore = (store: StoreType) => {
@@ -163,8 +138,8 @@ const StoresPage: React.FC = () => {
   }
 
   const handleSelectStore = (storeId: string) => {
-    setSelectedStores(prev => 
-      prev.includes(storeId) 
+    setSelectedStores(prev =>
+      prev.includes(storeId)
         ? prev.filter(id => id !== storeId)
         : [...prev, storeId]
     )
@@ -173,15 +148,15 @@ const StoresPage: React.FC = () => {
   const handleSelectAll = () => {
     const storesArray = stores || []
     setSelectedStores(
-      selectedStores.length === storesArray.length 
-        ? [] 
+      selectedStores.length === storesArray.length
+        ? []
         : storesArray.map(store => store.id)
     )
   }
 
   const handleBulkDelete = async () => {
     if (!selectedStores.length) return
-    
+
     if (!window.confirm(`Вы уверены, что хотите удалить ${selectedStores.length} магазинов?`)) {
       return
     }
@@ -225,21 +200,13 @@ const StoresPage: React.FC = () => {
             Обновить
           </Button>
           {canCreateStore && (
-            <>
-              <Button
-                variant="outlined"
-                onClick={handleCreateFromTemplate}
-              >
-                Из шаблона
-              </Button>
-              <Button
-                variant="contained"
-                startIcon={<Add />}
-                onClick={handleCreateStore}
-              >
-                Создать магазин
-              </Button>
-            </>
+            <Button
+              variant="contained"
+              startIcon={<Add />}
+              onClick={handleCreateStore}
+            >
+              Создать магазин
+            </Button>
           )}
         </Box>
       </Box>
@@ -325,7 +292,7 @@ const StoresPage: React.FC = () => {
               Магазины не найдены
             </Typography>
             <Typography color="text.secondary" sx={{ mb: 3 }}>
-              {filters.status || filters.search 
+              {filters.status || filters.search
                 ? 'Попробуйте изменить фильтры поиска'
                 : 'Создайте свой первый магазин'
               }
@@ -378,13 +345,6 @@ const StoresPage: React.FC = () => {
         onClose={() => setDialogOpen(false)}
         onSuccess={handleStoreSuccess}
         store={editingStore}
-      />
-
-      {/* Templates Dialog */}
-      <StoreTemplatesDialog
-        open={templatesDialogOpen}
-        onClose={() => setTemplatesDialogOpen(false)}
-        onSuccess={handleStoreSuccess}
       />
     </Box>
   )

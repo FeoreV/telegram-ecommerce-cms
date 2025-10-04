@@ -4,8 +4,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.enhancedJWTService = exports.EnhancedJWTService = void 0;
-const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const crypto_1 = __importDefault(require("crypto"));
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const loggerEnhanced_1 = require("./loggerEnhanced");
 const SecretManager_1 = require("./SecretManager");
 class EnhancedJWTService {
@@ -142,8 +142,6 @@ class EnhancedJWTService {
             loggerEnhanced_1.logger.debug('Access token generated', {
                 userId: payload.userId,
                 role: payload.role,
-                sessionId: payload.sessionId.substring(0, 8) + '...',
-                keyId: currentKey.id.substring(0, 8) + '...',
                 expiresIn: '15m'
             });
             return token;

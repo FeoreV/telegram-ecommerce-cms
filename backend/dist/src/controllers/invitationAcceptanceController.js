@@ -1,41 +1,9 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleInvitationAcceptance = void 0;
 const errorHandler_1 = require("../middleware/errorHandler");
 const logger_1 = require("../utils/logger");
+const sanitizer_1 = require("../utils/sanitizer");
 exports.handleInvitationAcceptance = (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { token } = req.params;
     if (!token) {
@@ -51,10 +19,10 @@ exports.handleInvitationAcceptance = (0, errorHandler_1.asyncHandler)(async (req
           <meta charset="UTF-8">
           <title>Приглашение не найдено</title>
           <style>
-            body { 
-              font-family: Arial, sans-serif; 
-              max-width: 600px; 
-              margin: 50px auto; 
+            body {
+              font-family: Arial, sans-serif;
+              max-width: 600px;
+              margin: 50px auto;
               padding: 20px;
               background: #f8f9fa;
             }
@@ -87,10 +55,10 @@ exports.handleInvitationAcceptance = (0, errorHandler_1.asyncHandler)(async (req
         <title>Приглашение в команду</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
-          body { 
+          body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            max-width: 600px; 
-            margin: 0 auto; 
+            max-width: 600px;
+            margin: 0 auto;
             padding: 20px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
@@ -113,8 +81,8 @@ exports.handleInvitationAcceptance = (0, errorHandler_1.asyncHandler)(async (req
             text-align: center;
             margin-bottom: 30px;
           }
-          .icon { 
-            font-size: 64px; 
+          .icon {
+            font-size: 64px;
             margin-bottom: 20px;
             display: block;
           }
@@ -212,7 +180,7 @@ exports.handleInvitationAcceptance = (0, errorHandler_1.asyncHandler)(async (req
         <div class="container">
           <div class="header">
             <span class="icon">🎉</span>
-            <div class="store-name">${invitationInfo.store.name}</div>
+            <div class="store-name">${(0, sanitizer_1.sanitizeHtml)(invitationInfo.store.name)}</div>
             <span class="role-badge">
               ${invitationInfo.role === 'ADMIN' ? '👑 Администратор' : '🛍️ Продавец'}
             </span>
@@ -221,19 +189,19 @@ exports.handleInvitationAcceptance = (0, errorHandler_1.asyncHandler)(async (req
 
           ${invitationInfo.message ? `
             <div class="message">
-              <strong>Сообщение от ${invitationInfo.inviter.firstName} ${invitationInfo.inviter.lastName}:</strong><br>
-              ${invitationInfo.message}
+              <strong>Сообщение от ${(0, sanitizer_1.sanitizeHtml)(invitationInfo.inviter.firstName)} ${(0, sanitizer_1.sanitizeHtml)(invitationInfo.inviter.lastName)}:</strong><br>
+              ${(0, sanitizer_1.sanitizeHtml)(invitationInfo.message)}
             </div>
           ` : ''}
 
           <div class="info-section">
             <div class="info-item">
               <span class="info-label">Пригласил:</span>
-              <span>${invitationInfo.inviter.firstName} ${invitationInfo.inviter.lastName}</span>
+              <span>${(0, sanitizer_1.sanitizeHtml)(invitationInfo.inviter.firstName)} ${(0, sanitizer_1.sanitizeHtml)(invitationInfo.inviter.lastName)}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Магазин:</span>
-              <span>${invitationInfo.store.name}</span>
+              <span>${(0, sanitizer_1.sanitizeHtml)(invitationInfo.store.name)}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Роль:</span>
@@ -242,7 +210,7 @@ exports.handleInvitationAcceptance = (0, errorHandler_1.asyncHandler)(async (req
             ${invitationInfo.permissions ? `
               <div class="info-item">
                 <span class="info-label">Разрешения:</span>
-                <span>${JSON.parse(invitationInfo.permissions).join(', ')}</span>
+                <span>${(0, sanitizer_1.sanitizeHtml)(JSON.parse(invitationInfo.permissions).join(', '))}</span>
               </div>
             ` : ''}
           </div>
@@ -258,16 +226,24 @@ exports.handleInvitationAcceptance = (0, errorHandler_1.asyncHandler)(async (req
           </div>
 
           <div class="buttons">
-            <button class="btn btn-accept" onclick="acceptInvitation('${token}')">
+            <button class="btn btn-accept" id="acceptBtn" data-token="${(0, sanitizer_1.sanitizeHtml)(token)}">
               ✅ Принять
             </button>
-            <button class="btn btn-reject" onclick="rejectInvitation('${token}')">
+            <button class="btn btn-reject" id="rejectBtn" data-token="${(0, sanitizer_1.sanitizeHtml)(token)}">
               ❌ Отклонить
             </button>
           </div>
         </div>
 
         <script>
+          // SECURITY FIX: CWE-79 - Use event listeners instead of inline onclick to prevent XSS
+          document.getElementById('acceptBtn').addEventListener('click', function() {
+            acceptInvitation(this.dataset.token);
+          });
+          document.getElementById('rejectBtn').addEventListener('click', function() {
+            rejectInvitation(this.dataset.token);
+          });
+
           async function acceptInvitation(token) {
             try {
               const response = await fetch('/api/invitations/accept', {
@@ -292,7 +268,7 @@ exports.handleInvitationAcceptance = (0, errorHandler_1.asyncHandler)(async (req
 
           async function rejectInvitation(token) {
             const reason = prompt('Укажите причину отклонения (необязательно):');
-            
+
             try {
               const response = await fetch('/api/invitations/reject', {
                 method: 'POST',
@@ -317,17 +293,43 @@ exports.handleInvitationAcceptance = (0, errorHandler_1.asyncHandler)(async (req
           function showResult(type, title, message) {
             const container = document.querySelector('.container');
             const color = type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#17a2b8';
-            
-            container.innerHTML = \`
-              <div style="text-align: center;">
-                <div style="font-size: 48px; margin-bottom: 20px;">\${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}</div>
-                <h2 style="color: \${color}; margin-bottom: 15px;">\${title}</h2>
-                <p style="font-size: 16px; color: #666; margin-bottom: 30px;">\${message}</p>
-                <button onclick="window.close()" class="btn" style="background: \${color}; color: white;">
-                  Закрыть
-                </button>
-              </div>
-            \`;
+            const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+
+            // Clear container safely
+            container.innerHTML = '';
+
+            // Create elements safely
+            const contentDiv = document.createElement('div');
+            contentDiv.style.textAlign = 'center';
+
+            const iconDiv = document.createElement('div');
+            iconDiv.style.fontSize = '48px';
+            iconDiv.style.marginBottom = '20px';
+            iconDiv.textContent = icon;
+
+            const titleH2 = document.createElement('h2');
+            titleH2.style.color = color;
+            titleH2.style.marginBottom = '15px';
+            titleH2.textContent = title;
+
+            const messageP = document.createElement('p');
+            messageP.style.fontSize = '16px';
+            messageP.style.color = '#666';
+            messageP.style.marginBottom = '30px';
+            messageP.textContent = message;
+
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'btn';
+            closeBtn.style.background = color;
+            closeBtn.style.color = 'white';
+            closeBtn.textContent = 'Закрыть';
+            closeBtn.onclick = () => window.close();
+
+            contentDiv.appendChild(iconDiv);
+            contentDiv.appendChild(titleH2);
+            contentDiv.appendChild(messageP);
+            contentDiv.appendChild(closeBtn);
+            container.appendChild(contentDiv);
           }
         </script>
       </body>
@@ -358,7 +360,7 @@ exports.handleInvitationAcceptance = (0, errorHandler_1.asyncHandler)(async (req
     }
 });
 async function getInvitationByToken(token) {
-    const { prisma } = await Promise.resolve().then(() => __importStar(require('../lib/prisma')));
+    const { prisma } = await import('../lib/prisma');
     return await prisma.employeeInvitation.findUnique({
         where: { token },
         include: {

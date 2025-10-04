@@ -34,13 +34,15 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const errorHandler_1 = require("../middleware/errorHandler");
+const prisma_1 = require("../lib/prisma");
 const auth_1 = require("../middleware/auth");
-const jwt_1 = require("../utils/jwt");
-const loggerEnhanced_1 = require("../utils/loggerEnhanced");
+const csrfProtection_1 = require("../middleware/csrfProtection");
+const errorHandler_1 = require("../middleware/errorHandler");
 const currency_1 = require("../utils/currency");
 const inventoryConfig_1 = __importStar(require("../utils/inventoryConfig"));
-const prisma_1 = require("../lib/prisma");
+const jwt_1 = require("../utils/jwt");
+const loggerEnhanced_1 = require("../utils/loggerEnhanced");
+const sanitizer_1 = require("../utils/sanitizer");
 const router = (0, express_1.Router)();
 router.get('/currencies', (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const currencies = (0, currency_1.getSupportedCurrencies)();
@@ -65,19 +67,20 @@ router.get('/currencies/:code', (0, errorHandler_1.asyncHandler)(async (req, res
         currency: config
     });
 }));
-router.post('/currencies/:code/format', (0, errorHandler_1.asyncHandler)(async (req, res) => {
+router.post('/currencies/:code/format', csrfProtection_1.csrfProtection, (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { code } = req.params;
     const { amount, showDecimals, useLocale, customSymbol } = req.body;
     if (!(0, currency_1.isValidCurrencyCode)(code)) {
-        throw new errorHandler_1.AppError(`Unsupported currency: ${code}`, 400);
+        throw new errorHandler_1.AppError(`Unsupported currency: ${(0, sanitizer_1.sanitizeInput)(code)}`, 400);
     }
     if (typeof amount !== 'number') {
         throw new errorHandler_1.AppError('Amount must be a number', 400);
     }
+    const safeCustomSymbol = customSymbol ? (0, sanitizer_1.sanitizeInput)(customSymbol) : undefined;
     const formatted = (0, currency_1.formatCurrency)(amount, code, {
         showDecimals,
         useLocale,
-        customSymbol
+        customSymbol: safeCustomSymbol
     });
     const displayFormatted = (0, currency_1.getDisplayPrice)(amount, code, {
         showDecimals,
@@ -113,7 +116,7 @@ router.get('/inventory/stores/:storeId', (0, auth_1.requireRole)([jwt_1.UserRole
         config
     });
 }));
-router.put('/inventory/stores/:storeId', (0, auth_1.requireRole)([jwt_1.UserRole.OWNER, jwt_1.UserRole.ADMIN]), (0, errorHandler_1.asyncHandler)(async (req, res) => {
+router.put('/inventory/stores/:storeId', csrfProtection_1.csrfProtection, (0, auth_1.requireRole)([jwt_1.UserRole.OWNER, jwt_1.UserRole.ADMIN]), (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { storeId } = req.params;
     const updates = req.body;
     if (req.user.role !== 'OWNER') {
@@ -203,7 +206,7 @@ router.get('/inventory/products/:productId', (0, auth_1.requireRole)([jwt_1.User
         config
     });
 }));
-router.put('/inventory/products/:productId', (0, auth_1.requireRole)([jwt_1.UserRole.OWNER, jwt_1.UserRole.ADMIN, jwt_1.UserRole.VENDOR]), (0, errorHandler_1.asyncHandler)(async (req, res) => {
+router.put('/inventory/products/:productId', csrfProtection_1.csrfProtection, (0, auth_1.requireRole)([jwt_1.UserRole.OWNER, jwt_1.UserRole.ADMIN, jwt_1.UserRole.VENDOR]), (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { productId } = req.params;
     const { variantId } = req.query;
     const updates = req.body;

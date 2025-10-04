@@ -23,13 +23,20 @@ var UserRole;
     UserRole["VENDOR"] = "VENDOR";
     UserRole["CUSTOMER"] = "CUSTOMER";
 })(UserRole || (exports.UserRole = UserRole = {}));
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-super-secret-refresh-key-change-in-production';
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+    const error = 'JWT_SECRET environment variable must be set and at least 32 characters long';
+    logger_1.logger.error(error);
+    throw new Error(error);
+}
+if (!process.env.JWT_REFRESH_SECRET || process.env.JWT_REFRESH_SECRET.length < 32) {
+    const error = 'JWT_REFRESH_SECRET environment variable must be set and at least 32 characters long';
+    logger_1.logger.error(error);
+    throw new Error(error);
+}
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '1h');
 const JWT_REFRESH_EXPIRES_IN = (process.env.JWT_REFRESH_EXPIRES_IN || '7d');
-if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
-    logger_1.logger.warn('JWT secrets not set in environment variables. Using default values (INSECURE for production)');
-}
 function generateToken(payload) {
     try {
         const options = {
@@ -76,7 +83,6 @@ function verifyToken(token) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         logger_1.logger.debug('Token verification failed:', {
             error: errorMessage,
-            tokenPreview: token.substring(0, 20) + '...'
         });
         const errorName = error instanceof Error ? error.name : '';
         if (errorName === 'TokenExpiredError') {
@@ -108,7 +114,6 @@ function verifyRefreshToken(token) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         logger_1.logger.debug('Refresh token verification failed:', {
             error: errorMessage,
-            tokenPreview: token.substring(0, 20) + '...'
         });
         const errorName = error instanceof Error ? error.name : '';
         if (errorName === 'TokenExpiredError') {

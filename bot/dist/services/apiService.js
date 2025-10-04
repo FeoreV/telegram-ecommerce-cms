@@ -85,6 +85,16 @@ class ApiService {
             data: { telegramId, username, firstName, lastName },
         }, { errorMessage: 'Authentication failed' });
     }
+    async getUserBalance(userToken) {
+        const response = await this.request({
+            url: '/auth/profile',
+            method: 'GET',
+            headers: this.withAuthHeaders(userToken),
+        }, { errorMessage: 'Failed to get user balance' });
+        return {
+            balance: response.user?.balance ?? 0
+        };
+    }
     async getStores(userToken, page = 1, limit = 10) {
         const response = await this.request({
             url: '/stores',

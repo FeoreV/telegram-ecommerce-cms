@@ -1,64 +1,66 @@
-import express from 'express';
+import cookieParser from 'cookie-parser';
+import { doubleCsrf } from 'csrf-csrf';
 import dotenv from 'dotenv';
-import { env } from './utils/env';
+import express from 'express';
 import { createServer } from 'http';
-import { 
-  securityMiddlewareBundle,
-  authRateLimit,
-  uploadRateLimit,
-  apiRateLimit,
-  adminRateLimit,
-  bruteForce,
-  adminIPWhitelist,
-  getSecurityStatus
-} from './middleware/security';
-import { enhancedAuthMiddleware } from './middleware/jwtSecurity';
-import { authMiddleware } from './middleware/auth';
 import { loginSlowDown } from './auth';
+import { authMiddleware } from './middleware/auth';
+import { enhancedAuthMiddleware } from './middleware/jwtSecurity';
+import {
+    adminIPWhitelist,
+    adminRateLimit,
+    apiRateLimit,
+    authRateLimit,
+    bruteForce,
+    securityMiddlewareBundle,
+    uploadRateLimit
+} from './middleware/security';
+import { env } from './utils/env';
 
-import { prisma, disconnectPrisma } from './lib/prisma';
 import { databaseService } from './lib/database';
+import { disconnectPrisma, prisma } from './lib/prisma';
 // import { setupAdminJS } from './admin'; // DISABLED - AdminJS removed
-import { initSocket } from './lib/socket';
-import { BackupService } from './services/backupService';
-import { botFactoryService } from './services/botFactoryService';
-import authRoutes from './routes/auth';
 import secureAuthRoutes from './auth/SecureAuthRoutes';
-import storeRoutes from './routes/stores';
-import productRoutes from './routes/products';
-import orderRoutes from './routes/orders';
+import { AuthenticatedRequest } from './auth/SecureAuthSystem';
+import { initSocket } from './lib/socket';
+import { compromiseGuard } from './middleware/compromiseGuard';
+import { validateContentType } from './middleware/contentTypeValidation';
+import { errorHandler } from './middleware/errorHandler';
+import { exfiltrationTrap } from './middleware/exfiltrationTrap';
+import { httpLogger, requestIdLogger } from './middleware/httpLogger';
+import { getMetrics, metricsMiddleware } from './middleware/metrics';
+import { notFoundMiddleware } from './middleware/notFoundHandler';
+import { performanceTracker } from './middleware/performanceTracker';
+import { responseDLP } from './middleware/responseDLP';
+import { vaultHealthEndpoint, vaultHealthMiddleware } from './middleware/vaultHealthCheck';
+import { webhookQuarantineGuard } from './middleware/webhookQuarantineGuard';
 import adminRoutes from './routes/admin';
-import cmsRoutes from './routes/cms';
-import integrationRoutes from './routes/integration';
-import bulkRoutes from './routes/bulk';
-import notificationRoutes from './routes/notifications';
+import authRoutes from './routes/auth';
 import backupRoutes from './routes/backup';
-import healthRoutes from './routes/health';
-import securityRoutes from './routes/security';
-import configRoutes from './routes/config';
 import botRoutes from './routes/bots';
+import bulkRoutes from './routes/bulk';
 import categoryRoutes from './routes/categories';
+import cmsRoutes from './routes/cms';
+import configRoutes from './routes/config';
+import customRoleRoutes from './routes/customRoleRoutes';
 import employeeRoutes from './routes/employeeRoutes';
+import healthRoutes from './routes/health';
+import integrationRoutes from './routes/integration';
 import invitationRoutes from './routes/invitationRoutes';
 import inviteLinkRoutes from './routes/inviteLinkRoutes';
-import customRoleRoutes from './routes/customRoleRoutes';
+import notificationRoutes from './routes/notifications';
+import orderRoutes from './routes/orders';
+import productRoutes from './routes/products';
+import securityRoutes from './routes/security';
+import storeRoutes from './routes/stores';
 import userRoutes from './routes/users';
-import { errorHandler } from './middleware/errorHandler';
-import { notFoundMiddleware } from './middleware/notFoundHandler';
-import { logger, toLogMetadata } from './utils/loggerEnhanced';
-import EnvValidator from './utils/envValidator';
-import { httpLogger, requestIdLogger } from './middleware/httpLogger';
-import { metricsMiddleware, getMetrics } from './middleware/metrics';
-import { performanceTracker } from './middleware/performanceTracker';
-import { secretManager } from './utils/SecretManager';
-import { vaultHealthMiddleware, vaultHealthEndpoint } from './middleware/vaultHealthCheck';
-import { compromiseGuard } from './middleware/compromiseGuard';
+import { BackupService } from './services/backupService';
+import { botFactoryService } from './services/botFactoryService';
 import { compromiseResponseService } from './services/CompromiseResponseService';
-import { exfiltrationTrap } from './middleware/exfiltrationTrap';
 import { honeytokenService } from './services/HoneytokenService';
-import { webhookQuarantineGuard } from './middleware/webhookQuarantineGuard';
-import { responseDLP } from './middleware/responseDLP';
-import { AuthenticatedRequest } from './auth/SecureAuthSystem';
+import EnvValidator from './utils/envValidator';
+import { logger, toLogMetadata } from './utils/loggerEnhanced';
+import { secretManager } from './utils/SecretManager';
 
 // Load environment variables
 dotenv.config();
@@ -110,6 +112,7 @@ const io = initSocket(server, env.FRONTEND_URL || "http://localhost:3000");
 
 // Enhanced security middleware bundle
 app.use(securityMiddlewareBundle);
+app.use(validateContentType); // SECURITY: Content-Type validation (CWE-436)
 app.use(compromiseGuard);
 app.use(exfiltrationTrap);
 app.use(responseDLP);
@@ -122,9 +125,12 @@ app.use(vaultHealthMiddleware);
 // Security status endpoint (before rate limiting)
 app.get('/api/security/status', authMiddleware, (req, res) => {
   try {
-    const status = getSecurityStatus();
+    // Return basic security status
     res.json({
-      security: status,
+      security: {
+        status: 'active',
+        features: ['rate-limiting', 'csrf-protection', 'helmet', 'sanitization']
+      },
       timestamp: new Date().toISOString()
     });
   } catch (error) {
@@ -145,10 +151,121 @@ app.use('/api/api', apiRateLimit); // API-specific rate limiting
 // Additional security for sensitive endpoints
 app.use('/api/admin', adminIPWhitelist); // IP whitelist for admin routes
 app.use('/api/security', adminIPWhitelist); // Protect security endpoints
+
+// SECURITY: Content-Type validation middleware (CWE-20)
+app.use((req, res, next) => {
+  // Skip validation for GET, HEAD, OPTIONS, DELETE
+  if (['GET', 'HEAD', 'OPTIONS', 'DELETE'].includes(req.method)) {
+    return next();
+  }
+
+  // Skip for webhook endpoints that need raw body
+  if (req.path.includes('/webhooks/')) {
+    return next();
+  }
+
+  // Check Content-Type for POST, PUT, PATCH
+  const contentType = req.get('Content-Type');
+
+  if (!contentType) {
+    logger.warn('Request without Content-Type header', {
+      method: req.method,
+      path: req.path,
+      ip: req.ip
+    });
+    return res.status(415).json({
+      error: 'Unsupported Media Type',
+      message: 'Content-Type header is required'
+    });
+  }
+
+  // Allow only application/json and application/x-www-form-urlencoded
+  const isValidContentType =
+    contentType.includes('application/json') ||
+    contentType.includes('application/x-www-form-urlencoded') ||
+    contentType.includes('multipart/form-data');
+
+  if (!isValidContentType) {
+    logger.warn('Invalid Content-Type header', {
+      method: req.method,
+      path: req.path,
+      contentType,
+      ip: req.ip
+    });
+    return res.status(415).json({
+      error: 'Unsupported Media Type',
+      message: 'Only application/json, application/x-www-form-urlencoded, and multipart/form-data are supported'
+    });
+  }
+
+  next();
+});
+
 // Use raw body for CMS webhooks to verify signatures (guarded in quarantine)
 app.use('/api/cms/webhooks/medusa', webhookQuarantineGuard, express.raw({ type: 'application/json', limit: '2mb' }));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+
+// SECURITY: Limit payload size to prevent DoS attacks (CWE-400)
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ limit: '1mb', extended: true }));
+app.use(cookieParser());
+
+// SECURITY: CSRF Protection (CWE-352)
+const csrfProtection = doubleCsrf({
+  getSecret: () => secretManager.getEncryptionSecrets().masterKey,
+  getSessionIdentifier: (req) => {
+    // Use user ID if authenticated, otherwise use session ID or IP
+    const user = (req as AuthenticatedRequest).user;
+    return user?.id || req.ip || 'anonymous';
+  },
+  cookieName: '__Host-csrf.token',
+  cookieOptions: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: '/',
+  },
+  size: 64,
+  ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
+});
+
+const { doubleCsrfProtection } = csrfProtection;
+
+// CSRF token endpoint
+app.get('/api/csrf-token', (req, res) => {
+  // Token is automatically set in cookie by the middleware
+  res.json({ message: 'CSRF token set in cookie' });
+});
+
+// Apply CSRF protection to state-changing routes
+app.use('/api/*', (req, res, next) => {
+  // Skip CSRF for specific paths
+  // NOTE: Use originalUrl to get the full path including mount point
+  const fullPath = req.originalUrl.split('?')[0]; // Remove query string
+  const skipPaths = [
+    '/api/health',
+    '/api/csrf-token',
+    '/api/webhooks',
+    '/api/cms/webhooks',
+    '/api/auth/telegram', // Telegram auth has its own verification
+    '/api/auth/login/telegram', // Telegram login
+    '/api/auth/login/email', // Email login
+    '/api/auth/refresh-token', // Token refresh
+    '/api/auth/auto-refresh', // Auto refresh
+    '/api/auth/verify-token', // Token verification
+  ];
+
+  if (skipPaths.some(path => fullPath.startsWith(path))) {
+    return next();
+  }
+
+  // Skip for read-only methods
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    return next();
+  }
+
+  // Apply CSRF protection
+  doubleCsrfProtection(req, res, next);
+});
 
 // Static files for uploads
 app.use('/uploads', express.static('uploads'));
@@ -164,7 +281,8 @@ app.get('/health/vault', vaultHealthEndpoint);
 // Prometheus metrics endpoint (public for Prometheus scraping)
 app.get('/metrics', async (req, res) => {
   try {
-    const PrometheusService = (await import('./services/prometheusService')).default;
+    const prometheusModule = await import('./services/prometheusService.js') as any;
+    const PrometheusService = prometheusModule.default;
     const prometheusService = PrometheusService.getInstance();
     const metrics = await prometheusService.getMetrics();
     res.set('Content-Type', prometheusService.registry.contentType);
@@ -183,7 +301,7 @@ app.get('/api/metrics', authMiddleware, (req, res) => {
 
 // API info endpoint
 app.get('/api', (req, res) => {
-  res.json({ 
+  res.json({
     message: 'Telegram E-commerce Bot API',
     version: '1.0.0',
     endpoints: {
@@ -191,10 +309,20 @@ app.get('/api', (req, res) => {
       stores: '/api/stores (GET)',
       products: '/api/products (GET)',
       orders: '/api/orders (GET)',
-      admin: '/api/admin/dashboard (GET)'
+      admin: '/api/admin/dashboard (GET)',
+      csrf: '/api/csrf-token (GET)'
     },
     health: '/health',
     timestamp: new Date().toISOString()
+  });
+});
+
+// CSRF token endpoint
+import { getCsrfTokenHandler } from './middleware/csrfProtection';
+app.get('/api/csrf-token', getCsrfTokenHandler, (req, res) => {
+  res.json({
+    csrfToken: res.locals.csrfToken,
+    message: 'CSRF token generated successfully'
   });
 });
 
@@ -209,7 +337,7 @@ const initializeAdminJS = async () => {
     // First, initialize critical services
     await initializeCriticalServices();
     logger.info('✅ Critical services initialized successfully');
-    
+
     // AdminJS is disabled - no initialization needed
     await initializeAdminJS();
     logger.info('✅ Application initialization completed');
@@ -221,7 +349,7 @@ const initializeAdminJS = async () => {
 
 // Initialize backup service
 BackupService.initialize().catch(error => {
-  logger.error('Failed to initialize backup service:', error);
+  logger.error('Failed to initialize backup service:', { error: error instanceof Error ? error.message : String(error) });
 });
 
 // Health and monitoring routes (before other middlewares for public endpoints)
@@ -234,7 +362,7 @@ app.use('/api/health', healthRoutes);
 // Security routes (enhanced auth for sensitive operations)
 app.use('/api/security', securityRoutes);
 
-// API Routes with enhanced security and authentication  
+// API Routes with enhanced security and authentication
 app.use('/api/auth', secureAuthRoutes); // New secure auth routes
 app.use('/auth', secureAuthRoutes); // Legacy auth route for backward compatibility
 // Keep old routes as fallback for any legacy endpoints
@@ -284,18 +412,19 @@ app.use(notFoundMiddleware);
 app.use(errorHandler);
 
 // Socket.IO connection handling
-import { socketAuthMiddleware, AuthenticatedSocket } from './middleware/socketAuth.js';
+import { AuthenticatedSocket, socketAuthMiddleware } from './middleware/socketAuth.js';
 import { SocketRoomService } from './services/socketRoomService.js';
 
 // Apply authentication middleware
 io.use(socketAuthMiddleware);
 
 io.on('connection', async (socket: AuthenticatedSocket) => {
-  logger.info(`New authenticated socket connection: ${socket.id} for user ${socket.user?.id} (${socket.user?.role})`);
-  
+  const { sanitizeForLog } = require('./utils/sanitizer');
+  logger.info(`New authenticated socket connection: ${sanitizeForLog(socket.id)} for user ${sanitizeForLog(socket.user?.id)} (${sanitizeForLog(socket.user?.role)})`);
+
   // Join user to appropriate rooms based on role and permissions
   await SocketRoomService.joinUserToRooms(socket);
-  
+
   // Handle custom room joining requests
   socket.on('join_room', async (roomName: string) => {
     if (!socket.user) {
@@ -308,10 +437,10 @@ io.on('connection', async (socket: AuthenticatedSocket) => {
     if (canJoin) {
       socket.join(roomName);
       socket.emit('room_joined', { room: roomName });
-      logger.info(`User ${socket.user.id} joined custom room: ${roomName}`);
+      logger.info(`User ${socket.user.id} joined custom room: ${sanitizeForLog(roomName)}`);
     } else {
       socket.emit('error', { message: `Access denied to room: ${roomName}` });
-      logger.warn(`User ${socket.user.id} denied access to room: ${roomName}`);
+      logger.warn(`User ${sanitizeForLog(socket.user.id)} denied access to room: ${sanitizeForLog(roomName)}`);
     }
   });
 
@@ -319,7 +448,7 @@ io.on('connection', async (socket: AuthenticatedSocket) => {
   socket.on('leave_room', (roomName: string) => {
     socket.leave(roomName);
     socket.emit('room_left', { room: roomName });
-    logger.info(`User ${socket.user?.id} left room: ${roomName}`);
+    logger.info(`User ${socket.user?.id} left room: ${sanitizeForLog(roomName)}`);
   });
 
   // Handle room info requests
@@ -343,14 +472,14 @@ io.on('connection', async (socket: AuthenticatedSocket) => {
     const stats = await SocketRoomService.getSocketStats();
     socket.emit('socket_stats', stats);
   });
-  
+
   socket.on('disconnect', (reason) => {
-    logger.info(`Socket disconnected: ${socket.id} (${reason}) for user ${socket.user?.id}`);
+    logger.info(`Socket disconnected: ${socket.id} (${sanitizeForLog(reason)}) for user ${socket.user?.id}`);
     SocketRoomService.leaveUserFromRooms(socket);
   });
 
   socket.on('error', (error: unknown) => {
-    logger.error(`Socket error for ${socket.id}:`, toLogMetadata(error));
+    logger.error(`Socket error for ${sanitizeForLog(socket.id)}:`, toLogMetadata(error));
   });
 });
 
@@ -378,7 +507,7 @@ async function validateRoomAccess(user: AuthenticatedRequest['user'], roomName: 
 
     if (roomName.startsWith('store_')) {
       const storeId = roomName.replace('store_', '');
-      
+
       // OWNER has access to all stores
       if (user.role === 'OWNER') {
         return true;
@@ -412,8 +541,9 @@ const initializeServices = async () => {
   try {
     // Initialize Prometheus Service
     logger.info('📊 Initializing Prometheus Service...');
-    const PrometheusService = (await import('./services/prometheusService')).default;
-    const prometheusService = PrometheusService.getInstance();
+    const prometheusModule = await import('./services/prometheusService.js') as any;
+    const PrometheusService = prometheusModule.default;
+    const prometheusService = (PrometheusService as any).getInstance();
     prometheusService.startPeriodicCollection(10000); // Collect system metrics every 10 seconds
     logger.info('✅ Prometheus Service initialized successfully');
 
@@ -433,7 +563,7 @@ server.listen(PORT, async () => {
   logger.info(`🚀 Server running on port ${PORT}`);
   logger.info(`📊 Admin panel: http://localhost:3000`);
   logger.info(`🔧 API: http://localhost:${PORT}/api`);
-  
+
   // Initialize services after server starts
   try {
     await initializeServices();

@@ -4,6 +4,7 @@ exports.handleInviteLinkPage = void 0;
 const prisma_1 = require("../lib/prisma");
 const errorHandler_1 = require("../middleware/errorHandler");
 const logger_1 = require("../utils/logger");
+const sanitizer_1 = require("../utils/sanitizer");
 exports.handleInviteLinkPage = (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { token } = req.params;
     if (!token) {
@@ -91,7 +92,7 @@ function getInvitePage(inviteLink, roleDisplay, roleColor, roleIcon, permissions
           padding: 0;
           box-sizing: border-box;
         }
-        
+
         body {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -101,7 +102,7 @@ function getInvitePage(inviteLink, roleDisplay, roleColor, roleIcon, permissions
           justify-content: center;
           padding: 20px;
         }
-        
+
         .container {
           background: white;
           border-radius: 16px;
@@ -111,17 +112,17 @@ function getInvitePage(inviteLink, roleDisplay, roleColor, roleIcon, permissions
           width: 100%;
           animation: slideUp 0.6s ease-out;
         }
-        
+
         @keyframes slideUp {
           from { transform: translateY(30px); opacity: 0; }
           to { transform: translateY(0); opacity: 1; }
         }
-        
+
         .header {
           text-align: center;
           margin-bottom: 30px;
         }
-        
+
         .store-logo {
           width: 80px;
           height: 80px;
@@ -133,14 +134,14 @@ function getInvitePage(inviteLink, roleDisplay, roleColor, roleIcon, permissions
           justify-content: center;
           font-size: 32px;
         }
-        
+
         .store-name {
           font-size: 28px;
           font-weight: bold;
           color: #1f2937;
           margin-bottom: 8px;
         }
-        
+
         .role-badge {
           display: inline-flex;
           align-items: center;
@@ -153,13 +154,13 @@ function getInvitePage(inviteLink, roleDisplay, roleColor, roleIcon, permissions
           font-size: 14px;
           margin-bottom: 20px;
         }
-        
+
         .description {
           color: #6b7280;
           font-size: 16px;
           line-height: 1.5;
         }
-        
+
         .info-section {
           background: #f9fafb;
           border-radius: 12px;
@@ -167,47 +168,47 @@ function getInvitePage(inviteLink, roleDisplay, roleColor, roleIcon, permissions
           margin: 30px 0;
           border-left: 4px solid ${roleColor};
         }
-        
+
         .info-item {
           display: flex;
           justify-content: space-between;
           align-items: center;
           margin-bottom: 12px;
         }
-        
+
         .info-item:last-child {
           margin-bottom: 0;
         }
-        
+
         .info-label {
           font-weight: 600;
           color: #374151;
         }
-        
+
         .info-value {
           color: #6b7280;
           text-align: right;
           flex: 1;
           margin-left: 16px;
         }
-        
+
         .form-section {
           margin: 30px 0;
         }
-        
+
         .form-group {
           margin-bottom: 20px;
         }
-        
+
         .form-row {
           display: flex;
           gap: 12px;
         }
-        
+
         .form-row .form-group {
           flex: 1;
         }
-        
+
         label {
           display: block;
           margin-bottom: 6px;
@@ -215,7 +216,7 @@ function getInvitePage(inviteLink, roleDisplay, roleColor, roleIcon, permissions
           color: #374151;
           font-size: 14px;
         }
-        
+
         input {
           width: 100%;
           padding: 12px 16px;
@@ -225,21 +226,21 @@ function getInvitePage(inviteLink, roleDisplay, roleColor, roleIcon, permissions
           transition: all 0.2s ease;
           background: #ffffff;
         }
-        
+
         input:focus {
           outline: none;
           border-color: ${roleColor};
           box-shadow: 0 0 0 3px ${roleColor}20;
         }
-        
+
         .required {
           color: #ef4444;
         }
-        
+
         .permissions {
           margin: 20px 0;
         }
-        
+
         .permissions-title {
           font-weight: 600;
           color: #374151;
@@ -248,13 +249,13 @@ function getInvitePage(inviteLink, roleDisplay, roleColor, roleIcon, permissions
           align-items: center;
           gap: 8px;
         }
-        
+
         .permissions-list {
           display: flex;
           flex-wrap: wrap;
           gap: 8px;
         }
-        
+
         .permission-tag {
           background: ${roleColor}10;
           color: ${roleColor};
@@ -263,7 +264,7 @@ function getInvitePage(inviteLink, roleDisplay, roleColor, roleIcon, permissions
           font-size: 12px;
           font-weight: 500;
         }
-        
+
         .usage-stats {
           background: #fef3c7;
           border: 1px solid #fbbf24;
@@ -274,13 +275,13 @@ function getInvitePage(inviteLink, roleDisplay, roleColor, roleIcon, permissions
           color: #92400e;
           text-align: center;
         }
-        
+
         .buttons {
           display: flex;
           gap: 12px;
           margin-top: 30px;
         }
-        
+
         .btn {
           flex: 1;
           padding: 14px 24px;
@@ -292,32 +293,32 @@ function getInvitePage(inviteLink, roleDisplay, roleColor, roleIcon, permissions
           transition: all 0.2s ease;
           text-align: center;
         }
-        
+
         .btn-primary {
           background: ${roleColor};
           color: white;
         }
-        
+
         .btn-primary:hover {
           background: ${roleColor}dd;
           transform: translateY(-1px);
         }
-        
+
         .btn-secondary {
           background: #f3f4f6;
           color: #6b7280;
           border: 1px solid #d1d5db;
         }
-        
+
         .btn-secondary:hover {
           background: #e5e7eb;
         }
-        
+
         .loading {
           opacity: 0.7;
           cursor: not-allowed;
         }
-        
+
         .error {
           background: #fef2f2;
           border: 1px solid #fca5a5;
@@ -327,7 +328,7 @@ function getInvitePage(inviteLink, roleDisplay, roleColor, roleIcon, permissions
           margin: 20px 0;
           font-size: 14px;
         }
-        
+
         .success {
           background: #f0fdf4;
           border: 1px solid #86efac;
@@ -337,18 +338,18 @@ function getInvitePage(inviteLink, roleDisplay, roleColor, roleIcon, permissions
           margin: 20px 0;
           font-size: 14px;
         }
-        
+
         @media (max-width: 480px) {
           .container {
             padding: 20px;
             margin: 10px;
           }
-          
+
           .form-row {
             flex-direction: column;
             gap: 0;
           }
-          
+
           .buttons {
             flex-direction: column;
           }
@@ -359,27 +360,27 @@ function getInvitePage(inviteLink, roleDisplay, roleColor, roleIcon, permissions
       <div class="container">
         <div class="header">
           <div class="store-logo">
-            ${inviteLink.store.logoUrl ? `<img src="${inviteLink.store.logoUrl}" alt="Logo" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` : '🏪'}
+            ${inviteLink.store.logoUrl ? `<img src="${(0, sanitizer_1.sanitizeHtml)(inviteLink.store.logoUrl)}" alt="Logo" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` : '🏪'}
           </div>
-          <div class="store-name">${inviteLink.store.name}</div>
+          <div class="store-name">${(0, sanitizer_1.sanitizeHtml)(inviteLink.store.name)}</div>
           <div class="role-badge">
-            <span>${roleIcon}</span>
-            ${roleDisplay}
+            <span>${(0, sanitizer_1.sanitizeHtml)(roleIcon)}</span>
+            ${(0, sanitizer_1.sanitizeHtml)(roleDisplay)}
           </div>
           <div class="description">
             Вас пригласили присоединиться к команде!
-            ${inviteLink.description ? `<br><em>"${inviteLink.description}"</em>` : ''}
+            ${inviteLink.description ? `<br><em>"${(0, sanitizer_1.sanitizeHtml)(inviteLink.description)}"</em>` : ''}
           </div>
         </div>
 
         <div class="info-section">
           <div class="info-item">
             <span class="info-label">Пригласил:</span>
-            <span class="info-value">${inviteLink.creator.firstName} ${inviteLink.creator.lastName}</span>
+            <span class="info-value">${(0, sanitizer_1.sanitizeHtml)(inviteLink.creator.firstName)} ${(0, sanitizer_1.sanitizeHtml)(inviteLink.creator.lastName)}</span>
           </div>
           <div class="info-item">
             <span class="info-label">Роль:</span>
-            <span class="info-value">${roleDisplay}</span>
+            <span class="info-value">${(0, sanitizer_1.sanitizeHtml)(roleDisplay)}</span>
           </div>
           ${inviteLink.expiresAt ? `
             <div class="info-item">
@@ -403,7 +404,7 @@ function getInvitePage(inviteLink, roleDisplay, roleColor, roleIcon, permissions
             </div>
             <div class="permissions-list">
               ${permissions.map(permission => `
-                <span class="permission-tag">${getPermissionLabel(permission)}</span>
+                <span class="permission-tag">${(0, sanitizer_1.sanitizeHtml)(getPermissionLabel(permission))}</span>
               `).join('')}
             </div>
           </div>
@@ -413,7 +414,7 @@ function getInvitePage(inviteLink, roleDisplay, roleColor, roleIcon, permissions
           ⏱️ Использовано ${inviteLink.usedCount} из ${inviteLink.maxUses} раз
         </div>
 
-        <form id="inviteForm" class="form-section">
+        <form id="inviteForm" class="form-section" data-token="${(0, sanitizer_1.sanitizeHtml)(inviteLink.token)}">
           <div class="form-row">
             <div class="form-group">
               <label for="firstName">Имя <span class="required">*</span></label>
@@ -424,12 +425,12 @@ function getInvitePage(inviteLink, roleDisplay, roleColor, roleIcon, permissions
               <input type="text" id="lastName" name="lastName" required>
             </div>
           </div>
-          
+
           <div class="form-group">
             <label for="email">Email <span class="required">*</span></label>
             <input type="email" id="email" name="email" required>
           </div>
-          
+
           <div class="form-group">
             <label for="telegramId">Telegram ID (необязательно)</label>
             <input type="text" id="telegramId" name="telegramId" placeholder="@username или ID">
@@ -451,14 +452,15 @@ function getInvitePage(inviteLink, roleDisplay, roleColor, roleIcon, permissions
       <script>
         document.getElementById('inviteForm').addEventListener('submit', async (e) => {
           e.preventDefault();
-          
+
           const joinBtn = document.getElementById('joinBtn');
           const messageDiv = document.getElementById('message');
-          
-          // Получаем данные формы
-          const formData = new FormData(e.target);
+          const form = e.target;
+
+          // SECURITY FIX: CWE-79 - Get token from data attribute instead of inline JavaScript
+          const formData = new FormData(form);
           const data = {
-            token: '${inviteLink.token}',
+            token: form.dataset.token,
             firstName: formData.get('firstName'),
             lastName: formData.get('lastName'),
             email: formData.get('email'),
@@ -483,19 +485,31 @@ function getInvitePage(inviteLink, roleDisplay, roleColor, roleIcon, permissions
             const result = await response.json();
 
             if (response.ok) {
-              messageDiv.innerHTML = '<div class="success">🎉 ' + result.message + '</div>';
+              const successDiv = document.createElement('div');
+              successDiv.className = 'success';
+              successDiv.textContent = '🎉 ' + result.message;
+              messageDiv.innerHTML = '';
+              messageDiv.appendChild(successDiv);
               joinBtn.textContent = '✅ Успешно присоединились!';
-              
+
               // Перенаправляем на фронтенд через некоторое время
               setTimeout(() => {
                 window.location.href = '${process.env.FRONTEND_URL || '/'}';
               }, 2000);
             } else {
-              messageDiv.innerHTML = '<div class="error">❌ ' + (result.message || 'Произошла ошибка') + '</div>';
+              const errorDiv = document.createElement('div');
+              errorDiv.className = 'error';
+              errorDiv.textContent = '❌ ' + (result.message || 'Произошла ошибка');
+              messageDiv.innerHTML = '';
+              messageDiv.appendChild(errorDiv);
               resetButton();
             }
           } catch (error) {
-            messageDiv.innerHTML = '<div class="error">❌ Произошла ошибка при обработке запроса</div>';
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.textContent = '❌ Произошла ошибка при обработке запроса';
+            messageDiv.innerHTML = '';
+            messageDiv.appendChild(errorDiv);
             resetButton();
           }
 
@@ -528,7 +542,7 @@ function getErrorPage(title, message) {
           justify-content: center;
           padding: 20px;
         }
-        
+
         .container {
           background: white;
           border-radius: 16px;
@@ -538,26 +552,26 @@ function getErrorPage(title, message) {
           width: 100%;
           text-align: center;
         }
-        
+
         .icon {
           font-size: 64px;
           margin-bottom: 20px;
           display: block;
         }
-        
+
         .title {
           font-size: 24px;
           font-weight: bold;
           color: #dc2626;
           margin-bottom: 16px;
         }
-        
+
         .message {
           color: #6b7280;
           line-height: 1.5;
           margin-bottom: 30px;
         }
-        
+
         .btn {
           background: #6366f1;
           color: white;
@@ -574,8 +588,8 @@ function getErrorPage(title, message) {
     <body>
       <div class="container">
         <div class="icon">❌</div>
-        <div class="title">${title}</div>
-        <div class="message">${message}</div>
+        <div class="title">${(0, sanitizer_1.sanitizeHtml)(title)}</div>
+        <div class="message">${(0, sanitizer_1.sanitizeHtml)(message)}</div>
         <button class="btn" onclick="window.close()">Закрыть</button>
       </div>
     </body>

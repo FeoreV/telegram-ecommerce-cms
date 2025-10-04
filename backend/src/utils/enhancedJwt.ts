@@ -1,5 +1,5 @@
-import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 import { logger } from './loggerEnhanced';
 import { secretManager } from './SecretManager';
 
@@ -52,7 +52,7 @@ export class EnhancedJWTService {
   private async initializeKeys(): Promise<void> {
     try {
       const jwtSecrets = secretManager.getJWTSecrets();
-      
+
       // Create initial key pair
       const keyId = this.generateKeyId();
       const keyPair: JWTKeyPair = {
@@ -123,7 +123,7 @@ export class EnhancedJWTService {
   private startKeyRotation(): void {
     // Rotate keys every 24 hours
     const rotationInterval = 24 * 60 * 60 * 1000;
-    
+
     this.rotationInterval = setInterval(async () => {
       try {
         await this.rotateKeys();
@@ -146,10 +146,10 @@ export class EnhancedJWTService {
 
       // Create new key pair
       const newKeyPair = await this.createNewKeyPair();
-      
+
       // Add new key to active keys
       this.activeKeys.set(newKeyPair.id, newKeyPair);
-      
+
       // Update current key ID
       const oldKeyId = this.currentKeyId;
       this.currentKeyId = newKeyPair.id;
@@ -216,12 +216,11 @@ export class EnhancedJWTService {
         }
       });
 
-      // Log token generation (without sensitive data)
+      // SECURITY FIX: CWE-522 - Log token generation without sensitive data
       logger.debug('Access token generated', {
         userId: payload.userId,
         role: payload.role,
-        sessionId: payload.sessionId.substring(0, 8) + '...',
-        keyId: currentKey.id.substring(0, 8) + '...',
+        // sessionId and keyId removed to prevent information exposure
         expiresIn: '15m'
       });
 
@@ -292,9 +291,9 @@ export class EnhancedJWTService {
   } {
     const activeKeyCount = Array.from(this.activeKeys.values())
       .filter(key => key.isActive).length;
-    
+
     const oldestKey = Array.from(this.activeKeys.values())
-      .reduce((oldest, current) => 
+      .reduce((oldest, current) =>
         current.createdAt < oldest.createdAt ? current : oldest
       );
 
@@ -322,7 +321,7 @@ export class EnhancedJWTService {
       clearInterval(this.rotationInterval);
       this.rotationInterval = null;
     }
-    
+
     this.activeKeys.clear();
     logger.info('Enhanced JWT service destroyed');
   }

@@ -36,16 +36,16 @@ export class RedisService {
         port: this.extractPort(redisSecrets.url),
         password: redisSecrets.password,
         db: 0,
-        
+
         // Connection settings
         connectTimeout: 10000,
         commandTimeout: 5000,
         maxRetriesPerRequest: 3,
-        
+
         // Reconnection settings
         lazyConnect: true,
         keepAlive: 30000,
-        
+
         // Logging
         showFriendlyErrorStack: process.env.NODE_ENV !== 'production',
       };
@@ -134,22 +134,22 @@ export class RedisService {
 
   private extractHost(url?: string): string {
     if (!url) return 'localhost';
-    
+
     try {
       const parsed = new URL(url);
       return parsed.hostname;
-    } catch (error) {
+    } catch {
       return 'localhost';
     }
   }
 
   private extractPort(url?: string): number {
     if (!url) return tlsService.isEnabled() ? 6380 : 6379;
-    
+
     try {
       const parsed = new URL(url);
       return parseInt(parsed.port) || (tlsService.isEnabled() ? 6380 : 6379);
-    } catch (error) {
+    } catch {
       return tlsService.isEnabled() ? 6380 : 6379;
     }
   }
@@ -158,9 +158,9 @@ export class RedisService {
     const promises: Promise<void>[] = [];
 
     if (this.client) {
-      promises.push(this.client.quit().catch(() => { 
-        if (this.client) { 
-          this.client.disconnect(); 
+      promises.push(this.client.quit().catch(() => {
+        if (this.client) {
+          this.client.disconnect();
         }
       }));
     }
@@ -187,8 +187,8 @@ export class RedisService {
       this.subscriber = null;
       this.publisher = null;
       logger.info('All Redis clients disconnected successfully');
-    } catch (error) {
-      logger.error('Error disconnecting Redis clients:', error);
+    } catch (error: unknown) {
+      logger.error('Error disconnecting Redis clients:', error as Record<string, unknown>);
       throw error;
     }
   }
@@ -296,23 +296,23 @@ export class RedisService {
     maxRetries = 3
   ): Promise<T> {
     const client = this.getClient();
-    
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         return await operation(client);
       } catch (error) {
         logger.warn(`Redis operation attempt ${attempt} failed:`, error);
-        
+
         if (attempt === maxRetries) {
           logger.error('Redis operation failed after all retries:', error);
           throw error;
         }
-        
+
         // Wait before retry
         await new Promise(resolve => setTimeout(resolve, attempt * 1000));
       }
     }
-    
+
     throw new Error('Redis operation failed after all retries');
   }
 
@@ -322,10 +322,10 @@ export class RedisService {
   async setSecure(key: string, value: any, ttl?: number): Promise<void> {
     const client = this.getClient();
     const serialized = JSON.stringify(value);
-    
+
     // Encrypt the value if TLS service has encryption capabilities
     // For now, just store as-is since Redis connection is already encrypted
-    
+
     if (ttl) {
       await client.setex(key, ttl, serialized);
     } else {
@@ -336,7 +336,7 @@ export class RedisService {
   async getSecure<T>(key: string): Promise<T | null> {
     const client = this.getClient();
     const value = await client.get(key);
-    
+
     if (!value) {
       return null;
     }
@@ -345,8 +345,8 @@ export class RedisService {
       // Decrypt the value if needed
       // For now, just parse since Redis connection is already encrypted
       return JSON.parse(value) as T;
-    } catch (error) {
-      logger.error('Failed to parse cached value:', error);
+    } catch (error: unknown) {
+      logger.error('Failed to parse cached value:', error as Record<string, unknown>);
       return null;
     }
   }
@@ -362,14 +362,14 @@ export class RedisService {
 
   async subscribe(channel: string, callback: (message: any) => void): Promise<void> {
     const subscriber = this.getSubscriber();
-    
+
     subscriber.on('message', (receivedChannel: string, message: string) => {
       if (receivedChannel === channel) {
         try {
           const parsed = JSON.parse(message);
           callback(parsed);
-        } catch (error) {
-          logger.error('Failed to parse pub/sub message:', error);
+        } catch (error: unknown) {
+          logger.error('Failed to parse pub/sub message:', error as Record<string, unknown>);
         }
       }
     });

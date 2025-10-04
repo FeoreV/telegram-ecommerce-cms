@@ -36,6 +36,7 @@ import {
 } from '@mui/icons-material'
 import { Store, User } from '../../types'
 import { storeService } from '../../services/storeService'
+import { userService } from '../../services/userService'
 import { toast } from 'react-toastify'
 
 interface StoreAdminManagementProps {
@@ -82,54 +83,21 @@ const StoreAdminManagement: React.FC<StoreAdminManagementProps> = ({
   const searchUsers = async () => {
     setSearchLoading(true)
     try {
-      // Mock user search - in real app would call user search API
-      const mockUsers: AdminCandidate[] = [
-        {
-          id: 'user1',
-          telegramId: '123456789',
-          firstName: 'Алексей',
-          lastName: 'Иванов',
-          username: 'alexivanov',
-          email: 'alex@example.com',
-          phone: '+7-900-123-45-67',
-          role: 'VENDOR',
-          isActive: true,
-        },
-        {
-          id: 'user2',
-          telegramId: '987654321',
-          firstName: 'Мария',
-          lastName: 'Петрова',
-          username: 'mariapetrova',
-          email: 'maria@example.com',
-          role: 'ADMIN',
-          isActive: true,
-        },
-        {
-          id: 'user3',
-          telegramId: '456789123',
-          firstName: 'Дмитрий',
-          lastName: 'Сидоров',
-          username: 'dmitrysidorov',
-          phone: '+7-911-987-65-43',
-          role: 'VENDOR',
-          isActive: true,
-        },
-      ]
+      // Search users via API
+      const response = await userService.searchUsers({
+        search: searchTerm,
+        isActive: true,
+        limit: 50
+      })
 
-      // Filter out users who are already admins and match search
+      // Filter out users who are already admins
       const existingAdminIds = currentAdmins.map(admin => admin.user.id)
-      const filtered = mockUsers.filter(user => 
-        !existingAdminIds.includes(user.id) &&
-        (user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-         user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-         user.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-         user.email?.toLowerCase().includes(searchTerm.toLowerCase()))
-      )
+      const filtered = response.items.filter(user => !existingAdminIds.includes(user.id))
 
-      setCandidates(filtered)
-    } catch (error) {
+      setCandidates(filtered as AdminCandidate[])
+    } catch (error: any) {
       console.error('Error searching users:', error)
+      toast.error('Ошибка при поиске пользователей')
       setCandidates([])
     } finally {
       setSearchLoading(false)

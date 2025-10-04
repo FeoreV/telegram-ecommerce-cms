@@ -1,39 +1,45 @@
-# EditorConfig is awesome: https://EditorConfig.org
+# EditorConfig helps maintain consistent coding styles
+# https://editorconfig.org
 
-# top-most EditorConfig file
 root = true
 
-# Unix-style newlines with a newline ending every file
+# All files
 [*]
+charset = utf-8
 end_of_line = lf
 insert_final_newline = true
-charset = utf-8
 trim_trailing_whitespace = true
 
 # Code files
-[*.{js,jsx,ts,tsx,json,yml,yaml}]
-indent_style = space
-indent_size = 2
-
-# Python
-[*.py]
-indent_style = space
-indent_size = 4
-
-# Shell scripts
-[*.{sh,bash}]
-indent_style = space
-indent_size = 2
-
-# Windows scripts
-[*.{bat,cmd,ps1}]
-end_of_line = crlf
+[*.{js,ts,jsx,tsx,json,yml,yaml}]
 indent_style = space
 indent_size = 2
 
 # Markdown
 [*.md]
 trim_trailing_whitespace = false
+indent_size = 2
+
+# Shell scripts
+[*.sh]
+indent_style = space
+indent_size = 2
+
+# Batch files
+[*.{bat,cmd,ps1}]
+end_of_line = crlf
+
+# Makefiles
+[Makefile]
+indent_style = tab
+
+# Docker
+[Dockerfile*]
+indent_style = space
+indent_size = 2
+
+# YAML
+[*.{yml,yaml}]
 indent_style = space
 indent_size = 2
 
@@ -42,17 +48,8 @@ indent_size = 2
 indent_style = space
 indent_size = 2
 
-# Config files
-[{package.json,.prettierrc,.eslintrc,.babelrc}]
+# Configuration files
+[*.{conf,config}]
 indent_style = space
 indent_size = 2
 
-# Docker
-[{Dockerfile*,docker-compose*.yml}]
-indent_style = space
-indent_size = 2
-
-# Prisma
-[*.prisma]
-indent_style = space
-indent_size = 2

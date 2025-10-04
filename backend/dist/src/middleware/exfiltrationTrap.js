@@ -10,7 +10,7 @@ function exfiltrationTrap(req, res, next) {
             HoneytokenService_1.honeytokenService.triggerAlert({ source: 'http_request', sample: bodyStr?.slice(0, 128) }).catch(() => { });
         }
     }
-    catch (error) {
+    catch {
     }
     next();
 }

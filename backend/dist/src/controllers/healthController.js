@@ -69,7 +69,7 @@ exports.getDetailedHealth = (0, errorHandler_1.asyncHandler)(async (req, res) =>
 exports.getReadinessProbe = (0, errorHandler_1.asyncHandler)(async (req, res) => {
     try {
         const checks = await Promise.allSettled([
-            Promise.resolve().then(() => __importStar(require('../lib/prisma.js'))).then(({ prisma }) => prisma.$queryRaw `SELECT 1`),
+            import('../lib/prisma.js').then(({ prisma }) => prisma.$queryRaw `SELECT 1`),
         ]);
         const allHealthy = checks.every(check => check.status === 'fulfilled');
         if (allHealthy) {

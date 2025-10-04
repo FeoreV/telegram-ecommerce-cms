@@ -8,10 +8,22 @@ const child_process_1 = require("child_process");
 const promises_1 = __importDefault(require("fs/promises"));
 const path_1 = __importDefault(require("path"));
 const prisma_1 = require("../lib/prisma");
-const logger_1 = require("../utils/logger");
 const auditLog_1 = require("../middleware/auditLog");
+const logger_1 = require("../utils/logger");
+const sanitizer_1 = require("../utils/sanitizer");
 const notificationService_1 = require("./notificationService");
 class BackupService {
+    static sanitizeFilename(filename) {
+        const basename = path_1.default.basename(filename);
+        return basename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    }
+    static validatePath(filePath, allowedDir) {
+        const resolvedPath = path_1.default.resolve(filePath);
+        const resolvedDir = path_1.default.resolve(allowedDir);
+        if (!resolvedPath.startsWith(resolvedDir)) {
+            throw new Error('Invalid file path: Path traversal detected');
+        }
+    }
     static async initialize() {
         try {
             await promises_1.default.mkdir(this.backupsDir, { recursive: true });
@@ -47,6 +59,7 @@ class BackupService {
             if (options.includeUploads) {
                 data.uploads = await this.exportUploads();
             }
+            this.validatePath(backupPath, this.backupsDir);
             const backupContent = JSON.stringify(data, null, 2);
             await promises_1.default.writeFile(backupPath, backupContent);
             if (options.compression) {
@@ -179,8 +192,11 @@ class BackupService {
         }
     }
     static async compressBackup(backupPath) {
+        const { sanitizeFilePath, prepareSafeCommand } = await import('../utils/commandSanitizer');
+        const safePath = sanitizeFilePath(backupPath);
+        const { command, args } = prepareSafeCommand('gzip', ['-f', safePath]);
         return new Promise((resolve, reject) => {
-            const gzip = (0, child_process_1.spawn)('gzip', ['-f', backupPath]);
+            const gzip = (0, child_process_1.spawn)(command, args);
             gzip.on('close', (code) => {
                 if (code === 0) {
                     logger_1.logger.info('Backup compressed successfully');
@@ -196,9 +212,11 @@ class BackupService {
         });
     }
     static async restoreFromBackup(backupFilename, adminId, options = {}) {
-        const backupPath = path_1.default.join(this.backupsDir, backupFilename);
-        logger_1.logger.info(`Starting restore from backup: ${backupFilename}`, { adminId, options });
+        const sanitizedFilename = this.sanitizeFilename(backupFilename);
+        const backupPath = path_1.default.join(this.backupsDir, sanitizedFilename);
+        logger_1.logger.info(`Starting restore from backup: ${(0, sanitizer_1.sanitizeForLog)(sanitizedFilename)}`, { adminId, options });
         try {
+            this.validatePath(backupPath, this.backupsDir);
             await promises_1.default.access(backupPath);
             const backupContent = await promises_1.default.readFile(backupPath, 'utf8');
             const backupData = JSON.parse(backupContent);
@@ -243,17 +261,17 @@ class BackupService {
                     restoredTables: Object.keys(backupData.tables),
                 },
             });
-            logger_1.logger.info(`Restore completed successfully: ${backupFilename}`);
+            logger_1.logger.info(`Restore completed successfully: ${(0, sanitizer_1.sanitizeForLog)(backupFilename)}`);
         }
         catch (error) {
-            logger_1.logger.error(`Restore failed: ${backupFilename}`, error);
-            await notificationService_1.NotificationService.notifySystemError(`Database restore failed: ${backupFilename}`, { error: error instanceof Error ? error.message : 'Unknown error', adminId });
+            logger_1.logger.error(`Restore failed: ${(0, sanitizer_1.sanitizeForLog)(backupFilename)}`, error);
+            await notificationService_1.NotificationService.notifySystemError(`Database restore failed: ${(0, sanitizer_1.sanitizeForLog)(backupFilename)}`, { error: error instanceof Error ? error.message : 'Unknown error', adminId });
             throw error;
         }
     }
     static async restoreTable(tx, tableName, data, options = {}) {
         if (!data || data.length === 0) {
-            logger_1.logger.info(`No data to restore for table: ${tableName}`);
+            logger_1.logger.info(`No data to restore for table: ${(0, sanitizer_1.sanitizeForLog)(tableName)}`);
             return;
         }
         logger_1.logger.info(`Restoring table: ${tableName} (${data.length} records)`);
@@ -328,7 +346,9 @@ class BackupService {
         try {
             await promises_1.default.mkdir(this.uploadsDir, { recursive: true });
             for (const [filename, fileData] of Object.entries(uploadsData)) {
-                const filePath = path_1.default.join(this.uploadsDir, filename);
+                const sanitizedFilename = this.sanitizeFilename(filename);
+                const filePath = path_1.default.join(this.uploadsDir, sanitizedFilename);
+                this.validatePath(filePath, this.uploadsDir);
                 const content = Buffer.from(fileData.content, 'base64');
                 await promises_1.default.writeFile(filePath, content);
             }
@@ -394,7 +414,9 @@ class BackupService {
         }
     }
     static async deleteBackup(filename, adminId) {
-        const backupPath = path_1.default.join(this.backupsDir, filename);
+        const sanitizedFilename = this.sanitizeFilename(filename);
+        const backupPath = path_1.default.join(this.backupsDir, sanitizedFilename);
+        this.validatePath(backupPath, this.backupsDir);
         try {
             await promises_1.default.unlink(backupPath);
             await auditLog_1.AuditLogService.log(adminId, {
@@ -404,10 +426,10 @@ class BackupService {
                     filename,
                 },
             });
-            logger_1.logger.info(`Backup deleted: ${filename}`, { adminId });
+            logger_1.logger.info(`Backup deleted: ${(0, sanitizer_1.sanitizeForLog)(filename)}`, { adminId });
         }
         catch (error) {
-            logger_1.logger.error(`Failed to delete backup: ${filename}`, error);
+            logger_1.logger.error(`Failed to delete backup: ${(0, sanitizer_1.sanitizeForLog)(filename)}`, error);
             throw error;
         }
     }

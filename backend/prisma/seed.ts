@@ -5,27 +5,40 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Seeding database...');
 
-  // Create super admin user
-  const superAdminTelegramId = process.env.SUPER_ADMIN_TELEGRAM_ID || '123456789';
+  // SECURITY: Create initial OWNER user for development/testing only
+  // In production, OWNER should be created manually via secure admin tools
+  // This seed is only for initial setup and demo purposes
+  const isDevelopment = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+
+  if (!isDevelopment) {
+    console.log('⚠️  Skipping OWNER creation in production - use admin tools instead');
+    console.log('ℹ️  Run: npm run promote-user <telegram-id> OWNER');
+    // Don't create OWNER in production via seed
+    return;
+  }
+
+  // Generate a unique telegram ID for the demo owner
+  const demoOwnerTelegramId = 'DEMO_OWNER_' + Date.now();
   const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || 'admin@botrt.local';
-  
+
   const superAdmin = await prisma.user.upsert({
-    where: { telegramId: superAdminTelegramId },
-    update: { 
+    where: { telegramId: demoOwnerTelegramId },
+    update: {
       role: 'OWNER',
-      email: superAdminEmail 
+      email: superAdminEmail
     },
     create: {
-      telegramId: superAdminTelegramId,
+      telegramId: demoOwnerTelegramId,
       email: superAdminEmail,
-      firstName: 'Super',
-      lastName: 'Admin',
+      firstName: 'Demo',
+      lastName: 'Owner',
       role: 'OWNER',
       isActive: true,
     },
   });
 
-  console.log('✅ Super admin created:', superAdmin);
+  console.log('✅ Demo OWNER created for development:', superAdmin);
+  console.log('⚠️  WARNING: This is a demo account. In production, create OWNER via admin tools.');
 
   // Create demo store
   const demoStore = await prisma.store.upsert({
@@ -83,7 +96,7 @@ async function main() {
 
   // Delete existing products first
   await prisma.product.deleteMany({ where: { storeId: demoStore.id } });
-  
+
   // Create demo products
   const products = await Promise.all([
     prisma.product.create({
@@ -143,14 +156,14 @@ async function main() {
 
   // Create demo orders with different statuses and dates
   console.log('📦 Creating demo orders...');
-  
+
   // Create some demo customers first
   const demoCustomers = await Promise.all([
     prisma.user.create({
       data: {
         telegramId: '11111111',
         firstName: 'Анна',
-        lastName: 'Смирнова', 
+        lastName: 'Смирнова',
         role: 'CUSTOMER',
         isActive: true,
         lastLoginAt: new Date(),
@@ -161,7 +174,7 @@ async function main() {
         telegramId: '22222222',
         firstName: 'Иван',
         lastName: 'Петров',
-        role: 'CUSTOMER', 
+        role: 'CUSTOMER',
         isActive: true,
         lastLoginAt: new Date(),
       }
@@ -181,33 +194,33 @@ async function main() {
   // Create orders with different dates and statuses
   const orders = [];
   const statuses = ['PENDING_ADMIN', 'PAID', 'SHIPPED', 'DELIVERED'];
-  
+
   for (let i = 0; i < 15; i++) {
     const randomCustomer = demoCustomers[Math.floor(Math.random() * demoCustomers.length)];
     const randomProduct = products[Math.floor(Math.random() * products.length)];
     const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
-    
+
     // Create order with date in last 30 days
     const orderDate = new Date();
     orderDate.setDate(orderDate.getDate() - Math.floor(Math.random() * 30));
-    
+
     const quantity = Math.floor(Math.random() * 3) + 1;
     const price = randomProduct.price;
     const totalAmount = price * quantity;
-    
+
     // Set timestamps based on status
     let paidAt = null;
-    let shippedAt = null; 
+    let shippedAt = null;
     let deliveredAt = null;
-    
+
     if (randomStatus === 'PAID' || randomStatus === 'SHIPPED' || randomStatus === 'DELIVERED') {
       paidAt = new Date(orderDate.getTime() + Math.random() * 24 * 60 * 60 * 1000); // 0-24 hours after creation
     }
-    
+
     if (randomStatus === 'SHIPPED' || randomStatus === 'DELIVERED') {
       shippedAt = new Date(paidAt!.getTime() + Math.random() * 48 * 60 * 60 * 1000); // 0-48 hours after payment
     }
-    
+
     if (randomStatus === 'DELIVERED') {
       deliveredAt = new Date(shippedAt!.getTime() + Math.random() * 72 * 60 * 60 * 1000); // 0-72 hours after shipping
     }
@@ -237,7 +250,7 @@ async function main() {
         }
       }
     });
-    
+
     orders.push(order);
   }
 
@@ -251,7 +264,7 @@ async function main() {
         // This is simplified - in real app would check order items
         return total + Math.floor(Math.random() * 2);
       }, 0);
-    
+
     await prisma.product.update({
       where: { id: product.id },
       data: { stock: Math.max(0, product.stock - soldQuantity) }

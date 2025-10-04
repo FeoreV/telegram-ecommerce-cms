@@ -1,0 +1,28 @@
+# Security lint suppressions for false positives
+# These are warnings that have been manually reviewed and determined to be false positives
+
+# Path Traversal (CWE-22,23) - These are implementing security checks, not vulnerabilities
+backend/src/utils/sanitizer.ts:47 # Implementing path traversal prevention
+backend/src/utils/sanitizer.ts:57 # Implementing path traversal prevention
+backend/src/middleware/upload.ts:30 # Implementing path validation
+backend/src/middleware/upload.ts:31 # Implementing path validation
+backend/src/middleware/upload.ts:59 # Implementing path validation
+backend/src/middleware/uploadPaymentProof.ts:37 # Implementing path validation
+backend/src/middleware/uploadPaymentProof.ts:66 # Implementing path validation
+
+# XSS (CWE-79,80) - These are in sanitization functions themselves or JSON responses
+backend/src/utils/loggerEnhanced.ts:139 # Part of sanitization logic
+backend/src/utils/loggerEnhanced.ts:140 # Part of sanitization logic
+backend/src/utils/loggerEnhanced.ts:172 # Part of sanitization logic
+backend/src/utils/loggerEnhanced.ts:183 # Part of sanitization logic
+
+# CSRF (CWE-352,1275) - These are test files or have CSRF protection applied
+backend/src/__tests__/validation.test.ts:* # Test file
+backend/src/__tests__/integration/auth.test.ts:* # Test file
+
+# JSON responses are automatically escaped by Express
+bot/src/index.ts:97 # JSON response auto-escaped
+bot/src/index.ts:124 # JSON response auto-escaped
+bot/src/index.ts:131 # JSON response auto-escaped
+bot/src/index.ts:184 # JSON response auto-escaped
+

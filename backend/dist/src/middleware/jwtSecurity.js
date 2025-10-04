@@ -4,19 +4,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.logoutMiddleware = exports.tokenRefreshMiddleware = exports.enhancedAuthMiddleware = exports.JWTSecurity = void 0;
+const crypto_1 = __importDefault(require("crypto"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const redis_1 = require("redis");
+const AuthConfig_1 = require("../auth/AuthConfig");
+const security_1 = require("../config/security");
 const prisma_1 = require("../lib/prisma");
 const logger_1 = require("../utils/logger");
-const redis_1 = require("redis");
-const security_1 = require("../config/security");
-const AuthConfig_1 = require("../auth/AuthConfig");
-const crypto_1 = __importDefault(require("crypto"));
 let JWT_SECRET;
 let JWT_REFRESH_SECRET;
 let JWT_ACCESS_EXPIRY;
 let JWT_REFRESH_EXPIRY;
 let JWT_ACCESS_EXPIRY_SECONDS;
-let JWT_REFRESH_EXPIRY_SECONDS;
 let JWT_CLOCK_SKEW;
 let JWT_ISSUER;
 let JWT_AUDIENCE;
@@ -49,7 +48,6 @@ const initializeSecurityConfig = async () => {
     REDIS_URL = config.redis.url;
     REDIS_ENABLED = config.redis.enabled;
     JWT_ACCESS_EXPIRY_SECONDS = (0, AuthConfig_1.parseExpiryToSeconds)(JWT_ACCESS_EXPIRY);
-    JWT_REFRESH_EXPIRY_SECONDS = (0, AuthConfig_1.parseExpiryToSeconds)(JWT_REFRESH_EXPIRY);
     securityConfigLoaded = true;
     return config;
 };
@@ -356,7 +354,6 @@ const enhancedAuthMiddleware = async (req, res, next) => {
                 errorName: error instanceof Error ? error.constructor.name : 'Unknown',
                 ip: req.ip,
                 userAgent: req.get('User-Agent'),
-                tokenPreview: `${token.substring(0, 6)}...${token.substring(token.length - 6)}`,
                 jwtIssuer: JWT_ISSUER,
                 jwtAudience: JWT_AUDIENCE
             });

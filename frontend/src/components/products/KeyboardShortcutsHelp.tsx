@@ -83,6 +83,7 @@ const KeyboardShortcutsHelp: React.FC<KeyboardShortcutsHelpProps> = ({
                   />
                 </Box>
               }
+              primaryTypographyProps={{ component: 'div' }}
             />
           </ListItem>
         ))}

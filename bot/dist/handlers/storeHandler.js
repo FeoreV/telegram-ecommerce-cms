@@ -5,8 +5,9 @@ exports.handleStoreCreationMessage = handleStoreCreationMessage;
 const apiService_1 = require("../services/apiService");
 const cmsService_1 = require("../services/cmsService");
 const cache_1 = require("../utils/cache");
-const sessionManager_1 = require("../utils/sessionManager");
 const logger_1 = require("../utils/logger");
+const sanitizer_1 = require("../utils/sanitizer");
+const sessionManager_1 = require("../utils/sessionManager");
 async function handleStores(bot, msg, callbackQuery) {
     const chatId = msg.chat.id;
     const userId = (callbackQuery?.from?.id || msg.from?.id)?.toString();
@@ -304,7 +305,7 @@ async function showCreateStoreForm(bot, chatId, session) {
     const text = `
 🏪 *Создание нового магазина*
 
-Создайте свой магазин прямо в Telegram! 
+Создайте свой магазин прямо в Telegram!
 
 *Что вам потребуется:*
 • Название магазина
@@ -625,7 +626,7 @@ async function createStoreFromSession(bot, chatId, session) {
                 ]
             }
         });
-        logger_1.logger.info(`Store created via Telegram: ${store.id} by user ${session.userId}`);
+        logger_1.logger.info(`Store created via Telegram: ${store.id} by user ${(0, sanitizer_1.sanitizeForLog)(session.userId)}`);
     }
     catch (error) {
         logger_1.logger.error('Store creation API error:', error);

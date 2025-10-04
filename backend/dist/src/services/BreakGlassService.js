@@ -121,7 +121,7 @@ class BreakGlassService {
             name: 'Emergency System Administrator',
             description: 'Emergency access for critical system administration during outages',
             username: 'emergency_sysadmin',
-            passwordHash: crypto.createHash('sha256').update('emergency_complex_password_123!').digest('hex'),
+            passwordHash: process.env.BREAK_GLASS_SYSADMIN_PASSWORD_HASH || '',
             lastPasswordChange: new Date(),
             allowedScenarios: [
                 BreakGlassType.SYSTEM_OUTAGE,
@@ -182,7 +182,7 @@ class BreakGlassService {
             name: 'Emergency Security Investigator',
             description: 'Emergency access for security incident response and investigation',
             username: 'emergency_security',
-            passwordHash: crypto.createHash('sha256').update('emergency_security_password_456!').digest('hex'),
+            passwordHash: process.env.BREAK_GLASS_SECURITY_PASSWORD_HASH || '',
             lastPasswordChange: new Date(),
             allowedScenarios: [
                 BreakGlassType.SECURITY_INCIDENT,
@@ -241,7 +241,7 @@ class BreakGlassService {
             name: 'Emergency Database Administrator',
             description: 'Emergency database access for critical data recovery operations',
             username: 'emergency_dba',
-            passwordHash: crypto.createHash('sha256').update('emergency_dba_password_789!').digest('hex'),
+            passwordHash: process.env.BREAK_GLASS_DBA_PASSWORD_HASH || '',
             lastPasswordChange: new Date(),
             allowedScenarios: [
                 BreakGlassType.SYSTEM_OUTAGE,
@@ -302,7 +302,7 @@ class BreakGlassService {
             name: 'CEO Emergency Override',
             description: 'Ultimate emergency access for CEO in catastrophic scenarios',
             username: 'ceo_emergency',
-            passwordHash: crypto.createHash('sha256').update('ceo_ultimate_emergency_password!').digest('hex'),
+            passwordHash: process.env.BREAK_GLASS_CEO_PASSWORD_HASH || '',
             lastPasswordChange: new Date(),
             allowedScenarios: [
                 BreakGlassType.BUSINESS_CRITICAL,
@@ -665,7 +665,11 @@ class BreakGlassService {
             authorizerRole,
             timestamp: new Date().toISOString()
         };
-        return crypto.createHmac('sha256', 'break-glass-authorization-secret')
+        const secret = process.env.BREAK_GLASS_AUTH_SECRET;
+        if (!secret) {
+            throw new Error('BREAK_GLASS_AUTH_SECRET environment variable is not set');
+        }
+        return crypto.createHmac('sha256', secret)
             .update(JSON.stringify(signatureData))
             .digest('hex');
     }

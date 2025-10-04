@@ -40,6 +40,7 @@ const errorUtils_1 = require("../utils/errorUtils");
 const SecurityLogService_1 = require("./SecurityLogService");
 const EncryptionService_1 = require("./EncryptionService");
 const SecretLeakDetectionService_1 = require("./SecretLeakDetectionService");
+const securityKeys_1 = require("../config/securityKeys");
 var WebSocketEventType;
 (function (WebSocketEventType) {
     WebSocketEventType["ORDER_UPDATE"] = "order_update";
@@ -667,7 +668,7 @@ class WebSocketSecurityService {
                 action: 'message_encrypted',
                 details: {
                     algorithm: 'AES-256-GCM',
-                    keyId: 'websocket-encryption-key'
+                    keyId: (0, securityKeys_1.getSecurityKeyId)('websocketEncryptionKeyId')
                 }
             });
         }

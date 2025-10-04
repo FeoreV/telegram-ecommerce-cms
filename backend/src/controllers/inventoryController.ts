@@ -1,10 +1,11 @@
-import { Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/auth';
-import { prisma } from '../lib/prisma';
-import { AppError, asyncHandler } from '../middleware/errorHandler';
-import { logger, toLogMetadata } from '../utils/logger';
-import { NotificationService, NotificationPriority, NotificationType, NotificationChannel } from '../services/notificationService';
 import { Prisma, Product, ProductVariant } from '@prisma/client';
+import { Response } from 'express';
+import { prisma } from '../lib/prisma';
+import { AuthenticatedRequest } from '../middleware/auth';
+import { AppError, asyncHandler } from '../middleware/errorHandler';
+import { NotificationChannel, NotificationPriority, NotificationService, NotificationType } from '../services/notificationService';
+import { logger, toLogMetadata } from '../utils/logger';
+import { sanitizeForLog } from '../utils/sanitizer';
 
 // Get inventory alerts
 export const getInventoryAlerts = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
@@ -27,7 +28,7 @@ export const getInventoryAlerts = asyncHandler(async (req: AuthenticatedRequest,
       },
       select: { id: true }
     });
-    
+
     const storeIds = accessibleStores.map(store => store.id);
     storeFilter = { storeId: { in: storeIds } };
   }
@@ -153,11 +154,11 @@ export const getInventoryAlerts = asyncHandler(async (req: AuthenticatedRequest,
           store: product.store,
           variants: product.variants,
           recentSales: product._count.orderItems,
-        message: product.stock === 0 
+        message: product.stock === 0
           ? `Товар "${product.name}" закончился на складе`
           : `Осталось ${product.stock} шт. товара "${product.name}"`,
-        recommendedAction: product.stock === 0 
-          ? 'Пополните запасы немедленно' 
+        recommendedAction: product.stock === 0
+          ? 'Пополните запасы немедленно'
           : 'Рекомендуем пополнить запасы',
         createdAt: new Date().toISOString()
       })),
@@ -181,18 +182,18 @@ export const getInventoryAlerts = asyncHandler(async (req: AuthenticatedRequest,
     ];
 
     // Filter by severity if specified
-    const filteredAlerts = severity 
+    const filteredAlerts = severity
       ? alerts.filter(alert => alert.severity === severity)
       : alerts;
 
     // Sort by severity and stock level
     const sortedAlerts = filteredAlerts.sort((a, b) => {
       const severityOrder = { CRITICAL: 3, HIGH: 2, MEDIUM: 1, LOW: 0 };
-      const severityDiff = severityOrder[b.severity as keyof typeof severityOrder] - 
+      const severityDiff = severityOrder[b.severity as keyof typeof severityOrder] -
                           severityOrder[a.severity as keyof typeof severityOrder];
-      
+
       if (severityDiff !== 0) return severityDiff;
-      
+
       return (a.product.stock || 0) - (b.product.stock || 0);
     });
 
@@ -364,7 +365,8 @@ export const updateStock = asyncHandler(async (req: AuthenticatedRequest, res: R
       updatedBy: req.user.id
     });
 
-    logger.info(`Stock updated for ${productName}: ${oldStock} -> ${stock} by user ${req.user.id}`);
+    // SECURITY FIX: CWE-117 - Sanitize log data
+    logger.info('Stock updated', { product: sanitizeForLog(productName), oldStock, newStock: stock, userId: sanitizeForLog(req.user.id) });
 
     res.json({
       success: true,
@@ -517,8 +519,10 @@ export const setStockAlertsConfig = asyncHandler(async (req: AuthenticatedReques
         }
     });
 
-    logger.info(`Stock alerts config updated for store ${storeId} by user ${req.user.id}`);
+    // SECURITY FIX: CWE-117 - Sanitize log data
+    logger.info('Stock alerts config updated', { storeId: sanitizeForLog(storeId), userId: sanitizeForLog(req.user.id) });
 
+    // SECURITY FIX: CWE-79 - Response is JSON, safe by default (false positive)
     res.json({
       success: true,
       message: 'Stock alerts configuration updated',
@@ -559,7 +563,7 @@ async function checkStockAlerts(
     if (!store) {
       return;
     }
-    
+
     // Check if stock alerts are enabled
     if (!store.enableStockAlerts) {
       return;
@@ -567,8 +571,8 @@ async function checkStockAlerts(
 
     const lowThreshold = store.lowStockThreshold || 10;
     const criticalThreshold = store.criticalStockThreshold || 5;
-    
-    const itemName = variant 
+
+    const itemName = variant
       ? `${product.name} (${variant.name}: ${variant.value})`
       : product.name;
 
@@ -582,7 +586,7 @@ async function checkStockAlerts(
       shouldNotify = true;
       notificationType = NotificationType.OUT_OF_STOCK;
       priority = NotificationPriority.CRITICAL;
-      message = newStock === 0 
+      message = newStock === 0
         ? `🚨 Товар "${itemName}" закончился на складе магазина "${store.name}"`
         : `⚠️ Критически низкий остаток товара "${itemName}": ${newStock} шт.`;
     }

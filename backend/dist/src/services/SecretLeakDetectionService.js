@@ -37,9 +37,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.secretLeakDetectionService = exports.SecretLeakDetectionService = void 0;
+const crypto_1 = __importDefault(require("crypto"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
-const crypto_1 = __importDefault(require("crypto"));
 const logger_1 = require("../utils/logger");
 const SecurityLogService_1 = require("./SecurityLogService");
 const SIEMIntegrationService_1 = require("./SIEMIntegrationService");
@@ -243,8 +243,8 @@ class SecretLeakDetectionService {
                     }
                 }
             }
-            catch (error) {
-                logger_1.logger.error(`Error scanning with pattern ${patternId}:`, error);
+            catch (_error) {
+                logger_1.logger.error(`Error scanning with pattern ${patternId}:`, _error);
             }
         }
         if (results.length > 0) {
@@ -270,8 +270,8 @@ class SecretLeakDetectionService {
                 lastModified: stats.mtime
             });
         }
-        catch (error) {
-            logger_1.logger.error(`Error scanning log file ${filepath}:`, error);
+        catch (_error) {
+            logger_1.logger.error(`Error scanning log file ${filepath}:`, _error);
             return [];
         }
     }
@@ -295,8 +295,8 @@ class SecretLeakDetectionService {
                 lastModified: stats.mtime
             });
         }
-        catch (error) {
-            logger_1.logger.error(`Error scanning source file ${filepath}:`, error);
+        catch (_error) {
+            logger_1.logger.error(`Error scanning source file ${filepath}:`, _error);
             return [];
         }
     }

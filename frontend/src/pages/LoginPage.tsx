@@ -1,24 +1,21 @@
-import React, { useState } from 'react'
+import { Telegram } from '@mui/icons-material'
 import {
+  Alert,
   Box,
+  Button,
+  Container,
   Paper,
   TextField,
-  Button,
   Typography,
-  Container,
-  Alert,
 } from '@mui/material'
+import React, { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { Telegram, CheckCircle } from '@mui/icons-material'
 import styles from './LoginPage.module.css'
 
 const LoginPage: React.FC = () => {
   const { login, loading } = useAuth()
   const [formData, setFormData] = useState({
     telegramId: '',
-    username: '',
-    firstName: '',
-    lastName: '',
   })
   const [error, setError] = useState('')
 
@@ -33,10 +30,7 @@ const LoginPage: React.FC = () => {
 
     try {
       await login(
-        formData.telegramId,
-        formData.username || undefined,
-        formData.firstName || undefined,
-        formData.lastName || undefined
+        formData.telegramId
       )
     } catch (err: any) {
       setError(err.response?.data?.error || 'Ошибка входа в систему')
@@ -93,36 +87,6 @@ const LoginPage: React.FC = () => {
                 onChange={handleChange}
                 className={`${styles.loginPage__field} ${styles.loginPage__input}`}
               />
-              <TextField
-                margin="normal"
-                fullWidth
-                id="username"
-                label="Username (необязательно)"
-                name="username"
-                value={formData.username}
-                onChange={handleChange}
-                className={`${styles.loginPage__field} ${styles.loginPage__input}`}
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                id="firstName"
-                label="Имя (необязательно)"
-                name="firstName"
-                value={formData.firstName}
-                onChange={handleChange}
-                className={`${styles.loginPage__field} ${styles.loginPage__input}`}
-              />
-              <TextField
-                margin="normal"
-                fullWidth
-                id="lastName"
-                label="Фамилия (необязательно)"
-                name="lastName"
-                value={formData.lastName}
-                onChange={handleChange}
-                className={`${styles.loginPage__field} ${styles.loginPage__input}`}
-              />
               <Button
                 type="submit"
                 fullWidth
@@ -134,30 +98,6 @@ const LoginPage: React.FC = () => {
               </Button>
             </Box>
 
-            <div className={styles.loginPage__features}>
-              <Typography className={styles.loginPage__featuresTitle}>
-                Возможности платформы
-              </Typography>
-              <ul className={styles.loginPage__featuresList}>
-                <li className={styles.loginPage__feature}>
-                  <CheckCircle className={styles.loginPage__featureIcon} />
-                  Управление множественными магазинами
-                </li>
-                <li className={styles.loginPage__feature}>
-                  <CheckCircle className={styles.loginPage__featureIcon} />
-                  Автоматическая обработка заказов
-                </li>
-                <li className={styles.loginPage__feature}>
-                  <CheckCircle className={styles.loginPage__featureIcon} />
-                  Аналитика и отчеты
-                </li>
-                <li className={styles.loginPage__feature}>
-                  <CheckCircle className={styles.loginPage__featureIcon} />
-                  Telegram бот интеграция
-                </li>
-              </ul>
-            </div>
-
             <Typography className={styles.loginPage__help}>
               Для получения Telegram ID отправьте сообщение боту{' '}
               <a href="https://t.me/userinfobot" className={styles.loginPage__helpLink} target="_blank" rel="noopener noreferrer">
@@ -165,9 +105,7 @@ const LoginPage: React.FC = () => {
               </a>
             </Typography>
 
-            <div className={styles.loginPage__securityNote}>
-              🔒 Безопасное подключение через Telegram API
-            </div>
+
           </Paper>
         </Box>
       </Container>

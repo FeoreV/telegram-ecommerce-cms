@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
-import { logger } from '../utils/logger';
+import { NextFunction, Request, Response } from 'express';
 import { NotificationService } from '../services/notificationService';
+import { logger } from '../utils/logger';
 
 export interface ApiError extends Error {
   statusCode?: number;
@@ -29,18 +29,22 @@ export const errorHandler = (
   let { statusCode = 500, message } = err;
 
   const reqLogger = (req as any).logger || logger;
+  // SECURITY FIX: Sanitize logs to prevent CWE-117 (Log Injection)
+  const { sanitizeObjectForLog, sanitizeError } = require('../utils/sanitizer');
+  const sanitizedError = sanitizeError(err);
+
   // Log error
   reqLogger.error({
     error: {
-      message: err.message,
-      stack: err.stack,
+      message: sanitizedError.message,
+      stack: sanitizedError.stack,
       statusCode,
     },
     request: {
       method: req.method,
-      url: req.url,
-      headers: req.headers,
-      body: req.body,
+      url: sanitizeObjectForLog(req.url),
+      headers: sanitizeObjectForLog(req.headers),
+      body: sanitizeObjectForLog(req.body), // Sanitize body to prevent sensitive data exposure
     },
   });
 
@@ -88,11 +92,28 @@ export const errorHandler = (
     message = 'Invalid or expired token';
   }
 
-  // Send error response
-  res.status(statusCode).json({
-    error: message,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
-  });
+  // SECURITY: Generic error messages in production (CWE-209)
+  if (process.env.NODE_ENV === 'production') {
+    // Don't expose internal error details
+    if (statusCode >= 500) {
+      message = 'Internal server error';
+    }
+    // Only send safe error messages
+    res.status(statusCode).json({
+      error: message,
+      statusCode,
+      timestamp: new Date().toISOString()
+    });
+  } else {
+    // Development: send detailed errors
+    res.status(statusCode).json({
+      error: message,
+      statusCode,
+      stack: err.stack,
+      name: err.name,
+      timestamp: new Date().toISOString()
+    });
+  }
 };
 
 export const asyncHandler = <T extends Request = Request>(

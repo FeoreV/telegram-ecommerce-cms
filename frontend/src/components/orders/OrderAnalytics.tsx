@@ -1,55 +1,47 @@
-import React, { useState, useEffect } from 'react'
 import {
-  Box,
-  Grid,
-  Paper,
-  Typography,
-  Card,
-  CardContent,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  ButtonGroup,
-  Button,
-  Avatar,
-  Chip,
-  CircularProgress,
-  Alert,
-  Divider,
-  Tooltip,
-} from '@mui/material'
-import {
-  TrendingUp,
-  TrendingDown,
-  ShoppingCart,
-  AttachMoney,
-  LocalShipping,
-  CheckCircle,
-  Store as StoreIcon,
-  Person,
-  Timeline,
-  Assessment,
+    Assessment,
+    AttachMoney,
+    CheckCircle,
+    ShoppingCart,
+    Store as StoreIcon,
+    Timeline,
+    TrendingDown,
+    TrendingUp,
 } from '@mui/icons-material'
 import {
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as RechartsTooltip,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts'
-import { format, subDays, startOfDay, endOfDay } from 'date-fns'
+    Avatar,
+    Box,
+    Card,
+    CardContent,
+    CircularProgress,
+    FormControl,
+    Grid,
+    InputLabel,
+    MenuItem,
+    Paper,
+    Select,
+    Typography,
+} from '@mui/material'
+import { format, subDays } from 'date-fns'
 import { ru } from 'date-fns/locale'
+import React, { useCallback, useEffect, useState } from 'react'
+import {
+    Area,
+    AreaChart,
+    Bar,
+    BarChart,
+    CartesianGrid,
+    Cell,
+    Legend,
+    Line,
+    LineChart,
+    Pie,
+    PieChart,
+    Tooltip as RechartsTooltip,
+    ResponsiveContainer,
+    XAxis,
+    YAxis,
+} from 'recharts'
 import { orderService } from '../../services/orderService'
 import { storeService } from '../../services/storeService'
 import { Store } from '../../types'
@@ -166,24 +158,7 @@ const OrderAnalytics: React.FC = () => {
     }
   })
 
-  useEffect(() => {
-    loadData()
-  }, [period, selectedStore])
-
-  useEffect(() => {
-    loadStores()
-  }, [])
-
-  const loadStores = async () => {
-    try {
-      const response = await storeService.getStores({ limit: 100 })
-      setStores(response.items || [])
-    } catch (error) {
-      console.error('Error loading stores:', error)
-    }
-  }
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     try {
       // Get period dates
@@ -197,9 +172,9 @@ const OrderAnalytics: React.FC = () => {
         period
       )
 
-      // Generate mock daily data for demonstration
-      const dailyData = generateDailyData(startDate, endDate)
-      
+      // Use real daily data from API if available, otherwise generate from aggregated data
+      const dailyData = stats?.dailyData || generateDailyDataFromStats(startDate, endDate, stats)
+
       setData({
         totalOrders: Number(stats?.totalOrders) || 0,
         totalRevenue: Number(stats?.totalRevenue) || 0,
@@ -215,10 +190,10 @@ const OrderAnalytics: React.FC = () => {
         dailyRevenue: dailyData.revenue,
         ordersByStore: Array.isArray(stats?.storeStats) ? stats.storeStats : [],
         trends: {
-          ordersChange: Math.random() * 20 - 10, // Mock data
-          revenueChange: Math.random() * 30 - 15,
-          aovChange: Math.random() * 10 - 5,
-          conversionChange: Math.random() * 5 - 2.5,
+          ordersChange: Number(stats?.ordersChange) || 0,
+          revenueChange: Number(stats?.revenueChange) || 0,
+          aovChange: Number(stats?.aovChange) || 0,
+          conversionChange: Number(stats?.conversionChange) || 0,
         }
       })
     } catch (error) {
@@ -226,34 +201,65 @@ const OrderAnalytics: React.FC = () => {
     } finally {
       setLoading(false)
     }
+  }, [period, selectedStore])
+
+  useEffect(() => {
+    loadData()
+  }, [period, selectedStore, loadData])
+
+  useEffect(() => {
+    loadStores()
+  }, [])
+
+  const loadStores = async () => {
+    try {
+      const response = await storeService.getStores({ limit: 100 })
+      setStores(response.items || [])
+    } catch (error) {
+      console.error('Error loading stores:', error)
+    }
   }
 
-  const generateDailyData = (startDate: Date, endDate: Date) => {
+  const generateDailyDataFromStats = (startDate: Date, endDate: Date, stats: any) => {
+    // Generate evenly distributed data from total stats if daily data is not available
     const days = []
     const orders = []
     const revenue = []
     
+    const totalOrders = Number(stats?.totalOrders) || 0
+    const totalRevenue = Number(stats?.totalRevenue) || 0
+    
     const currentDate = new Date(startDate)
+    let dayCount = 0
+    while (currentDate <= endDate) {
+      dayCount++
+      currentDate.setDate(currentDate.getDate() + 1)
+    }
+    
+    // Reset current date
+    currentDate.setTime(startDate.getTime())
+    
+    // Distribute evenly if no daily breakdown is available
+    const avgOrdersPerDay = dayCount > 0 ? totalOrders / dayCount : 0
+    const avgRevenuePerDay = dayCount > 0 ? totalRevenue / dayCount : 0
+    
     while (currentDate <= endDate) {
       const dayLabel = format(currentDate, 'dd.MM')
-      const orderCount = Math.floor(Math.random() * 50) + 10
-      const dailyRevenue = orderCount * (Math.random() * 100 + 50)
       
-      days.push(dayLabel)
       orders.push({
         date: dayLabel,
-        orders: orderCount,
+        orders: Math.round(avgOrdersPerDay),
         fullDate: format(currentDate, 'dd MMMM yyyy', { locale: ru })
       })
       revenue.push({
         date: dayLabel,
-        revenue: dailyRevenue,
+        revenue: avgRevenuePerDay,
         fullDate: format(currentDate, 'dd MMMM yyyy', { locale: ru })
       })
-      
+
       currentDate.setDate(currentDate.getDate() + 1)
     }
-    
+
     return { orders, revenue }
   }
 
@@ -315,7 +321,7 @@ const OrderAnalytics: React.FC = () => {
             Детальная статистика и тренды
           </Typography>
         </Box>
-        
+
         <Box display="flex" gap={2}>
           <FormControl size="small" sx={{ minWidth: 120 }}>
             <InputLabel>Период</InputLabel>
@@ -329,7 +335,7 @@ const OrderAnalytics: React.FC = () => {
               <MenuItem value="90d">90 дней</MenuItem>
             </Select>
           </FormControl>
-          
+
           {stores.length > 0 && (
             <FormControl size="small" sx={{ minWidth: 150 }}>
               <InputLabel>Магазин</InputLabel>

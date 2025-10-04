@@ -5,6 +5,7 @@ const client_1 = require("@prisma/client");
 const TLSService_1 = require("../services/TLSService");
 const SecretManager_1 = require("../utils/SecretManager");
 const logger_1 = require("../utils/logger");
+const sanitizer_1 = require("../utils/sanitizer");
 class DatabaseService {
     constructor() {
         this.prisma = null;
@@ -61,13 +62,13 @@ class DatabaseService {
                 ],
             });
             this.prisma.$on('error', (e) => {
-                logger_1.logger.error('Database error:', e);
+                logger_1.logger.error('Database error:', (0, sanitizer_1.sanitizeObjectForLog)(e));
             });
             this.prisma.$on('warn', (e) => {
-                logger_1.logger.warn('Database warning:', e);
+                logger_1.logger.warn('Database warning:', (0, sanitizer_1.sanitizeObjectForLog)(e));
             });
             this.prisma.$on('info', (e) => {
-                logger_1.logger.info('Database info:', e);
+                logger_1.logger.info('Database info:', (0, sanitizer_1.sanitizeObjectForLog)(e));
             });
             this.prisma.$on('query', (e) => {
                 if (process.env.LOG_LEVEL === 'debug') {
@@ -154,7 +155,7 @@ class DatabaseService {
         }
         try {
             const startTime = Date.now();
-            const result = await this.prisma.$queryRaw `SELECT 
+            const result = await this.prisma.$queryRaw `SELECT
         version() as version,
         current_database() as database,
         current_user as user,

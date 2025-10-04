@@ -67,7 +67,7 @@ REDIS_URL=redis://localhost:6379
 // POST /auth/login/email
 {
   "email": "admin@example.com",
-  "password": "securePassword123"
+  "password": "<your-secure-password>"
 }
 
 // Response:
@@ -126,8 +126,8 @@ REDIS_URL=redis://localhost:6379
 
 // POST /auth/change-password (requires auth)
 {
-  "currentPassword": "oldPass",
-  "newPassword": "newSecurePass"
+  "currentPassword": "<current-password>",
+  "newPassword": "<new-secure-password>"
 }
 ```
 

@@ -1,19 +1,20 @@
 import { Router } from 'express';
 import { body, param, query } from 'express-validator';
-import { UserRole } from '../utils/jwt';
-import { requireRole, requireStoreAccess } from '../middleware/auth';
-import { validate } from '../middleware/validation';
 import {
-  getStores,
-  getStore,
-  createStore,
-  updateStore,
-  deleteStore,
-  addStoreAdmin,
-  removeStoreAdmin,
-  checkSlugAvailability,
-  getUserStores,
+    addStoreAdmin,
+    checkSlugAvailability,
+    createStore,
+    deleteStore,
+    getStore,
+    getStores,
+    getUserStores,
+    removeStoreAdmin,
+    updateStore,
 } from '../controllers/storeController';
+import { requireRole, requireStoreAccess } from '../middleware/auth';
+import { csrfProtection } from '../middleware/csrfProtection';
+import { validate } from '../middleware/validation';
+import { UserRole } from '../utils/jwt';
 
 const router = Router();
 
@@ -57,9 +58,10 @@ router.get(
   getStore
 );
 
-// Create store
+// Create store (SECURITY: CSRF protected)
 router.post(
   '/',
+  csrfProtection,
   requireRole([UserRole.OWNER, UserRole.ADMIN]),
   [
     body('name').notEmpty().withMessage('Store name is required'),
@@ -88,9 +90,10 @@ router.post(
   createStore
 );
 
-// Update store
+// Update store (SECURITY: CSRF protected)
 router.put(
   '/:id',
+  csrfProtection,
   [
     param('id').isString().withMessage('Valid store ID required'),
     body('name').optional().notEmpty().withMessage('Store name cannot be empty'),
@@ -109,18 +112,20 @@ router.put(
   updateStore
 );
 
-// Delete store
+// Delete store (SECURITY: CSRF protected)
 router.delete(
   '/:id',
+  csrfProtection,
   [param('id').isString().withMessage('Valid store ID required')],
   validate,
   requireStoreAccess,
   deleteStore
 );
 
-// Add store admin
+// Add store admin (SECURITY: CSRF protected)
 router.post(
   '/:id/admins',
+  csrfProtection,
   requireRole([UserRole.OWNER, UserRole.ADMIN]),
   [
     param('id').isString().withMessage('Valid store ID required'),
@@ -131,9 +136,10 @@ router.post(
   addStoreAdmin
 );
 
-// Remove store admin
+// Remove store admin (SECURITY: CSRF protected)
 router.delete(
   '/:id/admins/:userId',
+  csrfProtection,
   requireRole([UserRole.OWNER, UserRole.ADMIN]),
   [
     param('id').isString().withMessage('Valid store ID required'),

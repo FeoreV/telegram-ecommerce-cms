@@ -1,7 +1,8 @@
 import crypto from 'crypto';
-import { getVaultService } from './VaultService';
 import { secretManager } from '../utils/SecretManager';
 import { logger } from '../utils/logger';
+import { sanitizeForLog } from '../utils/sanitizer';
+import { getVaultService } from './VaultService';
 
 export interface EncryptionResult {
   ciphertext: string;
@@ -81,26 +82,27 @@ export class EncryptionService {
 
   /**
    * Encrypt using local AES-256-GCM
+   * SECURITY: Uses createCipheriv with proper IV for authenticated encryption (CWE-327)
    */
   private encryptWithLocal(plaintext: string): string {
     try {
       const encryptionSecrets = secretManager.getEncryptionSecrets();
       const key = Buffer.from(encryptionSecrets.dataEncryptionKey, 'hex');
-      
+
       const iv = crypto.randomBytes(16);
-      const cipher = crypto.createCipher('aes-256-gcm', key);
-      
+      const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+
       let ciphertext = cipher.update(plaintext, 'utf8', 'hex');
       ciphertext += cipher.final('hex');
-      
+
       const tag = cipher.getAuthTag();
-      
+
       const result: EncryptionResult = {
         ciphertext,
         iv: iv.toString('hex'),
         tag: tag.toString('hex')
       };
-      
+
       return Buffer.from(JSON.stringify(result)).toString('base64');
     } catch (err: unknown) {
       logger.error('Local encryption failed:', err as Record<string, unknown>);
@@ -110,20 +112,21 @@ export class EncryptionService {
 
   /**
    * Decrypt using local AES-256-GCM
+   * SECURITY: Uses createDecipheriv with proper IV for authenticated decryption (CWE-327)
    */
   private decryptWithLocal(encryptedData: string): string {
     try {
       const encryptionSecrets = secretManager.getEncryptionSecrets();
       const key = Buffer.from(encryptionSecrets.dataEncryptionKey, 'hex');
-      
+
       const data: DecryptionInput = JSON.parse(Buffer.from(encryptedData, 'base64').toString());
-      
-      const decipher = crypto.createDecipher('aes-256-gcm', key);
+
+      const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(data.iv, 'hex'));
       decipher.setAuthTag(Buffer.from(data.tag, 'hex'));
-      
+
       let plaintext = decipher.update(data.ciphertext, 'hex', 'utf8');
       plaintext += decipher.final('utf8');
-      
+
       return plaintext;
     } catch (err: unknown) {
       logger.error('Local decryption failed:', err as Record<string, unknown>);
@@ -164,17 +167,17 @@ export class EncryptionService {
   async generateDataKey(keyId: string, keySize: number = 32): Promise<string> {
     try {
       const newKey = crypto.randomBytes(keySize).toString('hex');
-      
+
       if (this.useVaultTransit) {
         const vault = getVaultService();
         await vault.putSecret(`data-keys/${keyId}`, { key: newKey });
       }
-      
-      logger.info(`Generated new data key: ${keyId}`);
+
+      logger.info(`Generated new data key: ${sanitizeForLog(keyId)}`);
       return newKey;
     } catch (err: unknown) {
-      logger.error(`Failed to generate data key ${keyId}:`, err as Record<string, unknown>);
-      throw new Error(`Failed to generate data key: ${keyId}`);
+      logger.error(`Failed to generate data key ${sanitizeForLog(keyId)}:`, err as Record<string, unknown>);
+      throw new Error(`Failed to generate data key: ${sanitizeForLog(keyId)}`);
     }
   }
 
@@ -216,21 +219,47 @@ export class EncryptionService {
   }
 
   /**
-   * Hash password with salt
+   * @deprecated SECURITY WARNING: Do NOT use this method for password hashing!
+   *
+   * CRITICAL SECURITY ISSUE:
+   * - PBKDF2 is NOT suitable for password hashing (too fast, vulnerable to GPU attacks)
+   * - This method is kept only for backward compatibility with legacy data
+   *
+   * ALWAYS use SecureAuthSystem.hashPassword() instead, which uses bcrypt with:
+   * - 12+ rounds (configurable, see BCRYPT_ROUNDS)
+   * - Protection against GPU/ASIC attacks
+   * - Automatic salt generation
+   *
+   * @see SecureAuthSystem.hashPassword() - Use this instead!
+   * @see backend/prisma/schema.prisma - Password field documentation
    */
   hashPassword(password: string): string {
+    logger.warn('SECURITY WARNING: EncryptionService.hashPassword() is deprecated! Use SecureAuthSystem.hashPassword()');
     const salt = crypto.randomBytes(16).toString('hex');
     const hash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
     return `${salt}:${hash}`;
   }
 
   /**
-   * Verify password against hash
+   * @deprecated SECURITY WARNING: Do NOT use this method for password verification!
+   *
+   * CRITICAL SECURITY ISSUE:
+   * - This method uses PBKDF2 which is not suitable for passwords
+   * - Only use for legacy password verification if absolutely necessary
+   *
+   * ALWAYS use SecureAuthSystem.verifyPassword() instead, which uses bcrypt.
+   *
+   * @see SecureAuthSystem.verifyPassword() - Use this instead!
    */
   verifyPassword(password: string, hashedPassword: string): boolean {
+    logger.warn('SECURITY WARNING: EncryptionService.verifyPassword() is deprecated! Use SecureAuthSystem.verifyPassword()');
     const [salt, hash] = hashedPassword.split(':');
     const verifyHash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
-    return hash === verifyHash;
+    // SECURITY: Use timing-safe comparison to prevent timing attacks (CWE-208)
+    const hashBuffer = Buffer.from(hash, 'hex');
+    const verifyHashBuffer = Buffer.from(verifyHash, 'hex');
+    return hashBuffer.length === verifyHashBuffer.length &&
+           crypto.timingSafeEqual(hashBuffer, verifyHashBuffer);
   }
 
   /**
@@ -258,9 +287,25 @@ export class EncryptionService {
   }
 
   /**
+   * Validate file path to prevent path traversal
+   */
+  private validateFilePath(filePath: string): void {
+    const path = require('path');
+    const resolvedPath = path.resolve(filePath);
+    const allowedDir = path.resolve(process.cwd());
+
+    if (!resolvedPath.startsWith(allowedDir)) {
+      throw new Error('Invalid file path: Path traversal detected');
+    }
+  }
+
+  /**
    * Encrypt file content
    */
   async encryptFile(filePath: string, outputPath: string): Promise<void> {
+    this.validateFilePath(filePath);
+    this.validateFilePath(outputPath);
+
     const fs = await import('fs').then(m => m.promises);
     const content = await fs.readFile(filePath, 'utf8');
     const encrypted = await this.encryptData(content);
@@ -271,6 +316,9 @@ export class EncryptionService {
    * Decrypt file content
    */
   async decryptFile(filePath: string, outputPath: string): Promise<void> {
+    this.validateFilePath(filePath);
+    this.validateFilePath(outputPath);
+
     const fs = await import('fs').then(m => m.promises);
     const encrypted = await fs.readFile(filePath, 'utf8');
     const decrypted = await this.decryptData(encrypted);

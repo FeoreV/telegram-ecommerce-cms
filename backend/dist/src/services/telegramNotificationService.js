@@ -5,8 +5,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.telegramNotificationService = void 0;
 const axios_1 = __importDefault(require("axios"));
-const logger_1 = require("../utils/logger");
 const prisma_1 = require("../lib/prisma");
+const logger_1 = require("../utils/logger");
+const sanitizer_1 = require("../utils/sanitizer");
 class TelegramNotificationService {
     constructor() {
         this.botApiUrl = process.env.TELEGRAM_BOT_API_URL || 'http://localhost:3003/api';
@@ -25,7 +26,7 @@ class TelegramNotificationService {
                 },
             };
             await this.sendNotification(notification);
-            logger_1.logger.info(`Payment confirmation notification sent to customer ${order.customer.telegramId} for order ${order.orderNumber}`);
+            logger_1.logger.info(`Payment confirmation notification sent to customer ${(0, sanitizer_1.sanitizeForLog)(order.customer.telegramId || '')} for order ${(0, sanitizer_1.sanitizeForLog)(order.orderNumber)}`);
         }
         catch (error) {
             logger_1.logger.error('Failed to send payment confirmation notification:', error);
@@ -48,7 +49,10 @@ class TelegramNotificationService {
                 },
             };
             await this.sendNotification(notification);
-            logger_1.logger.info(`Order rejection notification sent to customer ${order.customer.telegramId} for order ${order.orderNumber}`);
+            logger_1.logger.info('Order rejection notification sent', {
+                customerId: order.customer.telegramId,
+                orderNumber: order.orderNumber
+            });
         }
         catch (error) {
             logger_1.logger.error('Failed to send order rejection notification:', error);
@@ -72,7 +76,10 @@ class TelegramNotificationService {
                 },
             };
             await this.sendNotification(notification);
-            logger_1.logger.info(`Order shipped notification sent to customer ${order.customer.telegramId} for order ${order.orderNumber}`);
+            logger_1.logger.info('Order shipped notification sent', {
+                customerId: order.customer.telegramId,
+                orderNumber: order.orderNumber
+            });
         }
         catch (error) {
             logger_1.logger.error('Failed to send order shipped notification:', error);
@@ -92,7 +99,7 @@ class TelegramNotificationService {
                 },
             };
             await this.sendNotification(notification);
-            logger_1.logger.info(`Order delivered notification sent to customer ${order.customer.telegramId} for order ${order.orderNumber}`);
+            logger_1.logger.info(`Order delivered notification sent to customer ${(0, sanitizer_1.sanitizeForLog)(order.customer.telegramId || '')} for order ${(0, sanitizer_1.sanitizeForLog)(order.orderNumber)}`);
         }
         catch (error) {
             logger_1.logger.error('Failed to send order delivered notification:', error);
@@ -115,7 +122,10 @@ class TelegramNotificationService {
                 },
             };
             await this.sendNotification(notification);
-            logger_1.logger.info(`Order cancellation notification sent to customer ${order.customer.telegramId} for order ${order.orderNumber}`);
+            logger_1.logger.info('Order cancellation notification sent', {
+                customerId: order.customer.telegramId,
+                orderNumber: order.orderNumber
+            });
         }
         catch (error) {
             logger_1.logger.error('Failed to send order cancellation notification:', error);
@@ -123,6 +133,14 @@ class TelegramNotificationService {
     }
     async sendNotification(notification) {
         try {
+            const urlValidation = await import('../utils/urlValidator').then(m => m.validateUrl);
+            const validation = urlValidation(`${this.botApiUrl}/notify-customer`, {
+                allowPrivateIPs: process.env.NODE_ENV === 'development',
+                allowedProtocols: ['http:', 'https:']
+            });
+            if (!validation.valid) {
+                throw new Error(`Invalid bot API URL: ${validation.error}`);
+            }
             const response = await axios_1.default.post(`${this.botApiUrl}/notify-customer`, notification, {
                 headers: {
                     'Content-Type': 'application/json',
@@ -132,7 +150,9 @@ class TelegramNotificationService {
             if (response.status !== 200) {
                 throw new Error(`Bot API returned status ${response.status}: ${response.statusText}`);
             }
-            logger_1.logger.debug(`Notification sent successfully to bot API for customer ${notification.telegramId}`);
+            logger_1.logger.debug('Notification sent successfully to bot API', {
+                customerId: notification.telegramId
+            });
         }
         catch (error) {
             if (axios_1.default.isAxiosError(error)) {
@@ -167,7 +187,7 @@ class TelegramNotificationService {
                     }),
                 },
             });
-            logger_1.logger.info(`Notification queued for retry: ${notification.type} for customer ${notification.telegramId}`);
+            logger_1.logger.info(`Notification queued for retry: ${(0, sanitizer_1.sanitizeForLog)(notification.type)} for customer ${(0, sanitizer_1.sanitizeForLog)(notification.telegramId)}`);
         }
         catch (dbError) {
             logger_1.logger.error('Failed to queue notification for retry:', dbError);
@@ -219,7 +239,13 @@ class TelegramNotificationService {
     }
     async checkBotHealth() {
         try {
-            const response = await axios_1.default.get(`${this.botApiUrl}/health`, {
+            const healthUrl = `${this.botApiUrl}/health`;
+            const allowedDomains = ['localhost', '127.0.0.1'];
+            if (process.env.BOT_API_DOMAIN) {
+                allowedDomains.push(process.env.BOT_API_DOMAIN);
+            }
+            const safeUrl = (0, sanitizer_1.sanitizeUrl)(healthUrl, allowedDomains);
+            const response = await axios_1.default.get(safeUrl, {
                 timeout: 5000,
             });
             return response.status === 200;

@@ -1,6 +1,8 @@
 import axios from 'axios';
-import { logger } from '../utils/logger';
 import { prisma } from '../lib/prisma';
+import { logger } from '../utils/logger';
+// SECURITY FIX: Import URL sanitization for SSRF protection
+import { sanitizeForLog, sanitizeUrl } from '../utils/sanitizer';
 
 interface OrderForNotification {
   id: string;
@@ -56,7 +58,7 @@ class TelegramNotificationService {
       };
 
       await this.sendNotification(notification);
-      logger.info(`Payment confirmation notification sent to customer ${order.customer.telegramId} for order ${order.orderNumber}`);
+      logger.info(`Payment confirmation notification sent to customer ${sanitizeForLog(order.customer.telegramId || '')} for order ${sanitizeForLog(order.orderNumber)}`);
     } catch (error) {
       logger.error('Failed to send payment confirmation notification:', error);
     }
@@ -80,7 +82,10 @@ class TelegramNotificationService {
       };
 
       await this.sendNotification(notification);
-      logger.info(`Order rejection notification sent to customer ${order.customer.telegramId} for order ${order.orderNumber}`);
+      logger.info('Order rejection notification sent', {
+        customerId: order.customer.telegramId,
+        orderNumber: order.orderNumber
+      });
     } catch (error) {
       logger.error('Failed to send order rejection notification:', error);
     }
@@ -105,7 +110,10 @@ class TelegramNotificationService {
       };
 
       await this.sendNotification(notification);
-      logger.info(`Order shipped notification sent to customer ${order.customer.telegramId} for order ${order.orderNumber}`);
+      logger.info('Order shipped notification sent', {
+        customerId: order.customer.telegramId,
+        orderNumber: order.orderNumber
+      });
     } catch (error) {
       logger.error('Failed to send order shipped notification:', error);
     }
@@ -126,7 +134,7 @@ class TelegramNotificationService {
       };
 
       await this.sendNotification(notification);
-      logger.info(`Order delivered notification sent to customer ${order.customer.telegramId} for order ${order.orderNumber}`);
+      logger.info(`Order delivered notification sent to customer ${sanitizeForLog(order.customer.telegramId || '')} for order ${sanitizeForLog(order.orderNumber)}`);
     } catch (error) {
       logger.error('Failed to send order delivered notification:', error);
     }
@@ -150,7 +158,10 @@ class TelegramNotificationService {
       };
 
       await this.sendNotification(notification);
-      logger.info(`Order cancellation notification sent to customer ${order.customer.telegramId} for order ${order.orderNumber}`);
+      logger.info('Order cancellation notification sent', {
+        customerId: order.customer.telegramId,
+        orderNumber: order.orderNumber
+      });
     } catch (error) {
       logger.error('Failed to send order cancellation notification:', error);
     }
@@ -158,6 +169,17 @@ class TelegramNotificationService {
 
   private async sendNotification(notification: TelegramNotificationData): Promise<void> {
     try {
+      // Validate bot API URL to prevent SSRF
+      const urlValidation = await import('../utils/urlValidator.js').then(m => m.validateUrl);
+      const validation = urlValidation(`${this.botApiUrl}/notify-customer`, {
+        allowPrivateIPs: process.env.NODE_ENV === 'development',
+        allowedProtocols: ['http:', 'https:']
+      });
+
+      if (!validation.valid) {
+        throw new Error(`Invalid bot API URL: ${validation.error}`);
+      }
+
       const response = await axios.post(
         `${this.botApiUrl}/notify-customer`,
         notification,
@@ -173,7 +195,9 @@ class TelegramNotificationService {
         throw new Error(`Bot API returned status ${response.status}: ${response.statusText}`);
       }
 
-      logger.debug(`Notification sent successfully to bot API for customer ${notification.telegramId}`);
+      logger.debug('Notification sent successfully to bot API', {
+        customerId: notification.telegramId
+      });
     } catch (error) {
       if (axios.isAxiosError(error)) {
         if (error.code === 'ECONNREFUSED') {
@@ -208,7 +232,7 @@ class TelegramNotificationService {
         },
       });
 
-      logger.info(`Notification queued for retry: ${notification.type} for customer ${notification.telegramId}`);
+      logger.info(`Notification queued for retry: ${sanitizeForLog(notification.type)} for customer ${sanitizeForLog(notification.telegramId)}`);
     } catch (dbError) {
       logger.error('Failed to queue notification for retry:', dbError);
     }
@@ -237,7 +261,7 @@ class TelegramNotificationService {
 
           if (notification) {
             await this.sendNotification(notification);
-            
+
             // Remove from retry queue on success
             await prisma.adminLog.delete({
               where: { id: log.id },
@@ -247,7 +271,7 @@ class TelegramNotificationService {
           }
         } catch (retryError) {
           logger.error(`Failed to retry notification ${log.id}:`, retryError);
-          
+
           // If notification is older than 24 hours, remove it
           if (log.createdAt < new Date(Date.now() - 24 * 60 * 60 * 1000)) {
             await prisma.adminLog.delete({
@@ -269,7 +293,18 @@ class TelegramNotificationService {
   // Health check method
   async checkBotHealth(): Promise<boolean> {
     try {
-      const response = await axios.get(`${this.botApiUrl}/health`, {
+      // SECURITY FIX: Validate URL to prevent SSRF (CWE-918)
+      const healthUrl = `${this.botApiUrl}/health`;
+
+      // Ensure URL is from allowed domains (localhost or configured bot URL)
+      const allowedDomains = ['localhost', '127.0.0.1'];
+      if (process.env.BOT_API_DOMAIN) {
+        allowedDomains.push(process.env.BOT_API_DOMAIN);
+      }
+
+      const safeUrl = sanitizeUrl(healthUrl, allowedDomains);
+
+      const response = await axios.get(safeUrl, {
         timeout: 5000,
       });
       return response.status === 200;

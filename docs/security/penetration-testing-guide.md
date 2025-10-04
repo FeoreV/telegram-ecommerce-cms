@@ -72,14 +72,14 @@ Our penetration testing follows the **OWASP Testing Guide v4.2** and incorporate
    # Clone repository and setup test environment
    git clone https://github.com/company/botrt.git
    cd botrt
-   
+
    # Setup penetration testing environment
    cp .env.pentest.example .env.pentest
-   
+
    # Configure test database with sample data
    npm run db:setup:pentest
    npm run db:seed:pentest-data
-   
+
    # Start application in penetration testing mode
    npm run start:pentest
    ```
@@ -91,7 +91,7 @@ Our penetration testing follows the **OWASP Testing Guide v4.2** and incorporate
      nmap nikto dirb sqlmap \
      zaproxy nuclei gobuster \
      sslscan testssl.sh
-   
+
    # Install custom testing framework
    npm install -g @botrt/pentest-framework
    ```
@@ -100,7 +100,7 @@ Our penetration testing follows the **OWASP Testing Guide v4.2** and incorporate
    ```bash
    # Create test accounts with different privilege levels
    npm run create-test-accounts
-   
+
    # Generate API keys for testing
    npm run generate-test-api-keys
    ```
@@ -139,15 +139,17 @@ const config = {
       '/admin/system/shutdown'
     ]
   },
-  
+
   authentication: {
     method: 'jwt',
+    // SECURITY NOTE: These are EXAMPLE credentials for documentation only.
+    // NEVER use these in production. Always use environment variables.
     credentials: {
-      username: 'pentest@example.com',
-      password: 'PentestPassword123!'
+      username: 'pentest@example.com',  // Example only - use env vars
+      password: 'PentestPassword123!'   // Example only - use env vars
     }
   },
-  
+
   testSuites: {
     owasp: true,
     authentication: true,
@@ -158,7 +160,7 @@ const config = {
     businessLogic: true,
     infrastructure: true
   },
-  
+
   tools: {
     zap: true,
     nuclei: true,
@@ -167,14 +169,14 @@ const config = {
     nmap: true,
     custom: true
   },
-  
+
   reporting: {
     format: 'json',
     outputPath: './reports/',
     includeProofOfConcept: true,
     includeMitigations: true
   },
-  
+
   limits: {
     maxDuration: 120, // 2 hours
     maxRequests: 10000,
@@ -246,7 +248,7 @@ nuclei -u https://staging.botrt.com \
 
 **Scanning Categories:**
 - 🔍 **Infrastructure Vulnerabilities**
-- 🌐 **Web Application Vulnerabilities**  
+- 🌐 **Web Application Vulnerabilities**
 - 🔐 **Authentication & Session Management**
 - 💉 **Injection Vulnerabilities**
 - 🔒 **Access Control Issues**
@@ -315,7 +317,7 @@ npm run pentest:impact -- \
 // Test weak password acceptance
 const weakPasswords = [
   'password',
-  '123456', 
+  '123456',
   'admin',
   'qwerty',
   'letmein'
@@ -331,7 +333,7 @@ for (const password of weakPasswords) {
       confirmPassword: password
     })
   });
-  
+
   // Document if weak passwords are accepted
   if (response.status === 201) {
     reportVulnerability('WEAK_PASSWORD_POLICY', {
@@ -350,11 +352,11 @@ async function testSessionFixation() {
   // 1. Obtain session ID before authentication
   const preAuthResponse = await fetch('/api/auth/status');
   const preAuthSessionId = extractSessionId(preAuthResponse);
-  
+
   // 2. Authenticate with the same session
   const loginResponse = await fetch('/api/auth/login', {
     method: 'POST',
-    headers: { 
+    headers: {
       'Content-Type': 'application/json',
       'Cookie': `sessionId=${preAuthSessionId}`
     },
@@ -363,10 +365,10 @@ async function testSessionFixation() {
       password: 'TestPassword123!'
     })
   });
-  
+
   // 3. Check if session ID remained the same
   const postAuthSessionId = extractSessionId(loginResponse);
-  
+
   if (preAuthSessionId === postAuthSessionId) {
     reportVulnerability('SESSION_FIXATION', {
       preAuthSessionId,
@@ -385,7 +387,7 @@ async function testSessionFixation() {
 async function testVerticalPrivilegeEscalation() {
   // 1. Login as regular user
   const userToken = await loginUser('user@example.com', 'UserPassword123!');
-  
+
   // 2. Attempt to access admin endpoints
   const adminEndpoints = [
     '/api/admin/users',
@@ -393,12 +395,12 @@ async function testVerticalPrivilegeEscalation() {
     '/api/admin/system/logs',
     '/api/admin/financial/reports'
   ];
-  
+
   for (const endpoint of adminEndpoints) {
     const response = await fetch(endpoint, {
       headers: { 'Authorization': `Bearer ${userToken}` }
     });
-    
+
     // Should return 403 Forbidden
     if (response.status !== 403) {
       reportVulnerability('VERTICAL_PRIVILEGE_ESCALATION', {
@@ -421,18 +423,18 @@ async function testHorizontalPrivilegeEscalation() {
   // 1. Create two user accounts
   const user1Token = await loginUser('user1@example.com', 'Password123!');
   const user2Token = await loginUser('user2@example.com', 'Password123!');
-  
+
   // 2. Get user1's profile ID
   const user1Profile = await fetch('/api/users/profile', {
     headers: { 'Authorization': `Bearer ${user1Token}` }
   });
   const user1Data = await user1Profile.json();
-  
+
   // 3. Try to access user1's data with user2's token
   const unauthorizedAccess = await fetch(`/api/users/${user1Data.id}`, {
     headers: { 'Authorization': `Bearer ${user2Token}` }
   });
-  
+
   if (unauthorizedAccess.status === 200) {
     reportVulnerability('HORIZONTAL_PRIVILEGE_ESCALATION', {
       targetUserId: user1Data.id,
@@ -463,12 +465,12 @@ async function testSQLInjection() {
     '/api/users/search?name=',
     '/api/orders/filter?status='
   ];
-  
+
   for (const endpoint of testEndpoints) {
     for (const payload of sqlInjectionPayloads) {
       const response = await fetch(`${endpoint}${encodeURIComponent(payload)}`);
       const responseText = await response.text();
-      
+
       // Check for database error messages
       const errorPatterns = [
         /MySQL/i,
@@ -478,7 +480,7 @@ async function testSQLInjection() {
         /syntax error/i,
         /column.*does not exist/i
       ];
-      
+
       for (const pattern of errorPatterns) {
         if (pattern.test(responseText)) {
           reportVulnerability('SQL_INJECTION', {
@@ -512,8 +514,8 @@ async function testXSS() {
   for (const payload of xssPayloads) {
     const response = await fetch(`/api/search?q=${encodeURIComponent(payload)}`);
     const responseText = await response.text();
-    
-    if (responseText.includes(payload) && 
+
+    if (responseText.includes(payload) &&
         (responseText.includes('<script>') || responseText.includes('onerror='))) {
       reportVulnerability('REFLECTED_XSS', {
         payload,
@@ -522,7 +524,7 @@ async function testXSS() {
       });
     }
   }
-  
+
   // Test stored XSS
   for (const payload of xssPayloads) {
     // Submit payload via POST
@@ -531,13 +533,13 @@ async function testXSS() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: payload })
     });
-    
+
     if (postResponse.status === 201) {
       // Check if payload is executed when retrieved
       const getResponse = await fetch('/api/comments');
       const getResponseText = await getResponse.text();
-      
-      if (getResponseText.includes(payload) && 
+
+      if (getResponseText.includes(payload) &&
           (getResponseText.includes('<script>') || getResponseText.includes('onerror='))) {
         reportVulnerability('STORED_XSS', {
           payload,
@@ -563,11 +565,11 @@ async function testPriceManipulation() {
     { price: 0.01, description: 'Extremely low price' },
     { price: Number.MAX_SAFE_INTEGER, description: 'Extremely high price' }
   ];
-  
+
   for (const test of priceManipulationTests) {
     const response = await fetch('/api/products', {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${adminToken}`
       },
@@ -577,7 +579,7 @@ async function testPriceManipulation() {
         description: 'Penetration test product'
       })
     });
-    
+
     if (response.status === 201) {
       reportVulnerability('PRICE_MANIPULATION', {
         testCase: test.description,
@@ -596,7 +598,7 @@ async function testPriceManipulation() {
 async function testRaceConditions() {
   const concurrentRequests = 10;
   const promises = [];
-  
+
   // Create multiple simultaneous payment requests
   for (let i = 0; i < concurrentRequests; i++) {
     promises.push(
@@ -614,10 +616,10 @@ async function testRaceConditions() {
       })
     );
   }
-  
+
   const responses = await Promise.all(promises);
   const successfulPayments = responses.filter(r => r.status === 200);
-  
+
   // Should only have one successful payment
   if (successfulPayments.length > 1) {
     reportVulnerability('RACE_CONDITION', {
@@ -694,7 +696,7 @@ curl -X GET "https://staging.botrt.com/api/products/search?q=' OR '1'='1"
 
 ## Impact Assessment
 - **Confidentiality**: High/Medium/Low
-- **Integrity**: High/Medium/Low  
+- **Integrity**: High/Medium/Low
 - **Availability**: High/Medium/Low
 - **Business Impact**: Description of potential business consequences
 
@@ -714,7 +716,7 @@ curl -X GET "https://staging.botrt.com/api/products/search?q=' OR '1'='1"
 // Vulnerable code
 const query = `SELECT * FROM products WHERE name = '${userInput}'`;
 
-// Secure code  
+// Secure code
 const query = 'SELECT * FROM products WHERE name = ?';
 db.query(query, [userInput]);
 ```
@@ -763,7 +765,7 @@ db.query(query, [userInput]);
       },
       "impact": {
         "confidentiality": "high",
-        "integrity": "high", 
+        "integrity": "high",
         "availability": "medium",
         "business_impact": "Complete database access, potential data breach"
       },
@@ -792,7 +794,7 @@ db.query(query, [userInput]);
    ```bash
    # Assess scope and impact
    ./scripts/assess-vulnerability-impact.sh VULN-ID
-   
+
    # Check for active exploitation
    grep -r "attack_pattern" /var/log/nginx/
    grep -r "malicious_payload" /var/log/application/
@@ -803,7 +805,7 @@ db.query(query, [userInput]);
    # Disable affected endpoints
    kubectl patch ingress api-ingress --type='json' \
      -p='[{"op": "remove", "path": "/spec/rules/0/http/paths/X"}]'
-   
+
    # Enable additional monitoring
    kubectl apply -f monitoring/security-enhanced.yaml
    ```
@@ -820,7 +822,7 @@ db.query(query, [userInput]);
    ```bash
    # Review logs for exploitation attempts
    ./scripts/analyze-security-logs.sh --vulnerability=VULN-ID
-   
+
    # Check system integrity
    ./scripts/integrity-check.sh
    ```
@@ -831,10 +833,10 @@ db.query(query, [userInput]);
    git checkout -b security-fix/VULN-ID
    # Implement fix
    git commit -m "Security fix for VULN-ID"
-   
+
    # Deploy to staging for validation
    kubectl apply -f k8s/staging/
-   
+
    # Run regression tests
    npm run test:security:regression
    ```
@@ -850,7 +852,7 @@ graph LR
     C --> D[Testing]
     D --> E[Deployment]
     E --> F[Maintenance]
-    
+
     A -.-> A1[Threat Modeling]
     B -.-> B1[Security Architecture Review]
     C -.-> C1[Secure Coding Practices]
@@ -868,18 +870,18 @@ function validateInput(input, type) {
   if (typeof input !== type) {
     throw new ValidationError('Invalid input type');
   }
-  
+
   // 2. Length validation
   if (input.length > MAX_INPUT_LENGTH) {
     throw new ValidationError('Input too long');
   }
-  
+
   // 3. Pattern validation
   const allowedPattern = getPatternForType(type);
   if (!allowedPattern.test(input)) {
     throw new ValidationError('Invalid input format');
   }
-  
+
   // 4. Sanitization
   return sanitize(input);
 }
@@ -893,11 +895,11 @@ function executeQuery(query, params) {
 // Example: Authentication Check
 function requireAuth(req, res, next) {
   const token = req.headers.authorization?.split(' ')[1];
-  
+
   if (!token) {
     return res.status(401).json({ error: 'Authentication required' });
   }
-  
+
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
@@ -949,33 +951,33 @@ function requireAuth(req, res, next) {
 program:
   type: "private"
   duration: "ongoing"
-  
+
 scope:
   in_scope:
     - "*.botrt.com"
     - "api.botrt.com"
     - "admin.botrt.com"
     - "mobile-api.botrt.com"
-  
+
   out_of_scope:
     - "internal.botrt.com"
     - "staging.botrt.com"
     - Physical attacks
     - Social engineering
     - DoS attacks
-    
+
 rewards:
   critical: "$5000 - $10000"
   high: "$1000 - $5000"
   medium: "$500 - $1000"
   low: "$100 - $500"
-  
+
 requirements:
   - Valid proof of concept
   - Clear reproduction steps
   - No data exfiltration
   - Responsible disclosure
-  
+
 sla:
   initial_response: "24 hours"
   triage: "72 hours"
@@ -1019,7 +1021,7 @@ sla:
 
 **Testing Requirements**:
 - External penetration testing (annual)
-- Internal penetration testing (annual) 
+- Internal penetration testing (annual)
 - Network segmentation testing
 - Vulnerability scanning (quarterly)
 - Application security testing
@@ -1051,7 +1053,7 @@ sla:
 
 Available in repository: `tests/security/payloads/`
 - `sql-injection-payloads.txt`
-- `xss-payloads.txt`  
+- `xss-payloads.txt`
 - `lfi-payloads.txt`
 - `command-injection-payloads.txt`
 - `nosql-injection-payloads.txt`
@@ -1068,9 +1070,9 @@ Available in repository: `tests/security/payloads/`
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: 2024-01-15  
-**Next Review**: 2024-07-15  
-**Approved By**: Security Team Lead, CISO  
+**Document Version**: 1.0
+**Last Updated**: 2024-01-15
+**Next Review**: 2024-07-15
+**Approved By**: Security Team Lead, CISO
 
 *This document contains sensitive security information and should be handled according to company data classification policies.*

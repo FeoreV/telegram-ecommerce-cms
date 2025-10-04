@@ -1,44 +1,12 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getUserStores = exports.removeStoreAdmin = exports.addStoreAdmin = exports.deleteStore = exports.updateStore = exports.checkSlugAvailability = exports.createStore = exports.getStore = exports.getStores = void 0;
 const client_1 = require("@prisma/client");
 const prisma_1 = require("../lib/prisma");
 const errorHandler_1 = require("../middleware/errorHandler");
-const logger_1 = require("../utils/logger");
 const notificationService_1 = require("../services/notificationService");
+const logger_1 = require("../utils/logger");
+const sanitizer_1 = require("../utils/sanitizer");
 const isNonEmptyString = (value) => typeof value === 'string' && value.trim().length > 0;
 const removeEmptyValues = (value) => {
     if (value === null || value === undefined) {
@@ -88,7 +56,7 @@ const normalizeJsonField = (value) => {
             }
             return JSON.stringify(cleaned);
         }
-        catch (error) {
+        catch {
             return trimmed;
         }
     }
@@ -135,7 +103,7 @@ const parseJsonField = (value) => {
         try {
             return JSON.parse(trimmed);
         }
-        catch (error) {
+        catch (_error) {
             return trimmed;
         }
     }
@@ -350,7 +318,7 @@ exports.createStore = (0, errorHandler_1.asyncHandler)(async (req, res) => {
                 }
             });
         }
-        const { NotificationService } = await Promise.resolve().then(() => __importStar(require('../services/notificationService.js')));
+        const { NotificationService } = await import('../services/notificationService.js');
         await NotificationService.send({
             title: 'Новый магазин создан',
             message: `Магазин "${store.name}" успешно создан`,
@@ -365,7 +333,7 @@ exports.createStore = (0, errorHandler_1.asyncHandler)(async (req, res) => {
                 createdBy: req.user.id
             }
         });
-        logger_1.logger.info(`Store created: ${store.id} (${store.name}) by user ${req.user.id}`);
+        logger_1.logger.info(`Store created: ${(0, sanitizer_1.sanitizeForLog)(store.id)} (${(0, sanitizer_1.sanitizeForLog)(store.name)}) by user ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
         res.status(201).json({
             success: true,
             store: transformStore(store),
@@ -484,7 +452,7 @@ exports.updateStore = (0, errorHandler_1.asyncHandler)(async (req, res) => {
             },
         },
     });
-    logger_1.logger.info(`Store updated: ${store.id} by user ${req.user?.id}`);
+    logger_1.logger.info(`Store updated: ${(0, sanitizer_1.sanitizeForLog)(store.id)} by user ${(0, sanitizer_1.sanitizeForLog)(req.user?.id)}`);
     res.json({ store: transformStore(store) });
 });
 exports.deleteStore = (0, errorHandler_1.asyncHandler)(async (req, res) => {
@@ -492,7 +460,7 @@ exports.deleteStore = (0, errorHandler_1.asyncHandler)(async (req, res) => {
     await prisma_1.prisma.store.delete({
         where: { id },
     });
-    logger_1.logger.info(`Store deleted: ${id} by user ${req.user?.id}`);
+    logger_1.logger.info(`Store deleted: ${(0, sanitizer_1.sanitizeForLog)(id)} by user ${(0, sanitizer_1.sanitizeForLog)(req.user?.id)}`);
     res.json({ message: 'Store deleted successfully' });
 });
 exports.addStoreAdmin = (0, errorHandler_1.asyncHandler)(async (req, res) => {
@@ -521,7 +489,7 @@ exports.addStoreAdmin = (0, errorHandler_1.asyncHandler)(async (req, res) => {
             userId,
         },
     });
-    logger_1.logger.info(`Admin added to store: ${id}, user: ${userId} by ${req.user?.id}`);
+    logger_1.logger.info(`Admin added to store: ${(0, sanitizer_1.sanitizeForLog)(id)}, user: ${(0, sanitizer_1.sanitizeForLog)(userId)} by ${(0, sanitizer_1.sanitizeForLog)(req.user?.id)}`);
     res.json({ message: 'Admin added successfully' });
 });
 exports.removeStoreAdmin = (0, errorHandler_1.asyncHandler)(async (req, res) => {
@@ -534,7 +502,7 @@ exports.removeStoreAdmin = (0, errorHandler_1.asyncHandler)(async (req, res) => 
             },
         },
     });
-    logger_1.logger.info(`Admin removed from store: ${id}, user: ${userId} by ${req.user?.id}`);
+    logger_1.logger.info(`Admin removed from store: ${(0, sanitizer_1.sanitizeForLog)(id)}, user: ${(0, sanitizer_1.sanitizeForLog)(userId)} by ${(0, sanitizer_1.sanitizeForLog)(req.user?.id)}`);
     res.json({ message: 'Admin removed successfully' });
 });
 exports.getUserStores = (0, errorHandler_1.asyncHandler)(async (req, res) => {
@@ -609,6 +577,6 @@ exports.getUserStores = (0, errorHandler_1.asyncHandler)(async (req, res) => {
         stores: storesWithBotInfo,
         total: storesWithBotInfo.length
     });
-    logger_1.logger.info(`User stores retrieved: ${storesWithBotInfo.length} stores for user ${req.user.id}`);
+    logger_1.logger.info(`User stores retrieved: ${storesWithBotInfo.length} stores for user ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
 });
 //# sourceMappingURL=storeController.js.map

@@ -1,7 +1,7 @@
-import { Response } from 'express';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { AppError, asyncHandler } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
+import { sanitizeHtml } from '../utils/sanitizer';
 
 /**
  * Обработка принятия приглашения через ссылку (для публичного доступа)
@@ -16,7 +16,7 @@ export const handleInvitationAcceptance = asyncHandler(async (req: Request, res:
   try {
     // Получаем информацию о приглашении
     const invitationInfo = await getInvitationByToken(token);
-    
+
     if (!invitationInfo) {
       return res.status(404).send(`
         <!DOCTYPE html>
@@ -25,10 +25,10 @@ export const handleInvitationAcceptance = asyncHandler(async (req: Request, res:
           <meta charset="UTF-8">
           <title>Приглашение не найдено</title>
           <style>
-            body { 
-              font-family: Arial, sans-serif; 
-              max-width: 600px; 
-              margin: 50px auto; 
+            body {
+              font-family: Arial, sans-serif;
+              max-width: 600px;
+              margin: 50px auto;
               padding: 20px;
               background: #f8f9fa;
             }
@@ -63,10 +63,10 @@ export const handleInvitationAcceptance = asyncHandler(async (req: Request, res:
         <title>Приглашение в команду</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
-          body { 
+          body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            max-width: 600px; 
-            margin: 0 auto; 
+            max-width: 600px;
+            margin: 0 auto;
             padding: 20px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
@@ -89,8 +89,8 @@ export const handleInvitationAcceptance = asyncHandler(async (req: Request, res:
             text-align: center;
             margin-bottom: 30px;
           }
-          .icon { 
-            font-size: 64px; 
+          .icon {
+            font-size: 64px;
             margin-bottom: 20px;
             display: block;
           }
@@ -107,8 +107,8 @@ export const handleInvitationAcceptance = asyncHandler(async (req: Request, res:
             font-size: 14px;
             font-weight: bold;
             margin-bottom: 20px;
-            ${invitationInfo.role === 'ADMIN' 
-              ? 'background: #e3f2fd; color: #1976d2;' 
+            ${invitationInfo.role === 'ADMIN'
+              ? 'background: #e3f2fd; color: #1976d2;'
               : 'background: #f3e5f5; color: #7b1fa2;'
             }
           }
@@ -189,7 +189,7 @@ export const handleInvitationAcceptance = asyncHandler(async (req: Request, res:
         <div class="container">
           <div class="header">
             <span class="icon">🎉</span>
-            <div class="store-name">${invitationInfo.store.name}</div>
+            <div class="store-name">${sanitizeHtml(invitationInfo.store.name)}</div>
             <span class="role-badge">
               ${invitationInfo.role === 'ADMIN' ? '👑 Администратор' : '🛍️ Продавец'}
             </span>
@@ -198,19 +198,19 @@ export const handleInvitationAcceptance = asyncHandler(async (req: Request, res:
 
           ${invitationInfo.message ? `
             <div class="message">
-              <strong>Сообщение от ${invitationInfo.inviter.firstName} ${invitationInfo.inviter.lastName}:</strong><br>
-              ${invitationInfo.message}
+              <strong>Сообщение от ${sanitizeHtml(invitationInfo.inviter.firstName)} ${sanitizeHtml(invitationInfo.inviter.lastName)}:</strong><br>
+              ${sanitizeHtml(invitationInfo.message)}
             </div>
           ` : ''}
 
           <div class="info-section">
             <div class="info-item">
               <span class="info-label">Пригласил:</span>
-              <span>${invitationInfo.inviter.firstName} ${invitationInfo.inviter.lastName}</span>
+              <span>${sanitizeHtml(invitationInfo.inviter.firstName)} ${sanitizeHtml(invitationInfo.inviter.lastName)}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Магазин:</span>
-              <span>${invitationInfo.store.name}</span>
+              <span>${sanitizeHtml(invitationInfo.store.name)}</span>
             </div>
             <div class="info-item">
               <span class="info-label">Роль:</span>
@@ -219,7 +219,7 @@ export const handleInvitationAcceptance = asyncHandler(async (req: Request, res:
             ${invitationInfo.permissions ? `
               <div class="info-item">
                 <span class="info-label">Разрешения:</span>
-                <span>${JSON.parse(invitationInfo.permissions).join(', ')}</span>
+                <span>${sanitizeHtml(JSON.parse(invitationInfo.permissions).join(', '))}</span>
               </div>
             ` : ''}
           </div>
@@ -235,16 +235,24 @@ export const handleInvitationAcceptance = asyncHandler(async (req: Request, res:
           </div>
 
           <div class="buttons">
-            <button class="btn btn-accept" onclick="acceptInvitation('${token}')">
+            <button class="btn btn-accept" id="acceptBtn" data-token="${sanitizeHtml(token)}">
               ✅ Принять
             </button>
-            <button class="btn btn-reject" onclick="rejectInvitation('${token}')">
+            <button class="btn btn-reject" id="rejectBtn" data-token="${sanitizeHtml(token)}">
               ❌ Отклонить
             </button>
           </div>
         </div>
 
         <script>
+          // SECURITY FIX: CWE-79 - Use event listeners instead of inline onclick to prevent XSS
+          document.getElementById('acceptBtn').addEventListener('click', function() {
+            acceptInvitation(this.dataset.token);
+          });
+          document.getElementById('rejectBtn').addEventListener('click', function() {
+            rejectInvitation(this.dataset.token);
+          });
+
           async function acceptInvitation(token) {
             try {
               const response = await fetch('/api/invitations/accept', {
@@ -269,7 +277,7 @@ export const handleInvitationAcceptance = asyncHandler(async (req: Request, res:
 
           async function rejectInvitation(token) {
             const reason = prompt('Укажите причину отклонения (необязательно):');
-            
+
             try {
               const response = await fetch('/api/invitations/reject', {
                 method: 'POST',
@@ -294,17 +302,43 @@ export const handleInvitationAcceptance = asyncHandler(async (req: Request, res:
           function showResult(type, title, message) {
             const container = document.querySelector('.container');
             const color = type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#17a2b8';
-            
-            container.innerHTML = \`
-              <div style="text-align: center;">
-                <div style="font-size: 48px; margin-bottom: 20px;">\${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}</div>
-                <h2 style="color: \${color}; margin-bottom: 15px;">\${title}</h2>
-                <p style="font-size: 16px; color: #666; margin-bottom: 30px;">\${message}</p>
-                <button onclick="window.close()" class="btn" style="background: \${color}; color: white;">
-                  Закрыть
-                </button>
-              </div>
-            \`;
+            const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+
+            // Clear container safely
+            container.innerHTML = '';
+
+            // Create elements safely
+            const contentDiv = document.createElement('div');
+            contentDiv.style.textAlign = 'center';
+
+            const iconDiv = document.createElement('div');
+            iconDiv.style.fontSize = '48px';
+            iconDiv.style.marginBottom = '20px';
+            iconDiv.textContent = icon;
+
+            const titleH2 = document.createElement('h2');
+            titleH2.style.color = color;
+            titleH2.style.marginBottom = '15px';
+            titleH2.textContent = title;
+
+            const messageP = document.createElement('p');
+            messageP.style.fontSize = '16px';
+            messageP.style.color = '#666';
+            messageP.style.marginBottom = '30px';
+            messageP.textContent = message;
+
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'btn';
+            closeBtn.style.background = color;
+            closeBtn.style.color = 'white';
+            closeBtn.textContent = 'Закрыть';
+            closeBtn.onclick = () => window.close();
+
+            contentDiv.appendChild(iconDiv);
+            contentDiv.appendChild(titleH2);
+            contentDiv.appendChild(messageP);
+            contentDiv.appendChild(closeBtn);
+            container.appendChild(contentDiv);
           }
         </script>
       </body>
@@ -337,8 +371,8 @@ export const handleInvitationAcceptance = asyncHandler(async (req: Request, res:
 
 // Вспомогательная функция для получения информации о приглашении
 async function getInvitationByToken(token: string) {
-  const { prisma } = await import('../lib/prisma');
-  
+  const { prisma } = await import('../lib/prisma.js');
+
   return await prisma.employeeInvitation.findUnique({
     where: { token },
     include: {

@@ -3,10 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleProducts = handleProducts;
 const apiService_1 = require("../services/apiService");
 const cmsService_1 = require("../services/cmsService");
-const sessionManager_1 = require("../utils/sessionManager");
-const logger_1 = require("../utils/logger");
 const qrPaymentService_1 = require("../services/qrPaymentService");
 const cache_1 = require("../utils/cache");
+const logger_1 = require("../utils/logger");
+const sessionManager_1 = require("../utils/sessionManager");
 async function handleProducts(bot, msg, callbackQuery) {
     const chatId = msg.chat.id;
     const userId = (callbackQuery?.from?.id || msg.from?.id)?.toString();
@@ -151,7 +151,7 @@ async function showProduct(bot, chatId, session, productId) {
                 });
                 await bot.deleteMessage(chatId, loadingMsg.message_id);
             }
-            catch (photoError) {
+            catch {
                 await bot.editMessageText(text, {
                     chat_id: chatId,
                     message_id: loadingMsg.message_id,
@@ -307,11 +307,12 @@ async function handleVariantSelection(bot, chatId, session, data) {
 }
 async function showVariantQuantitySelector(bot, chatId, session, productId, variantId) {
     try {
-        if (!session.token) {
+        const token = session.token;
+        if (!token) {
             await bot.sendMessage(chatId, 'Необходимо авторизоваться. Нажмите /start');
             return;
         }
-        const productResponse = await apiService_1.apiService.getProduct(productId, session.token);
+        const productResponse = await apiService_1.apiService.getProduct(productId, token);
         const product = productResponse.product;
         const variant = product.variants?.find((v) => v.id === variantId);
         if (!variant) {
@@ -458,18 +459,18 @@ async function handleBuyConfirmation(bot, chatId, session, data) {
         payText += `💳 *Сумма к оплате: ${totalAmount} ${product.store.currency}*\n`;
         payText += `🏪 Магазин: ${product.store.name}\n\n`;
         payText += `💰 *Инструкции по оплате:*\n`;
-        try {
-            const settingsResp = await apiService_1.apiService.getBotSettings(product.store.id, session.token);
-            const settings = settingsResp?.settings || {};
-            const paymentInstructions = settings.paymentInstructions || 'Переведите указанную сумму по реквизитам ниже и прикрепите скриншот чека для подтверждения.';
-            const requisites = settings.paymentRequisites || settings.requisites || null;
-            payText += `📝 ${paymentInstructions}\n`;
-            const hasRequisites = requisites && (requisites.card ||
-                requisites.bank ||
-                requisites.receiver ||
-                requisites.comment);
-            if (hasRequisites) {
-                payText += `\n💳 *Реквизиты для оплаты:*\n`;
+        const settingsResp = await apiService_1.apiService.getBotSettings(product.store.id, session.token);
+        logger_1.logger.info('💳 Bot settings response:', JSON.stringify(settingsResp, null, 2));
+        const settings = settingsResp?.settings || {};
+        const paymentInstructions = settings.paymentInstructions || 'Переведите точную сумму по реквизитам ниже';
+        const requisites = settings.paymentRequisites;
+        logger_1.logger.info('💳 Payment instructions:', paymentInstructions);
+        logger_1.logger.info('💳 Payment requisites:', JSON.stringify(requisites, null, 2));
+        payText += `📝 ${paymentInstructions}\n\n`;
+        if (requisites && typeof requisites === 'object') {
+            const hasAnyRequisite = requisites.card || requisites.bank || requisites.receiver || requisites.comment;
+            if (hasAnyRequisite) {
+                payText += `💳 *Реквизиты для оплаты:*\n`;
                 if (requisites.card)
                     payText += `💳 Карта: \`${requisites.card}\`\n`;
                 if (requisites.bank)
@@ -477,37 +478,17 @@ async function handleBuyConfirmation(bot, chatId, session, data) {
                 if (requisites.receiver)
                     payText += `👤 Получатель: ${requisites.receiver}\n`;
                 if (requisites.comment)
-                    payText += `💬 Комментарий к переводу: ${requisites.comment}\n`;
-                payText += `\n⚠️ *Важно:* Указывайте точную сумму к переводу!\n`;
+                    payText += `💬 Комментарий: ${requisites.comment}\n`;
             }
             else {
-                const contactInfo = product.store.contactInfo;
-                if (contactInfo && typeof contactInfo === 'object') {
-                    payText += `\n📞 *Контакты магазина для уточнения реквизитов:*\n`;
-                    if (contactInfo.phone)
-                        payText += `📱 Телефон: ${contactInfo.phone}\n`;
-                    if (contactInfo.email)
-                        payText += `📧 Email: ${contactInfo.email}\n`;
-                    if (contactInfo.address)
-                        payText += `📍 Адрес: ${contactInfo.address}\n`;
-                    payText += `\n❗ *Важно:* Свяжитесь с магазином для получения реквизитов оплаты.\n`;
-                }
-                else {
-                    payText += `\n❗ *Важно:* Свяжитесь с администратором магазина для получения реквизитов оплаты.\n`;
-                }
+                payText += `❗️ Реквизиты не заполнены в настройках магазина\n`;
             }
-            payText += `\n📸 *После оплаты обязательно загрузите чек!*\n`;
-            payText += `Нажмите кнопку "📸 Загрузить чек" ниже.\n`;
         }
-        catch (e) {
-            logger_1.logger.warn('Failed to fetch bot settings for payment instructions', e);
-            payText += `📌 *Инструкции по оплате:*\n`;
-            payText += `1️⃣ Свяжитесь с магазином для получения реквизитов\n`;
-            payText += `2️⃣ Переведите точную сумму на указанные реквизиты\n`;
-            payText += `3️⃣ Сделайте скриншот чека или подтверждения\n`;
-            payText += `4️⃣ *Загрузите чек через кнопку ниже* 📸\n`;
-            payText += `5️⃣ Дождитесь подтверждения от администратора\n\n`;
+        else {
+            payText += `❗️ Реквизиты не настроены. Обратитесь к администратору.\n`;
         }
+        payText += `\n📱 *После оплаты свяжитесь с администратором и предоставьте скриншот чека.*\n`;
+        payText += `📋 Ваш номер заказа: ${orderNumber}\n`;
         const keyboard = {
             inline_keyboard: [
                 [

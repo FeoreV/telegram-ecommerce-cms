@@ -4,17 +4,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.bot = void 0;
-const node_telegram_bot_api_1 = __importDefault(require("node-telegram-bot-api"));
-const express_1 = __importDefault(require("express"));
 const dotenv_1 = __importDefault(require("dotenv"));
-const logger_1 = require("./utils/logger");
+const express_1 = __importDefault(require("express"));
+const node_telegram_bot_api_1 = __importDefault(require("node-telegram-bot-api"));
+const handlers_1 = require("./handlers");
+const notificationHandler_1 = require("./handlers/notificationHandler");
+const security_1 = require("./middleware/security");
 const apiService_1 = require("./services/apiService");
 const cmsService_1 = require("./services/cmsService");
-const handlers_1 = require("./handlers");
-const redisStore_1 = require("./utils/redisStore");
-const notificationHandler_1 = require("./handlers/notificationHandler");
 const webhookService_1 = require("./services/webhookService");
-const security_1 = require("./middleware/security");
+const logger_1 = require("./utils/logger");
+const redisStore_1 = require("./utils/redisStore");
+const sanitizer_1 = require("./utils/sanitizer");
 dotenv_1.default.config();
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const WEBHOOK_BASE_URL = process.env.WEBHOOK_BASE_URL;
@@ -204,7 +205,7 @@ async function main() {
             }, 5000);
         });
         const gracefulShutdown = async (signal) => {
-            logger_1.logger.info(`${signal} received, shutting down bot gracefully`);
+            logger_1.logger.info(`${(0, sanitizer_1.sanitizeForLog)(signal)} received, shutting down bot gracefully`);
             try {
                 if (webhookService) {
                     await webhookService.stop();

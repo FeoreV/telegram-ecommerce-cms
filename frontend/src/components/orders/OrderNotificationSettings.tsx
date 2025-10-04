@@ -1,48 +1,39 @@
-import React, { useState, useEffect } from 'react'
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Typography,
-  Box,
-  Card,
-  CardContent,
-  FormControlLabel,
-  Switch,
-  Slider,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Chip,
-  IconButton,
-  Tooltip,
-  Divider,
-  Alert,
-  Paper,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
-  Avatar,
-  Badge,
-} from '@mui/material'
-import {
-  Notifications,
-  VolumeUp,
-  VolumeOff,
-  PlayArrow,
-  Settings,
-  PriorityHigh,
-  Schedule,
-  Close,
-  NotificationImportant,
-  Info,
-  Warning,
-  Error,
+    Close,
+    Error,
+    Info,
+    NotificationImportant,
+    Notifications,
+    PlayArrow,
+    PriorityHigh,
+    Settings,
+    VolumeOff,
+    VolumeUp,
+    Warning
 } from '@mui/icons-material'
+import {
+    Alert,
+    Avatar,
+    Badge,
+    Box,
+    Button,
+    Chip,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    Divider,
+    FormControlLabel,
+    IconButton,
+    List,
+    ListItem,
+    Paper,
+    Slider,
+    Switch,
+    Tooltip,
+    Typography
+} from '@mui/material'
+import React, { useEffect, useMemo, useState } from 'react'
 import { toast } from 'react-toastify'
 
 interface NotificationRule {
@@ -79,27 +70,27 @@ const OrderNotificationSettings: React.FC<OrderNotificationSettingsProps> = ({
   open,
   onClose,
 }) => {
-  const defaultSettings = {
+  const defaultSettings = useMemo(() => ({
     globalEnabled: true,
     masterVolume: 70,
     doNotDisturbEnabled: false,
     doNotDisturbStart: '22:00',
     doNotDisturbEnd: '08:00',
     browserNotificationsEnabled: false,
-  }
+  }), [])
 
   const [settings, setSettings] = useState(defaultSettings)
 
-  const defaultRules: NotificationRule[] = [
+  const defaultRules = useMemo((): NotificationRule[] => ([
     {
       id: '1',
       name: 'Новый заказ',
       description: 'Уведомление о каждом новом заказе',
-      eventType: 'new_order',
+      eventType: 'new_order' as const,
       enabled: true,
       soundEnabled: true,
       soundFile: 'new-order.mp3',
-      priority: 'medium',
+      priority: 'medium' as const,
       conditions: {},
       actions: {
         showToast: true,
@@ -112,11 +103,11 @@ const OrderNotificationSettings: React.FC<OrderNotificationSettingsProps> = ({
       id: '2',
       name: 'Крупный заказ',
       description: 'Заказы на сумму свыше 10,000 ₽',
-      eventType: 'high_value_order',
+      eventType: 'high_value_order' as const,
       enabled: true,
       soundEnabled: true,
       soundFile: 'high-value.mp3',
-      priority: 'high',
+      priority: 'high' as const,
       conditions: {
         minAmount: 10000
       },
@@ -131,11 +122,11 @@ const OrderNotificationSettings: React.FC<OrderNotificationSettingsProps> = ({
       id: '3',
       name: 'Срочный заказ',
       description: 'Заказы, требующие быстрой обработки',
-      eventType: 'urgent_order',
+      eventType: 'urgent_order' as const,
       enabled: true,
       soundEnabled: true,
       soundFile: 'urgent.mp3',
-      priority: 'urgent',
+      priority: 'urgent' as const,
       conditions: {},
       actions: {
         showToast: true,
@@ -148,11 +139,11 @@ const OrderNotificationSettings: React.FC<OrderNotificationSettingsProps> = ({
       id: '4',
       name: 'Оплата подтверждена',
       description: 'Уведомление при подтверждении оплаты',
-      eventType: 'payment_confirmed',
+      eventType: 'payment_confirmed' as const,
       enabled: true,
       soundEnabled: false,
       soundFile: 'payment.mp3',
-      priority: 'low',
+      priority: 'low' as const,
       conditions: {},
       actions: {
         showToast: true,
@@ -165,11 +156,11 @@ const OrderNotificationSettings: React.FC<OrderNotificationSettingsProps> = ({
       id: '5',
       name: 'Заказ отклонен',
       description: 'Уведомление при отклонении заказа',
-      eventType: 'order_rejected',
+      eventType: 'order_rejected' as const,
       enabled: true,
       soundEnabled: true,
       soundFile: 'rejected.mp3',
-      priority: 'medium',
+      priority: 'medium' as const,
       conditions: {},
       actions: {
         showToast: true,
@@ -178,9 +169,9 @@ const OrderNotificationSettings: React.FC<OrderNotificationSettingsProps> = ({
         browserNotification: false,
       }
     }
-  ]
+  ]), [])
 
-  const [rules, setRules] = useState<NotificationRule[]>(defaultRules)
+  const [rules, setRules] = useState<NotificationRule[]>(defaultRules as NotificationRule[])
 
   useEffect(() => {
     if (!open) {
@@ -225,16 +216,16 @@ const OrderNotificationSettings: React.FC<OrderNotificationSettingsProps> = ({
   }
 
   const handleRuleToggle = (ruleId: string, field: keyof NotificationRule, value: boolean) => {
-    setRules(prev => prev.map(rule => 
-      rule.id === ruleId 
+    setRules(prev => prev.map(rule =>
+      rule.id === ruleId
         ? { ...rule, [field]: value }
         : rule
     ))
   }
 
   const handleRuleActionToggle = (ruleId: string, action: keyof NotificationRule['actions'], value: boolean) => {
-    setRules(prev => prev.map(rule => 
-      rule.id === ruleId 
+    setRules(prev => prev.map(rule =>
+      rule.id === ruleId
         ? { ...rule, actions: { ...rule.actions, [action]: value } }
         : rule
     ))
@@ -332,7 +323,7 @@ const OrderNotificationSettings: React.FC<OrderNotificationSettingsProps> = ({
 
           <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
             <Box>
-              <Typography>Режим "Не беспокоить"</Typography>
+              <Typography>Режим &quot;Не беспокоить&quot;</Typography>
               <Typography variant="body2" color="text.secondary">
                 {settings.doNotDisturbStart} - {settings.doNotDisturbEnd}
               </Typography>
@@ -379,7 +370,7 @@ const OrderNotificationSettings: React.FC<OrderNotificationSettingsProps> = ({
                     <Avatar sx={{ mt: 1 }}>
                       {getPriorityIcon(rule.priority)}
                     </Avatar>
-                    
+
                     <Box flex={1}>
                       <Box display="flex" alignItems="center" gap={1} mb={1}>
                         <Typography variant="subtitle1" fontWeight="medium">
@@ -394,7 +385,7 @@ const OrderNotificationSettings: React.FC<OrderNotificationSettingsProps> = ({
                           <Badge color="success" variant="dot" />
                         )}
                       </Box>
-                      
+
                       <Typography variant="body2" color="text.secondary" mb={2}>
                         {rule.description}
                       </Typography>

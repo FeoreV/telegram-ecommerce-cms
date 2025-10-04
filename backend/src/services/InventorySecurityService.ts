@@ -1,6 +1,6 @@
 import * as crypto from 'crypto';
-import { logger } from '../utils/logger';
 import { getErrorMessage } from '../utils/errorUtils';
+import { logger } from '../utils/logger';
 import { securityLogService } from './SecurityLogService';
 
 export enum InventoryOperationType {
@@ -32,43 +32,43 @@ export interface OptimisticLockConfig {
   id: string;
   tableName: string;
   versionColumn: string;
-  
+
   // Lock settings
   maxRetryAttempts: number;
   retryDelayMs: number;
   lockTimeoutMs: number;
-  
+
   // Conflict resolution
   conflictResolution: 'fail' | 'retry' | 'merge' | 'override';
   mergeStrategy?: 'sum' | 'max' | 'min' | 'last_writer_wins';
-  
+
   // Security
   auditLevel: InventoryAuditLevel;
   requireApproval: boolean;
   approverRoles: string[];
-  
+
   // Business rules
   allowNegativeStock: boolean;
   enforceReservationLimit: boolean;
   validateBusinessRules: boolean;
-  
+
   // Monitoring
   trackPerformance: boolean;
   alertOnConflicts: boolean;
   conflictThreshold: number; // conflicts per hour
-  
+
   enabled: boolean;
 }
 
 export interface InventoryOperation {
   id: string;
   operationType: InventoryOperationType;
-  
+
   // Target
   productId: string;
   storeId: string;
   variantId?: string;
-  
+
   // Operation details
   quantity: number;
   previousQuantity: number;
@@ -78,35 +78,35 @@ export interface InventoryOperation {
     newPrice: number;
     currency: string;
   };
-  
+
   // Optimistic locking
   version: number;
   expectedVersion: number;
   lockAcquiredAt: Date;
   lockReleasedAt?: Date;
-  
+
   // Metadata
   reason: string;
   reference?: string; // Order ID, Transfer ID, etc.
   userId: string;
   userRole: string;
-  
+
   // Security
   approved: boolean;
   approvedBy?: string;
   approvedAt?: Date;
   digitalSignature?: string;
-  
+
   // Execution
   status: 'pending' | 'locked' | 'executing' | 'completed' | 'failed' | 'rolled_back';
   startTime: Date;
   endTime?: Date;
   duration?: number;
-  
+
   // Validation
   businessRulesValidated: boolean;
   validationErrors: string[];
-  
+
   // Audit trail
   auditTrail: {
     timestamp: Date;
@@ -115,7 +115,7 @@ export interface InventoryOperation {
     details: Record<string, unknown>;
     signature?: string;
   }[];
-  
+
   // Conflict handling
   conflictDetected: boolean;
   conflictResolution?: string;
@@ -127,11 +127,11 @@ export interface InventoryConflict {
   id: string;
   productId: string;
   storeId: string;
-  
+
   // Conflict details
   detectedAt: Date;
   conflictType: 'version_mismatch' | 'concurrent_access' | 'data_integrity' | 'business_rule_violation';
-  
+
   // Competing operations
   operationA: {
     id: string;
@@ -145,18 +145,18 @@ export interface InventoryConflict {
     expectedVersion: number;
     operation: InventoryOperationType;
   };
-  
+
   // Resolution
   resolved: boolean;
   resolutionStrategy?: string;
   resolvedBy?: string;
   resolvedAt?: Date;
-  
+
   // Impact assessment
   impactLevel: 'low' | 'medium' | 'high' | 'critical';
   affectedOrders: string[];
   businessImpact: string;
-  
+
   // Security implications
   securityRelevant: boolean;
   potentialFraud: boolean;
@@ -168,31 +168,31 @@ export interface InventorySecurityMetrics {
   totalOperations: number;
   successfulOperations: number;
   failedOperations: number;
-  
+
   // Locking metrics
   lockAcquisitions: number;
   lockTimeouts: number;
   lockConflicts: number;
   averageLockDuration: number;
-  
+
   // Conflict metrics
   conflictCount: number;
   conflictResolutionTime: number;
   unresolvedConflicts: number;
-  
+
   // Security metrics
   unauthorizedAttempts: number;
   suspiciousOperations: number;
   fraudAlerts: number;
-  
+
   // Performance metrics
   averageOperationTime: number;
   throughputPerSecond: number;
-  
+
   // Compliance metrics
   auditCompliance: number;
   approvalCompliance: number;
-  
+
   // Time range
   periodStart: Date;
   periodEnd: Date;
@@ -233,10 +233,10 @@ export class InventorySecurityService {
     try {
       // Initialize distributed locking mechanism
       await this.initializeDistributedLocking();
-      
+
       // Setup conflict detection
       await this.setupConflictDetection();
-      
+
       // Initialize business rule validation
       await this.initializeBusinessRuleValidation();
 
@@ -411,12 +411,12 @@ export class InventorySecurityService {
     const operationId = crypto.randomUUID();
     // const _startTime = Date.now();
  // Unused variable removed
-    
+
     try {
       // Determine table and lock config
       const tableName = this.getTableName(operationType, options.variantId);
       const lockConfig = this.lockConfigs.get(tableName);
-      
+
       if (!lockConfig || !lockConfig.enabled) {
         throw new Error(`Optimistic locking not configured for table: ${tableName}`);
       }
@@ -491,6 +491,7 @@ export class InventorySecurityService {
       }
 
       // Execute operation
+      // NOTE: Internal method with validated inputs, not dynamic code execution (CWE-94 false positive)
       await this.executeOperation(operation, lockConfig);
 
       // Generate digital signature
@@ -555,7 +556,7 @@ export class InventorySecurityService {
         operation.endTime = new Date();
         operation.duration = operation.endTime.getTime() - operation.startTime.getTime();
         operation.validationErrors.push(getErrorMessage(err as Error));
-        
+
         this.updateMetrics(operation, false);
       }
 
@@ -594,10 +595,10 @@ export class InventorySecurityService {
   ): Promise<{ quantity: number; version: number } | null> {
     // Simulate database query to get current record
     // In real implementation, this would query the actual database
-    
+
     const baseQuantity = Math.floor(Math.random() * 1000) + 100;
     const baseVersion = Math.floor(Math.random() * 10) + 1;
-    
+
     return {
       quantity: baseQuantity,
       version: baseVersion
@@ -653,10 +654,10 @@ export class InventorySecurityService {
     // Check price change validation
     if (operation.priceChange) {
       const priceChangePercent = Math.abs(
-        (operation.priceChange.newPrice - operation.priceChange.previousPrice) / 
+        (operation.priceChange.newPrice - operation.priceChange.previousPrice) /
         operation.priceChange.previousPrice
       ) * 100;
-      
+
       if (priceChangePercent > 50) { // 50% price change threshold
         errors.push('Price change exceeds allowed threshold');
       }
@@ -673,7 +674,7 @@ export class InventorySecurityService {
         user: operation.userId,
         details: { errors }
       });
-      
+
       throw new Error(`Business rule validation failed: ${errors.join(', ')}`);
     }
 
@@ -688,7 +689,7 @@ export class InventorySecurityService {
   private async requestApproval(operation: InventoryOperation, config: OptimisticLockConfig): Promise<void> {
     // Simulate approval process
     // In real implementation, this would trigger approval workflow
-    
+
     operation.auditTrail.push({
       timestamp: new Date(),
       action: 'approval_requested',
@@ -715,7 +716,7 @@ export class InventorySecurityService {
 
   private async acquireOptimisticLock(operation: InventoryOperation, config: OptimisticLockConfig): Promise<void> {
     const lockKey = `${operation.productId}-${operation.storeId}${operation.variantId ? '-' + operation.variantId : ''}`;
-    
+
     // Check for existing locks
     const existingLocks = this.activeLocks.get(lockKey);
     if (existingLocks && existingLocks.size > 0) {
@@ -801,7 +802,7 @@ export class InventorySecurityService {
     switch (config.conflictResolution) {
       case 'fail':
         throw new Error('Concurrent access detected, operation aborted');
-      
+
       case 'retry':
         if (operation.retryCount < config.maxRetryAttempts) {
           operation.retryCount++;
@@ -811,11 +812,11 @@ export class InventorySecurityService {
           throw new Error('Maximum retry attempts exceeded');
         }
         break;
-      
+
       case 'merge':
         await this.attemptMergeConflict(operation, conflict, config);
         break;
-      
+
       case 'override':
         // Allow operation to proceed (dangerous but sometimes necessary)
         logger.warn('Lock conflict overridden', { operationId: operation.id, conflictId });
@@ -864,15 +865,15 @@ export class InventorySecurityService {
         // Add quantities together
         operation.newQuantity = latestRecord.quantity + operation.quantity;
         break;
-      
+
       case 'max':
         operation.newQuantity = Math.max(latestRecord.quantity, operation.newQuantity);
         break;
-      
+
       case 'min':
         operation.newQuantity = Math.min(latestRecord.quantity, operation.newQuantity);
         break;
-      
+
       case 'last_writer_wins':
         // Keep operation as-is, but update expected version
         operation.expectedVersion = latestRecord.version;
@@ -949,7 +950,7 @@ export class InventorySecurityService {
           user: operation.userId,
           details: { error: getErrorMessage(err as Error) }
         });
-        
+
         throw new Error('Optimistic lock version conflict');
       }
       throw err;
@@ -960,7 +961,7 @@ export class InventorySecurityService {
     // Simulate inventory update operation
     // In real implementation, this would execute SQL with version check:
     // UPDATE products SET quantity = ?, version = version + 1 WHERE id = ? AND version = ?
-    
+
     const success = Math.random() > 0.1; // 90% success rate simulation
     if (!success) {
       throw new Error('Database version conflict detected');
@@ -989,8 +990,12 @@ export class InventorySecurityService {
     };
 
     // Generate HMAC signature
+    const secret = process.env.INVENTORY_OPERATION_SECRET;
+    if (!secret) {
+      throw new Error('INVENTORY_OPERATION_SECRET environment variable is not set');
+    }
     const signature = crypto
-      .createHmac('sha256', 'inventory-operation-secret')
+      .createHmac('sha256', secret)
       .update(JSON.stringify(signatureData))
       .digest('hex');
 
@@ -1007,7 +1012,7 @@ export class InventorySecurityService {
 
   private async releaseOptimisticLock(operation: InventoryOperation): Promise<void> {
     const lockKey = `${operation.productId}-${operation.storeId}${operation.variantId ? '-' + operation.variantId : ''}`;
-    
+
     // Remove from active locks
     const locks = this.activeLocks.get(lockKey);
     if (locks) {
@@ -1069,10 +1074,10 @@ export class InventorySecurityService {
     // Price change risk
     if (operation.priceChange) {
       const priceChangePercent = Math.abs(
-        (operation.priceChange.newPrice - operation.priceChange.previousPrice) / 
+        (operation.priceChange.newPrice - operation.priceChange.previousPrice) /
         operation.priceChange.previousPrice
       ) * 100;
-      
+
       if (priceChangePercent > 25) riskScore += 20;
     }
 
@@ -1081,7 +1086,7 @@ export class InventorySecurityService {
 
   private updateMetrics(operation: InventoryOperation, success: boolean): void {
     this.metrics.totalOperations++;
-    
+
     if (success) {
       this.metrics.successfulOperations++;
     } else {
@@ -1177,7 +1182,7 @@ export class InventorySecurityService {
   private updateThroughputMetrics(): void {
     const now = new Date();
     const timePeriod = (now.getTime() - this.metrics.periodStart.getTime()) / 1000; // seconds
-    
+
     if (timePeriod > 0) {
       this.metrics.throughputPerSecond = this.metrics.totalOperations / timePeriod;
     }
@@ -1198,17 +1203,17 @@ export class InventorySecurityService {
     stats: InventorySecurityMetrics;
   }> {
     const stats = this.getStats();
-    
+
     let status = 'healthy';
-    
+
     if (stats.conflictCount > 50) {
       status = 'warning'; // High conflict rate
     }
-    
+
     if (stats.unresolvedConflicts > 5) {
       status = 'degraded'; // Too many unresolved conflicts
     }
-    
+
     if (stats.averageOperationTime > 10000) { // 10 seconds
       status = 'warning'; // Slow operations
     }

@@ -10,6 +10,11 @@ type EnvSchema = {
   MEDUSA_BASE_URL?: string;
   MEDUSA_WEBHOOK_TOKEN?: string;
   DEV_BYPASS_ROLES?: string;
+  /**
+   * @deprecated SUPER_ADMIN_TELEGRAM_ID is PERMANENTLY DISABLED for security.
+   * Automatic OWNER creation is no longer supported - all new users are CUSTOMER.
+   * To create OWNER users, use admin tools: node backend/tools/admin/promote_user.js
+   */
   SUPER_ADMIN_TELEGRAM_ID?: string;
   CORS_WHITELIST?: string;
   TRUSTED_IPS?: string;
@@ -48,6 +53,9 @@ export const env: EnvSchema = {
   MEDUSA_BASE_URL: optionalString('MEDUSA_BASE_URL'),
   MEDUSA_WEBHOOK_TOKEN: optionalString('MEDUSA_WEBHOOK_TOKEN'),
   DEV_BYPASS_ROLES: optionalString('DEV_BYPASS_ROLES'),
+  // SECURITY: SUPER_ADMIN_TELEGRAM_ID is deprecated and IGNORED for security reasons
+  // Automatic OWNER creation is PERMANENTLY DISABLED - all new users are CUSTOMER
+  // Kept only for backward compatibility to avoid breaking existing .env files
   SUPER_ADMIN_TELEGRAM_ID: optionalString('SUPER_ADMIN_TELEGRAM_ID'),
   CORS_WHITELIST: optionalString('CORS_WHITELIST'),
   TRUSTED_IPS: optionalString('TRUSTED_IPS'),

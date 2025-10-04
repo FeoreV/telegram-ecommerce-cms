@@ -5,14 +5,14 @@ import { tenantCacheService } from './TenantCacheService';
 export interface SIEMConfig {
   enableSIEM: boolean;
   siemType: 'splunk' | 'elasticsearch' | 'azure_sentinel' | 'aws_security_hub' | 'google_chronicle' | 'custom';
-  
+
   // Connection settings
   endpoint: string;
   apiKey?: string;
   username?: string;
   password?: string;
   tenantId?: string;
-  
+
   // Authentication
   authType: 'api_key' | 'oauth2' | 'basic' | 'certificate' | 'custom';
   oauth2Config?: {
@@ -21,27 +21,27 @@ export interface SIEMConfig {
     tokenEndpoint: string;
     scopes: string[];
   };
-  
+
   // Data format
   dataFormat: 'json' | 'cef' | 'leef' | 'syslog' | 'custom';
   customFormat?: string;
-  
+
   // Batch settings
   enableBatching: boolean;
   batchSize: number;
   batchTimeoutMs: number;
   maxRetries: number;
   retryDelayMs: number;
-  
+
   // Filtering
   enableFiltering: boolean;
   severityThreshold: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   eventTypeFilter: string[];
-  
+
   // Rate limiting
   maxRequestsPerSecond: number;
   burstLimit: number;
-  
+
   // Health monitoring
   enableHealthCheck: boolean;
   healthCheckIntervalMs: number;
@@ -55,12 +55,12 @@ export interface SIEMEvent {
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   category: string;
   source: string;
-  
+
   // Event details
   title: string;
   description: string;
   rawEvent: any;
-  
+
   // Context
   user?: {
     id: string;
@@ -68,7 +68,7 @@ export interface SIEMEvent {
     role: string;
     email?: string;
   };
-  
+
   // Network context
   network?: {
     sourceIP: string;
@@ -78,7 +78,7 @@ export interface SIEMEvent {
     protocol?: string;
     userAgent?: string;
   };
-  
+
   // Asset context
   assets?: {
     hostName?: string;
@@ -87,7 +87,7 @@ export interface SIEMEvent {
     application?: string;
     service?: string;
   };
-  
+
   // Threat intelligence
   threatIntel?: {
     indicators: string[];
@@ -96,14 +96,14 @@ export interface SIEMEvent {
     malwareFamily?: string;
     campaigns?: string[];
   };
-  
+
   // Compliance
   compliance?: {
     frameworks: string[];
     controls: string[];
     requirements: string[];
   };
-  
+
   // Custom fields
   customFields: Record<string, any>;
 }
@@ -113,16 +113,16 @@ export interface SIEMAlert {
   timestamp: Date;
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   status: 'open' | 'investigating' | 'resolved' | 'false_positive';
-  
+
   // Alert details
   title: string;
   description: string;
   category: string;
-  
+
   // Related events
   events: SIEMEvent[];
   eventCount: number;
-  
+
   // Detection details
   rule: {
     id: string;
@@ -130,20 +130,20 @@ export interface SIEMAlert {
     description: string;
     query: string;
   };
-  
+
   // Investigation
   assignee?: string;
   notes: string[];
   tags: string[];
-  
+
   // Metrics
   confidence: number;
   falsePositiveRisk: number;
-  
+
   // Timeline
   firstSeen: Date;
   lastSeen: Date;
-  
+
   // Actions taken
   actions: {
     type: string;
@@ -158,25 +158,25 @@ export interface AlertRule {
   name: string;
   description: string;
   enabled: boolean;
-  
+
   // Rule definition
   query: string;
   conditions: AlertCondition[];
   timeWindow: number; // milliseconds
   threshold: number;
-  
+
   // Alert settings
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   category: string;
   tags: string[];
-  
+
   // Suppression
   suppressionRules?: {
     field: string;
     value: string;
     duration: number;
   }[];
-  
+
   // Escalation
   escalation?: {
     timeToEscalate: number;
@@ -206,32 +206,32 @@ export class SIEMIntegrationService {
     this.config = {
       enableSIEM: process.env.ENABLE_SIEM_INTEGRATION === 'true',
       siemType: (process.env.SIEM_TYPE as any) || 'elasticsearch',
-      
+
       endpoint: process.env.SIEM_ENDPOINT || '',
       apiKey: process.env.SIEM_API_KEY,
       username: process.env.SIEM_USERNAME,
       password: process.env.SIEM_PASSWORD,
       tenantId: process.env.SIEM_TENANT_ID,
-      
+
       authType: (process.env.SIEM_AUTH_TYPE as any) || 'api_key',
       oauth2Config: process.env.SIEM_OAUTH2_CONFIG ? JSON.parse(process.env.SIEM_OAUTH2_CONFIG) : undefined,
-      
+
       dataFormat: (process.env.SIEM_DATA_FORMAT as any) || 'json',
       customFormat: process.env.SIEM_CUSTOM_FORMAT,
-      
+
       enableBatching: process.env.SIEM_ENABLE_BATCHING !== 'false',
       batchSize: parseInt(process.env.SIEM_BATCH_SIZE || '100'),
       batchTimeoutMs: parseInt(process.env.SIEM_BATCH_TIMEOUT || '30000'),
       maxRetries: parseInt(process.env.SIEM_MAX_RETRIES || '3'),
       retryDelayMs: parseInt(process.env.SIEM_RETRY_DELAY || '1000'),
-      
+
       enableFiltering: process.env.SIEM_ENABLE_FILTERING !== 'false',
       severityThreshold: (process.env.SIEM_SEVERITY_THRESHOLD as any) || 'MEDIUM',
       eventTypeFilter: (process.env.SIEM_EVENT_TYPE_FILTER || '').split(',').filter(Boolean),
-      
+
       maxRequestsPerSecond: parseInt(process.env.SIEM_MAX_RPS || '10'),
       burstLimit: parseInt(process.env.SIEM_BURST_LIMIT || '50'),
-      
+
       enableHealthCheck: process.env.SIEM_ENABLE_HEALTH_CHECK !== 'false',
       healthCheckIntervalMs: parseInt(process.env.SIEM_HEALTH_CHECK_INTERVAL || '300000'), // 5 minutes
       alertOnFailure: process.env.SIEM_ALERT_ON_FAILURE !== 'false'
@@ -264,10 +264,10 @@ export class SIEMIntegrationService {
     try {
       // Initialize alert rules
       this.initializeAlertRules();
-      
+
       // Test connection
       await this.testConnection();
-      
+
       // Load existing alerts
       await this.loadActiveAlerts();
 
@@ -379,7 +379,7 @@ export class SIEMIntegrationService {
 
     try {
       const siemEvent = this.enrichEvent(event);
-      
+
       // Apply filters
       if (!this.shouldSendEvent(siemEvent)) {
         return;
@@ -388,7 +388,7 @@ export class SIEMIntegrationService {
       // Add to buffer or send immediately
       if (this.config.enableBatching) {
         this.eventBuffer.push(siemEvent);
-        
+
         if (this.eventBuffer.length >= this.config.batchSize) {
           await this.flushEventBuffer();
         }
@@ -434,7 +434,7 @@ export class SIEMIntegrationService {
       };
 
       await this.sendEvent(alertEvent);
-      
+
       // Store alert
       this.activeAlerts.set(alert.id, alert);
 
@@ -490,13 +490,13 @@ export class SIEMIntegrationService {
     const severityLevels = { 'LOW': 1, 'MEDIUM': 2, 'HIGH': 3, 'CRITICAL': 4 };
     const eventLevel = severityLevels[event.severity];
     const thresholdLevel = severityLevels[this.config.severityThreshold];
-    
+
     if (eventLevel < thresholdLevel) {
       return false;
     }
 
     // Check event type filter
-    if (this.config.eventTypeFilter.length > 0 && 
+    if (this.config.eventTypeFilter.length > 0 &&
         !this.config.eventTypeFilter.includes(event.eventType)) {
       return false;
     }
@@ -512,15 +512,15 @@ export class SIEMIntegrationService {
   private checkRateLimit(): boolean {
     const now = Date.now();
     const windowStart = Math.floor(now / 1000);
-    
+
     const currentCount = this.rateLimiter.get(windowStart.toString()) || 0;
-    
+
     if (currentCount >= this.config.maxRequestsPerSecond) {
       return false;
     }
 
     this.rateLimiter.set(windowStart.toString(), currentCount + 1);
-    
+
     // Clean up old entries
     for (const [key] of this.rateLimiter.entries()) {
       if (parseInt(key) < windowStart - 60) { // Keep last 60 seconds
@@ -533,7 +533,7 @@ export class SIEMIntegrationService {
 
   private async sendSingleEvent(event: SIEMEvent): Promise<void> {
     const formattedEvent = this.formatEvent(event);
-    
+
     let retries = 0;
     while (retries < this.config.maxRetries) {
       try {
@@ -560,12 +560,12 @@ export class SIEMIntegrationService {
     try {
       const formattedEvents = events.map(event => this.formatEvent(event));
       await this.makeRequest(formattedEvents);
-      
+
       logger.debug(`Flushed ${events.length} events to SIEM`);
 
     } catch (err: unknown) {
       logger.error('Failed to flush event buffer to SIEM:', err as Record<string, unknown>);
-      
+
       // Re-add events to buffer if it's not full
       if (this.eventBuffer.length + events.length <= this.config.batchSize * 2) {
         this.eventBuffer.unshift(...events);
@@ -622,14 +622,14 @@ export class SIEMIntegrationService {
     const severity = this.mapSeverityToCEF(event.severity);
     const sourceIP = event.network?.sourceIP || '';
     const user = event.user?.username || '';
-    
+
     return `CEF:0|BotRT|SecurityService|1.0|${event.eventType}|${event.title}|${severity}|src=${sourceIP} suser=${user} act=${event.eventType} outcome=${event.customFields.success ? 'success' : 'failure'}`;
   }
 
   private formatAsLEEF(event: SIEMEvent): string {
     const sourceIP = event.network?.sourceIP || '';
     const user = event.user?.username || '';
-    
+
     return `LEEF:2.0|BotRT|SecurityService|1.0|${event.eventType}|src=${sourceIP}|suser=${user}|devTime=${event.timestamp.toISOString()}|cat=${event.category}|sev=${event.severity}`;
   }
 
@@ -637,7 +637,7 @@ export class SIEMIntegrationService {
     const priority = this.mapSeverityToSyslog(event.severity);
     const timestamp = event.timestamp.toISOString();
     const hostname = event.assets?.hostName || 'botrt';
-    
+
     return `<${priority}>${timestamp} ${hostname} BotRT-Security: ${JSON.stringify(this.formatAsJSON(event))}`;
   }
 
@@ -652,7 +652,7 @@ export class SIEMIntegrationService {
 
   private async makeRequest(events: any[]): Promise<void> {
     const headers = await this.getAuthHeaders();
-    
+
     const requestConfig = {
       method: 'POST',
       headers: {
@@ -660,12 +660,12 @@ export class SIEMIntegrationService {
         'User-Agent': 'BotRT-SIEM-Integration/1.0',
         ...headers
       },
-      body: JSON.stringify(this.config.siemType === 'elasticsearch' ? 
+      body: JSON.stringify(this.config.siemType === 'elasticsearch' ?
         this.formatForElasticsearch(events) : events)
     };
 
     const response = await fetch(this.config.endpoint, requestConfig);
-    
+
     if (!response.ok) {
       throw new Error(`SIEM request failed: ${response.status} ${response.statusText}`);
     }
@@ -683,14 +683,14 @@ export class SIEMIntegrationService {
           headers['Authorization'] = `Bearer ${this.config.apiKey}`;
         }
         break;
-      
+
       case 'basic':
         if (this.config.username && this.config.password) {
           const credentials = Buffer.from(`${this.config.username}:${this.config.password}`).toString('base64');
           headers['Authorization'] = `Basic ${credentials}`;
         }
         break;
-      
+
       case 'oauth2':
         if (this.config.oauth2Config) {
           const token = await this.getOAuth2Token();
@@ -708,9 +708,15 @@ export class SIEMIntegrationService {
   }
 
   private async getOAuth2Token(): Promise<string> {
-    // Implement OAuth2 token acquisition
-    // This would cache tokens and refresh as needed
-    return 'oauth2_token_placeholder';
+    // SECURITY FIX: CWE-798 - Remove hardcoded token placeholder
+    // Implement OAuth2 token acquisition with proper token management
+    if (!process.env.SIEM_OAUTH2_CLIENT_ID || !process.env.SIEM_OAUTH2_CLIENT_SECRET) {
+      throw new Error('SIEM OAuth2 credentials not configured. Set SIEM_OAUTH2_CLIENT_ID and SIEM_OAUTH2_CLIENT_SECRET');
+    }
+
+    // Token should be acquired from environment or secure token service
+    // This is a placeholder for OAuth2 flow implementation
+    throw new Error('OAuth2 token acquisition not yet implemented. Configure SIEM authentication in environment variables.');
   }
 
   private formatForElasticsearch(events: any[]): string {
@@ -765,11 +771,11 @@ export class SIEMIntegrationService {
   private getFieldValue(event: SIEMEvent, fieldPath: string): any {
     const parts = fieldPath.split('.');
     let value: any = event;
-    
+
     for (const part of parts) {
       value = value?.[part];
     }
-    
+
     return value;
   }
 
@@ -816,7 +822,7 @@ export class SIEMIntegrationService {
     };
 
     await this.sendAlert(alert);
-    
+
     logger.warn('SIEM alert triggered', {
       alertId: alert.id,
       ruleName: _rule.name,
@@ -844,7 +850,7 @@ export class SIEMIntegrationService {
       frameworks.push('NIST', 'ISO27001');
       controls.push('AC-2', 'AC-7');
     }
-    
+
     if (event.category === 'data_access') {
       frameworks.push('GDPR', 'PCI-DSS');
       controls.push('AC-6', 'AU-2');
@@ -948,7 +954,7 @@ export class SIEMIntegrationService {
 
     try {
       await this.testConnection();
-      
+
       if (this.healthStatus !== 'healthy') {
         this.healthStatus = 'healthy';
         logger.info('SIEM connection restored');
@@ -956,7 +962,7 @@ export class SIEMIntegrationService {
 
     } catch (err: unknown) {
       this.healthStatus = 'unhealthy';
-      
+
       if (this.config.alertOnFailure) {
         logger.error('SIEM health check failed, service degraded:', err as Record<string, unknown>);
       }
@@ -992,7 +998,7 @@ export class SIEMIntegrationService {
     stats: any;
   }> {
     const stats = this.getStats();
-    
+
     return {
       status: this.healthStatus,
       stats

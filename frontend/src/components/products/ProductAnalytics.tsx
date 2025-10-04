@@ -1,50 +1,34 @@
-import React, { useState, useEffect } from 'react'
 import {
-  Box,
-  Typography,
-  Grid,
-  Card,
-  CardContent,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemAvatar,
-  Avatar,
-  Chip,
-  LinearProgress,
-  Divider,
-  Button,
-  Alert,
-  Paper,
-  CircularProgress,
-  IconButton,
-  Collapse,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Badge,
-} from '@mui/material'
-import {
-  TrendingUp,
-  TrendingDown,
-  Inventory,
-  ShoppingCart,
-  LocalOffer,
-  Warning,
-  ExpandLess,
-  ExpandMore,
-  Star,
-  Visibility,
-  Category,
-  Store,
-  AttachMoney,
+    ExpandLess,
+    ExpandMore,
+    Inventory,
+    Star,
+    TrendingDown,
+    TrendingUp,
+    Warning
 } from '@mui/icons-material'
+import {
+    Alert,
+    Avatar,
+    Badge,
+    Box,
+    Card,
+    CardContent,
+    Chip,
+    CircularProgress,
+    Collapse,
+    Grid,
+    IconButton,
+    LinearProgress,
+    List,
+    ListItem,
+    ListItemAvatar,
+    ListItemText,
+    Paper,
+    Typography,
+} from '@mui/material'
+import React, { useCallback, useEffect, useState } from 'react'
 import { Product, Store as StoreType } from '../../types'
-import { format } from 'date-fns'
-import { ru } from 'date-fns/locale'
 
 interface ProductAnalyticsProps {
   products: Product[]
@@ -84,15 +68,11 @@ const ProductAnalytics: React.FC<ProductAnalyticsProps> = ({
     topStore: '',
   })
 
-  useEffect(() => {
-    if (products.length > 0) {
-      calculateAnalytics()
-      generateTopProducts()
-      generateStockAlerts()
-    }
-  }, [products, stores])
+  const formatCurrency = useCallback((amount: number) => {
+    return `${amount.toLocaleString()} ₽`
+  }, [])
 
-  const calculateAnalytics = () => {
+  const calculateAnalytics = useCallback(() => {
     const totalProducts = products.length
     const activeProducts = products.filter(p => p.isActive).length
     const totalValue = products.reduce((sum, p) => sum + (Number(p.price) * p.stock), 0)
@@ -107,7 +87,7 @@ const ProductAnalytics: React.FC<ProductAnalyticsProps> = ({
         categoryStats[p.category.name] = (categoryStats[p.category.name] || 0) + 1
       }
     })
-    const topCategory = Object.entries(categoryStats).reduce((top, [name, count]) => 
+    const topCategory = Object.entries(categoryStats).reduce((top, [name, count]) =>
       count > top.count ? { name, count } : top, { name: '', count: 0 }
     ).name
 
@@ -116,7 +96,7 @@ const ProductAnalytics: React.FC<ProductAnalyticsProps> = ({
     products.forEach(p => {
       storeStats[p.store.name] = (storeStats[p.store.name] || 0) + 1
     })
-    const topStore = Object.entries(storeStats).reduce((top, [name, count]) => 
+    const topStore = Object.entries(storeStats).reduce((top, [name, count]) =>
       count > top.count ? { name, count } : top, { name: '', count: 0 }
     ).name
 
@@ -130,9 +110,9 @@ const ProductAnalytics: React.FC<ProductAnalyticsProps> = ({
       topCategory,
       topStore,
     })
-  }
+  }, [products])
 
-  const generateTopProducts = () => {
+  const generateTopProducts = useCallback(() => {
     // Имитируем данные о продажах (в реальном проекте это будет из API)
     const topProductsData: TopProduct[] = products
       .filter(p => p._count.orderItems > 0)
@@ -146,9 +126,9 @@ const ProductAnalytics: React.FC<ProductAnalyticsProps> = ({
       }))
 
     setTopProducts(topProductsData)
-  }
+  }, [products])
 
-  const generateStockAlerts = () => {
+  const generateStockAlerts = useCallback(() => {
     const alerts: StockAlert[] = []
 
     products.forEach(product => {
@@ -173,11 +153,15 @@ const ProductAnalytics: React.FC<ProductAnalyticsProps> = ({
     })
 
     setStockAlerts(alerts.slice(0, 10)) // Показываем топ 10 критичных
-  }
+  }, [products])
 
-  const formatCurrency = (amount: number) => {
-    return `${amount.toLocaleString()} ₽`
-  }
+  useEffect(() => {
+    if (products.length > 0) {
+      calculateAnalytics()
+      generateTopProducts()
+      generateStockAlerts()
+    }
+  }, [products, stores, calculateAnalytics, generateTopProducts, generateStockAlerts])
 
   const getTrendIcon = (trend: 'up' | 'down' | 'stable') => {
     switch (trend) {
@@ -222,11 +206,11 @@ const ProductAnalytics: React.FC<ProductAnalyticsProps> = ({
 
   return (
     <Paper sx={{ mb: 3 }}>
-      <Box 
-        sx={{ 
-          p: 2, 
-          display: 'flex', 
-          justifyContent: 'space-between', 
+      <Box
+        sx={{
+          p: 2,
+          display: 'flex',
+          justifyContent: 'space-between',
           alignItems: 'center',
           cursor: 'pointer',
         }}
@@ -256,7 +240,7 @@ const ProductAnalytics: React.FC<ProductAnalyticsProps> = ({
                 </Typography>
               </Card>
             </Grid>
-            
+
             <Grid item xs={6} sm={3}>
               <Card sx={{ textAlign: 'center', p: 2 }}>
                 <Box component="div">
@@ -269,7 +253,7 @@ const ProductAnalytics: React.FC<ProductAnalyticsProps> = ({
                 </Typography>
               </Card>
             </Grid>
-            
+
             <Grid item xs={6} sm={3}>
               <Card sx={{ textAlign: 'center', p: 2 }}>
                 <Box component="div">
@@ -282,7 +266,7 @@ const ProductAnalytics: React.FC<ProductAnalyticsProps> = ({
                 </Typography>
               </Card>
             </Grid>
-            
+
             <Grid item xs={6} sm={3}>
               <Card sx={{ textAlign: 'center', p: 2 }}>
                 <Box component="div">
@@ -308,7 +292,7 @@ const ProductAnalytics: React.FC<ProductAnalyticsProps> = ({
                       Популярные товары
                     </Typography>
                   </Box>
-                  
+
                   {topProducts.length === 0 ? (
                     <Alert severity="info">
                       Пока нет данных о продажах
@@ -342,6 +326,8 @@ const ProductAnalytics: React.FC<ProductAnalyticsProps> = ({
                                 </Typography>
                               </Box>
                             }
+                            primaryTypographyProps={{ component: 'div' }}
+                            secondaryTypographyProps={{ component: 'div' }}
                           />
                           <Badge badgeContent={item.salesCount} color="primary" />
                         </ListItem>
@@ -362,7 +348,7 @@ const ProductAnalytics: React.FC<ProductAnalyticsProps> = ({
                       Складские предупреждения
                     </Typography>
                   </Box>
-                  
+
                   {stockAlerts.length === 0 ? (
                     <Alert severity="success">
                       Все товары в достаточном количестве 🎉
@@ -400,6 +386,7 @@ const ProductAnalytics: React.FC<ProductAnalyticsProps> = ({
                                   </Typography>
                                 </Box>
                               }
+                              secondaryTypographyProps={{ component: 'div' }}
                             />
                           </ListItem>
                         )
@@ -417,7 +404,7 @@ const ProductAnalytics: React.FC<ProductAnalyticsProps> = ({
                   <Typography variant="h6" color="primary" gutterBottom>
                     Общая статистика
                   </Typography>
-                  
+
                   <Grid container spacing={3}>
                     <Grid item xs={12} sm={6} md={3}>
                       <Box textAlign="center">
@@ -429,7 +416,7 @@ const ProductAnalytics: React.FC<ProductAnalyticsProps> = ({
                         </Typography>
                       </Box>
                     </Grid>
-                    
+
                     <Grid item xs={12} sm={6} md={3}>
                       <Box textAlign="center">
                         <Typography component="span" variant="h5" color="primary.main">
@@ -440,7 +427,7 @@ const ProductAnalytics: React.FC<ProductAnalyticsProps> = ({
                         </Typography>
                       </Box>
                     </Grid>
-                    
+
                     <Grid item xs={12} sm={6} md={3}>
                       <Box textAlign="center">
                         <Typography component="span" variant="h5" color="success.main">
@@ -451,7 +438,7 @@ const ProductAnalytics: React.FC<ProductAnalyticsProps> = ({
                         </Typography>
                       </Box>
                     </Grid>
-                    
+
                     <Grid item xs={12} sm={6} md={3}>
                       <Box textAlign="center">
                         <Typography component="span" variant="h5" color="text.primary">

@@ -1,37 +1,39 @@
+import crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
-import crypto from 'crypto';
+import { getSecurityKeyId } from '../config/securityKeys';
+import { sanitizeForLog } from '../utils/inputSanitizer';
 import { logger, toLogMetadata } from '../utils/logger';
-import { tenantCacheService } from './TenantCacheService';
 import { encryptionService } from './EncryptionService';
+import { tenantCacheService } from './TenantCacheService';
 
 export interface SecurityLogConfig {
   enableSecurityLogging: boolean;
   enableEncryption: boolean;
   enableCompression: boolean;
   enableWriteOnceStorage: boolean;
-  
+
   // Log levels
   logLevel: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL';
   securityEventLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  
+
   // Storage configuration
   storageType: 'file' | 's3' | 'elasticsearch' | 'splunk';
   retentionDays: number;
   maxLogSize: number; // bytes
   rotationInterval: number; // hours
-  
+
   // Encryption settings
   encryptionAlgorithm: string;
   keyRotationInterval: number; // days
   enableIntegrityChecks: boolean;
-  
+
   // SIEM integration
   enableSIEMIntegration: boolean;
   siemEndpoint?: string;
   siemApiKey?: string;
   siemFormat: 'CEF' | 'LEEF' | 'JSON' | 'SYSLOG';
-  
+
   // Alert thresholds
   alertThresholds: {
     failedLogins: number;
@@ -47,7 +49,7 @@ export interface SecurityEvent {
   eventType: string;
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   category: 'authentication' | 'authorization' | 'data_access' | 'system' | 'network' | 'application';
-  
+
   // Event context
   userId?: string;
   sessionId?: string;
@@ -55,18 +57,18 @@ export interface SecurityEvent {
   userAgent?: string;
   resource?: string;
   action?: string;
-  
+
   // Event details
   success: boolean;
   errorCode?: string;
   errorMessage?: string;
   details: Record<string, any>;
-  
+
   // Security context
   riskScore: number;
   tags: string[];
   correlationId?: string;
-  
+
   // Geolocation
   geoLocation?: {
     country: string;
@@ -77,7 +79,7 @@ export interface SecurityEvent {
       longitude: number;
     };
   };
-  
+
   // Device information
   deviceInfo?: {
     fingerprint: string;
@@ -85,7 +87,7 @@ export interface SecurityEvent {
     os: string;
     browser: string;
   };
-  
+
   // Compliance markers
   compliance: {
     pii: boolean;
@@ -158,24 +160,24 @@ export class SecurityLogService {
       enableEncryption: process.env.ENABLE_LOG_ENCRYPTION !== 'false',
       enableCompression: process.env.ENABLE_LOG_COMPRESSION !== 'false',
       enableWriteOnceStorage: process.env.ENABLE_WRITE_ONCE_STORAGE !== 'false',
-      
+
       logLevel: (process.env.SECURITY_LOG_LEVEL as SecurityLogConfig['logLevel']) || 'INFO',
       securityEventLevel: (process.env.SECURITY_EVENT_LEVEL as SecurityLogConfig['securityEventLevel']) || 'MEDIUM',
-      
+
       storageType: (process.env.LOG_STORAGE_TYPE as SecurityLogConfig['storageType']) || 'file',
       retentionDays: parseInt(process.env.LOG_RETENTION_DAYS || '2555'), // 7 years
       maxLogSize: parseInt(process.env.MAX_LOG_SIZE || '104857600'), // 100MB
       rotationInterval: parseInt(process.env.LOG_ROTATION_INTERVAL || '24'), // 24 hours
-      
+
       encryptionAlgorithm: process.env.LOG_ENCRYPTION_ALGORITHM || 'aes-256-gcm',
       keyRotationInterval: parseInt(process.env.LOG_KEY_ROTATION_DAYS || '90'),
       enableIntegrityChecks: process.env.ENABLE_LOG_INTEGRITY_CHECKS !== 'false',
-      
+
       enableSIEMIntegration: process.env.ENABLE_SIEM_INTEGRATION === 'true',
       siemEndpoint: process.env.SIEM_ENDPOINT,
       siemApiKey: process.env.SIEM_API_KEY,
       siemFormat: (process.env.SIEM_FORMAT as SecurityLogConfig['siemFormat']) || 'JSON',
-      
+
       alertThresholds: {
         failedLogins: parseInt(process.env.ALERT_FAILED_LOGINS || '5'),
         suspiciousActivity: parseInt(process.env.ALERT_SUSPICIOUS_ACTIVITY || '3'),
@@ -233,13 +235,13 @@ export class SecurityLogService {
     try {
       // Initialize encryption keys
       await this.initializeEncryptionKeys();
-      
+
       // Initialize alert rules
       this.initializeAlertRules();
-      
+
       // Setup storage
       await this.initializeStorage();
-      
+
       // Test SIEM connection
       if (this.config.enableSIEMIntegration) {
         await this.testSIEMConnection();
@@ -259,10 +261,10 @@ export class SecurityLogService {
     }
 
     try {
-      // Generate or retrieve encryption key for logs
-      const keyId = 'security-logs-encryption-key';
+      // Generate or retrieve encryption key for logs using secure configuration
+      const keyId = getSecurityKeyId('securityLogsEncryptionKeyId');
       let encryptionKey = await encryptionService.getDataKey(keyId);
-      
+
       if (!encryptionKey) {
         // Generate new key
         encryptionKey = await encryptionService.generateDataKey(keyId, 32); // 256-bit key
@@ -343,7 +345,7 @@ export class SecurityLogService {
 
   private async initializeFileStorage(): Promise<void> {
     const logDir = path.join(process.cwd(), 'logs', 'security');
-    
+
     if (!fs.existsSync(logDir)) {
       fs.mkdirSync(logDir, { recursive: true });
     }
@@ -649,7 +651,7 @@ export class SecurityLogService {
     eventType: string
   ): number {
     let baseScore = this.calculateNetworkRiskScore(severity);
-    
+
     // Adjust based on event type
     if (eventType.includes('injection')) {
       baseScore += 20;
@@ -672,7 +674,8 @@ export class SecurityLogService {
           await this.triggerAlert(ruleName, rule, event);
         }
       } catch (error: unknown) {
-        logger.error(`Failed to evaluate alert rule ${ruleName}:`, toLogMetadata(error));
+        // SECURITY FIX: CWE-117 - Sanitize log data to prevent log injection
+        logger.error(`Failed to evaluate alert rule ${sanitizeForLog(ruleName)}:`, toLogMetadata(error));
       }
     }
   }
@@ -712,18 +715,18 @@ export class SecurityLogService {
 
   private evaluateMatchRule(rule: AlertRule, event: SecurityEvent): boolean {
     const fieldValue = event[rule.field as keyof SecurityEvent];
-    
+
     if (Array.isArray(fieldValue)) {
       return fieldValue.includes(rule.value);
     }
-    
+
     return fieldValue === rule.value;
   }
 
   private evaluatePatternRule(rule: AlertRule, event: SecurityEvent): boolean {
     return rule.conditions!.every((condition) => {
       const fieldValue = event[condition.field as keyof SecurityEvent];
-      
+
       switch (condition.operator) {
         case 'eq': return fieldValue === condition.value;
         case 'ne': return fieldValue !== condition.value;
@@ -769,50 +772,50 @@ export class SecurityLogService {
 
   private extractIndicators(event: SecurityEvent): string[] {
     const indicators: string[] = [];
-    
+
     if (event.ipAddress && event.ipAddress !== 'unknown') {
       indicators.push(`ip:${event.ipAddress}`);
     }
-    
+
     if (event.userId) {
       indicators.push(`user:${event.userId}`);
     }
-    
+
     if (event.userAgent) {
       indicators.push(`user_agent:${event.userAgent}`);
     }
-    
+
     return indicators;
   }
 
   private generateRecommendations(ruleName: string, _event: SecurityEvent): string[] {
     const recommendations: string[] = [];
-    
+
     switch (ruleName) {
       case 'failed_login_threshold':
         recommendations.push('Consider implementing account lockout policy');
         recommendations.push('Review IP address for potential blocking');
         recommendations.push('Enable MFA for affected account');
         break;
-      
+
       case 'privileged_access':
         recommendations.push('Verify privileged access was authorized');
         recommendations.push('Review user permissions and roles');
         recommendations.push('Enable additional monitoring for this user');
         break;
-      
+
       case 'data_access_anomaly':
         recommendations.push('Review data access patterns for anomalies');
         recommendations.push('Verify business justification for access');
         recommendations.push('Consider implementing data access controls');
         break;
-      
+
       default:
         recommendations.push('Investigate event details thoroughly');
         recommendations.push('Review related events in timeframe');
         recommendations.push('Update security controls if necessary');
     }
-    
+
     return recommendations;
   }
 
@@ -821,7 +824,7 @@ export class SecurityLogService {
    */
   private async flushBuffer(bufferKey?: string): Promise<void> {
     const keysToFlush = bufferKey ? [bufferKey] : Array.from(this.logBuffer.keys());
-    
+
     for (const key of keysToFlush) {
       const events = this.logBuffer.get(key);
       if (!events || events.length === 0) continue;
@@ -829,9 +832,10 @@ export class SecurityLogService {
       try {
         await this.writeEventsToStorage(events);
         this.logBuffer.set(key, []); // Clear buffer after successful write
-        
+
       } catch (error: unknown) {
-        logger.error(`Failed to flush buffer ${key}:`, toLogMetadata(error));
+        // SECURITY FIX: CWE-117 - Sanitize log data to prevent log injection
+        logger.error(`Failed to flush buffer ${sanitizeForLog(key)}:`, toLogMetadata(error));
       }
     }
   }
@@ -878,9 +882,9 @@ export class SecurityLogService {
     for (const event of events) {
       const logEntry = await this.createLogEntry(event);
       const logLine = JSON.stringify(logEntry) + '\n';
-      
+
       // Encrypt if enabled
-      const dataToWrite = this.config.enableEncryption 
+      const dataToWrite = this.config.enableEncryption
         ? await this.encryptLogData(logLine)
         : logLine;
 
@@ -915,7 +919,7 @@ export class SecurityLogService {
   private async createLogEntry(_event: SecurityEvent): Promise<LogEntry> {
     const logData = JSON.stringify(_event);
     const checksum = crypto.createHash('sha256').update(logData).digest('hex');
-    
+
     return {
       id: crypto.randomUUID(),
       timestamp: new Date(),
@@ -937,7 +941,7 @@ export class SecurityLogService {
         await new Promise(resolve => setTimeout(resolve, Math.min(1000 * Math.pow(2, attempts), 5000)));
         attempts++;
       }
-      
+
       if (!this.isInitialized) {
         logger.error('SecurityLogService initialization timeout - falling back to unencrypted logs');
         return data;
@@ -948,30 +952,30 @@ export class SecurityLogService {
     }
 
     try {
-      const keyId = 'security-logs-encryption-key';
+      const keyId = getSecurityKeyId('securityLogsEncryptionKeyId');
       const encryptionKey = this.encryptionKeys.get(keyId);
-      
+
       if (!encryptionKey) {
         // If key is not available, try to initialize it again
         logger.warn('Encryption key not found, attempting to reinitialize...');
         await this.initializeEncryptionKeys();
-        
+
         const retryKey = this.encryptionKeys.get(keyId);
         if (!retryKey) {
           throw new Error('Encryption key not found after reinitialization');
         }
-        
+
         // Validate key length for AES-256
         if (retryKey.length !== 32) {
           throw new Error(`Invalid key length: expected 32 bytes, got ${retryKey.length} bytes`);
         }
-        
+
         const iv = crypto.randomBytes(16);
         const cipher = crypto.createCipheriv(this.config.encryptionAlgorithm, retryKey, iv);
-        
+
         let encrypted = cipher.update(data, 'utf8', 'hex');
         encrypted += cipher.final('hex');
-        
+
         const result: EncryptedLogResult = {
           encrypted: true,
           algorithm: this.config.encryptionAlgorithm,
@@ -983,7 +987,7 @@ export class SecurityLogService {
         if (this.config.encryptionAlgorithm.includes('gcm')) {
           result.authTag = (cipher as crypto.CipherGCM).getAuthTag().toString('hex');
         }
-        
+
         return JSON.stringify(result);
       }
 
@@ -993,13 +997,13 @@ export class SecurityLogService {
       }
 
       const iv = crypto.randomBytes(16);
-      
+
       // Use modern crypto API with explicit algorithm and IV
       const cipher = crypto.createCipheriv(this.config.encryptionAlgorithm, encryptionKey, iv);
-      
+
       let encrypted = cipher.update(data, 'utf8', 'hex');
       encrypted += cipher.final('hex');
-      
+
       const result: EncryptedLogResult = {
         encrypted: true,
         algorithm: this.config.encryptionAlgorithm,
@@ -1011,7 +1015,7 @@ export class SecurityLogService {
       if (this.config.encryptionAlgorithm.includes('gcm')) {
         result.authTag = (cipher as crypto.CipherGCM).getAuthTag().toString('hex');
       }
-      
+
       return JSON.stringify(result);
 
     } catch (error: unknown) {
@@ -1030,7 +1034,7 @@ export class SecurityLogService {
 
     try {
       const formattedEvents = this.formatEventsForSIEM(events);
-      
+
       const response = await fetch(this.config.siemEndpoint, {
         method: 'POST',
         headers: {
@@ -1226,7 +1230,7 @@ export class SecurityLogService {
   }> {
     try {
       const stats = this.getStats();
-      
+
       // Test encryption if enabled
       if (this.config.enableEncryption) {
         await this.encryptLogData('health_check_test');

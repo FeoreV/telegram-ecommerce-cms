@@ -1,15 +1,14 @@
-import helmet from 'helmet';
 import cors from 'cors';
+import crypto from 'crypto';
+import { NextFunction, Request, RequestHandler, Response } from 'express';
 import rateLimit, { RateLimitRequestHandler } from 'express-rate-limit';
-// import { RedisStore as RateLimitRedisStore } from 'rate-limit-redis';
 import slowDown from 'express-slow-down';
-// import ExpressBrute from 'express-brute';
-// import { RedisStore } from 'express-brute-redis';
-import { Request, Response, NextFunction, RequestHandler } from 'express';
-import { logger } from '../utils/logger';
+import helmet from 'helmet';
+import { createClient, RedisClientType } from 'redis';
 import { securityMetrics } from '../config/security';
-import { createClient } from 'redis';
-import { RedisClientType } from 'redis';
+import { logger } from '../utils/logger';
+// SECURITY ENHANCEMENT: Import new security middleware
+import { customSecurityHeaders } from './securityHeaders';
 
 // Extend Request interface for brute force tracking
 declare module 'express-serve-static-core' {
@@ -55,10 +54,21 @@ const corsOptions: cors.CorsOptions = {
     }
 
     if (NODE_ENV === 'development' && origin) {
-      // In development, allow localhost with any port
-      if (/^https?:\/\/localhost(:\d+)?$/.test(origin) || 
-          /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin)) {
+      // In development, allow localhost only with specific ports
+      // Allowed ports: 3000 (frontend), 3001 (admin), 5173 (Vite), 4173 (Vite preview)
+      const allowedDevPorts = ['3000', '3001', '5173', '4173'];
+      const localhostPattern = new RegExp(`^https?://(localhost|127\\.0\\.0\\.1):(${allowedDevPorts.join('|')})$`);
+
+      if (localhostPattern.test(origin)) {
         return callback(null, true);
+      }
+
+      // Log rejected localhost origins for debugging
+      if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+        logger.warn('CORS blocked localhost origin with non-allowed port', {
+          origin,
+          allowedPorts: allowedDevPorts
+        });
       }
     }
 
@@ -70,7 +80,7 @@ const corsOptions: cors.CorsOptions = {
     callback(new Error('Not allowed by CORS policy'));
   },
   credentials: true,
-  methods: NODE_ENV === 'production' 
+  methods: NODE_ENV === 'production'
     ? ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH']
     : ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH', 'HEAD'],
   allowedHeaders: [
@@ -84,39 +94,36 @@ const corsOptions: cors.CorsOptions = {
     'X-Request-ID'
   ],
   exposedHeaders: [
-    'X-Total-Count', 
-    'X-Page-Count', 
-    'X-RateLimit-Limit', 
-    'X-RateLimit-Remaining', 
+    'X-Total-Count',
+    'X-Page-Count',
+    'X-RateLimit-Limit',
+    'X-RateLimit-Remaining',
     'X-RateLimit-Reset'
   ],
   maxAge: NODE_ENV === 'production' ? 86400 : 3600, // 24 hours in prod, 1 hour in dev
   optionsSuccessStatus: 200
 };
 
-// Enhanced Helmet configuration for security headers
+// Enhanced Helmet configuration for security headers with nonce support in dev
 const helmetOptions: Parameters<typeof helmet>[0] = {
-  contentSecurityPolicy: {
+  contentSecurityPolicy: NODE_ENV === 'development' ? false : { // Disable default CSP in dev, use nonce-based
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: [
-        "'self'", 
-        ...(NODE_ENV === 'development' ? ["'unsafe-inline'"] : []),
+        "'self'",
         'https://fonts.googleapis.com',
         'https://cdn.jsdelivr.net',
         'https://unpkg.com' // For admin panel styles
       ],
       scriptSrc: [
         "'self'",
-        ...(NODE_ENV === 'development' ? ["'unsafe-inline'", "'unsafe-eval'"] : []),
         'https://cdn.jsdelivr.net',
         'https://unpkg.com'
       ],
       imgSrc: [
         "'self'",
         'data:',
-        'https:',
-        ...(NODE_ENV === 'development' ? ['http:'] : []) // Only allow http images in dev
+        'https:'
       ],
       connectSrc: [
         "'self'",
@@ -141,7 +148,7 @@ const helmetOptions: Parameters<typeof helmet>[0] = {
       frameAncestors: ["'none'"],
       baseUri: ["'self'"],
     },
-    reportOnly: NODE_ENV === 'development',
+    reportOnly: false,
   },
   crossOriginEmbedderPolicy: NODE_ENV === 'production' ? { policy: 'require-corp' } : false,
   crossOriginOpenerPolicy: { policy: 'same-origin' },
@@ -166,13 +173,13 @@ const helmetOptions: Parameters<typeof helmet>[0] = {
 let redisClient: RedisClientType | null = null;
 if (REDIS_URL) {
   try {
-    redisClient = createClient({ 
+    redisClient = createClient({
       url: REDIS_URL,
       socket: {
         connectTimeout: 2000 // 2 second timeout
       }
     });
-    
+
     redisClient.connect()
       .then(() => {
         logger.info('Redis connected for rate limiting');
@@ -188,7 +195,7 @@ if (REDIS_URL) {
         }
         redisClient = null;
       });
-      
+
     // Handle connection errors gracefully
     redisClient.on('error', (err: unknown) => {
       const isDevelopment = NODE_ENV === 'development';
@@ -258,7 +265,7 @@ const createRateLimit = (config: {
 
 export const globalRateLimit = createRateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: NODE_ENV === 'development' ? 1000 : parseInt(process.env.RATE_LIMIT_MAX || '100'),
+  max: NODE_ENV === 'development' ? 10000 : parseInt(process.env.RATE_LIMIT_MAX || '100'),
   message: 'Too many requests from this IP, please try again later.'
 });
 
@@ -280,7 +287,7 @@ export const uploadRateLimit = createRateLimit({
 // Rate limit for API endpoints (more lenient than global)
 export const apiRateLimit = createRateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: NODE_ENV === 'development' ? 500 : parseInt(process.env.API_RATE_LIMIT_MAX || '200'),
+  max: NODE_ENV === 'development' ? 5000 : parseInt(process.env.API_RATE_LIMIT_MAX || '200'),
   message: 'Too many API requests, please try again later.'
 });
 
@@ -306,42 +313,166 @@ export const slowDownMiddleware: RequestHandler = slowDown({
   validate: { delayMs: false } // Disable the deprecation warning
 });
 
-// Simple brute force protection fallback
-// Note: Using custom implementation due to express-brute compatibility issues
-// In production, consider using more robust solutions like fail2ban or cloud-based protection
-const bruteForceAttempts = new Map<string, { count: number; lastAttempt: number }>();
+// SECURITY: Redis-backed brute force protection (CWE-307, CWE-770)
+// Scalable solution that works across multiple instances
+const BRUTE_FORCE_PREFIX = 'bruteforce:';
+const BRUTE_FORCE_WINDOW = 15 * 60; // 15 minutes in seconds
+const BRUTE_FORCE_MAX_ATTEMPTS = 3;
+
+// Fallback Map for when Redis is unavailable (development)
+const bruteForceAttemptsFallback = new Map<string, { count: number; lastAttempt: number }>();
+
+/**
+ * Get brute force attempt record from Redis or fallback to memory
+ */
+async function getBruteForceRecord(key: string): Promise<{ count: number; lastAttempt: number } | null> {
+  if (redisClient && redisClient.isOpen) {
+    try {
+      const data = await redisClient.get(`${BRUTE_FORCE_PREFIX}${key}`);
+      if (data) {
+        return JSON.parse(data);
+      }
+    } catch (error) {
+      logger.error('Redis getBruteForceRecord error', { error, key });
+    }
+  }
+
+  // Fallback to memory
+  return bruteForceAttemptsFallback.get(key) || null;
+}
+
+/**
+ * Set brute force attempt record in Redis or fallback to memory
+ */
+async function setBruteForceRecord(key: string, record: { count: number; lastAttempt: number }): Promise<void> {
+  if (redisClient && redisClient.isOpen) {
+    try {
+      // Store in Redis with TTL
+      const ttl = Math.ceil(
+        Math.min(
+          BRUTE_FORCE_WINDOW * Math.pow(2, record.count),
+          24 * 60 * 60 // Max 24 hours
+        )
+      );
+      await redisClient.setEx(
+        `${BRUTE_FORCE_PREFIX}${key}`,
+        ttl,
+        JSON.stringify(record)
+      );
+      return;
+    } catch (error) {
+      logger.error('Redis setBruteForceRecord error', { error, key });
+    }
+  }
+
+  // Fallback to memory
+  bruteForceAttemptsFallback.set(key, record);
+}
+
+/**
+ * Delete brute force attempt record from Redis or fallback
+ */
+async function deleteBruteForceRecord(key: string): Promise<void> {
+  if (redisClient && redisClient.isOpen) {
+    try {
+      await redisClient.del(`${BRUTE_FORCE_PREFIX}${key}`);
+      return;
+    } catch (error) {
+      logger.error('Redis deleteBruteForceRecord error', { error, key });
+    }
+  }
+
+  // Fallback to memory
+  bruteForceAttemptsFallback.delete(key);
+}
 
 export const bruteForce = {
-  prevent: (req: Request, res: Response, next: NextFunction) => {
+  prevent: async (req: Request, res: Response, next: NextFunction) => {
     const clientIP = req.ip || 'unknown';
     const now = Date.now();
-    const record = bruteForceAttempts.get(clientIP) || { count: 0, lastAttempt: now };
 
-    // Reset counter if more than 15 minutes have passed
-    if (now - record.lastAttempt > 15 * 60 * 1000) {
-      record.count = 0;
+    try {
+      const record = await getBruteForceRecord(clientIP) || { count: 0, lastAttempt: now };
+
+      // Reset counter if more than 15 minutes have passed
+      if (now - record.lastAttempt > BRUTE_FORCE_WINDOW * 1000) {
+        record.count = 0;
+      }
+
+      // SECURITY: Reduced threshold from 5 to 3 attempts with exponential backoff (CWE-307)
+      if (record.count >= BRUTE_FORCE_MAX_ATTEMPTS) {
+        // Calculate exponential backoff duration
+        const blockDuration = Math.min(
+          15 * 60 * 1000 * Math.pow(2, record.count - BRUTE_FORCE_MAX_ATTEMPTS), // Exponential: 15min, 30min, 1h, 2h, 4h...
+          24 * 60 * 60 * 1000 // Maximum 24 hours
+        );
+
+        const timeSinceLastAttempt = now - record.lastAttempt;
+
+        if (timeSinceLastAttempt < blockDuration) {
+          const retryAfter = Math.ceil((blockDuration - timeSinceLastAttempt) / 1000);
+
+          logger.warn('Brute force protection triggered', {
+            ip: clientIP,
+            userAgent: req.get('User-Agent'),
+            attempts: record.count,
+            blockDuration: Math.ceil(blockDuration / 1000 / 60) + ' minutes',
+            retryAfter: retryAfter + ' seconds',
+            backend: redisClient?.isOpen ? 'redis' : 'memory'
+          });
+
+          securityMetrics.incrementBruteForceAttempts();
+
+          return res.status(429).json({
+            error: 'Too many failed attempts',
+            message: 'Account temporarily locked. Please try again later.',
+            retryAfter: retryAfter
+          });
+        }
+      }
+
+      // Store for potential failure
+      req.bruteForceKey = clientIP;
+      next();
+    } catch (error) {
+      logger.error('Brute force protection error', { error, ip: clientIP });
+      // On error, allow the request but log it
+      next();
     }
-
-    if (record.count >= 5) {
-      logger.warn('Brute force protection triggered', {
-        ip: clientIP,
-        userAgent: req.get('User-Agent'),
-        attempts: record.count
-      });
-      return res.status(429).json({
-        error: 'Too many failed attempts. Account temporarily locked.',
-        message: 'Please try again later or contact support if this continues.'
-      });
-    }
-
-    // Store for potential failure
-    req.bruteForceKey = clientIP;
-    next();
   },
-  
-  // Mock method for compatibility
-  reset: (key: string) => {
-    bruteForceAttempts.delete(key);
+
+  // Record failed attempt
+  recordFailure: async (key: string) => {
+    try {
+      const now = Date.now();
+      const record = await getBruteForceRecord(key) || { count: 0, lastAttempt: now };
+
+      record.count++;
+      record.lastAttempt = now;
+
+      await setBruteForceRecord(key, record);
+
+      logger.info('Brute force failure recorded', {
+        key,
+        attempts: record.count,
+        backend: redisClient?.isOpen ? 'redis' : 'memory'
+      });
+    } catch (error) {
+      logger.error('Failed to record brute force attempt', { error, key });
+    }
+  },
+
+  // Reset attempts (on successful login)
+  reset: async (key: string) => {
+    try {
+      await deleteBruteForceRecord(key);
+      logger.info('Brute force counter reset', {
+        key,
+        backend: redisClient?.isOpen ? 'redis' : 'memory'
+      });
+    } catch (error) {
+      logger.error('Failed to reset brute force attempts', { error, key });
+    }
   }
 };
 
@@ -349,7 +480,7 @@ export const bruteForce = {
 export const securityMonitoring = (req: Request, res: Response, next: NextFunction) => {
   const startTime = Date.now();
   const clientIP = req.ip || req.socket?.remoteAddress || 'unknown';
-  
+
   // Enhanced suspicious patterns detection
   const suspiciousPatterns = [
     { pattern: /\.\.(\/|\\)/, severity: 'high', type: 'directory_traversal' },
@@ -373,7 +504,7 @@ export const securityMonitoring = (req: Request, res: Response, next: NextFuncti
   const queryParams = new URLSearchParams(req.url.split('?')[1] || '').toString().toLowerCase();
 
   const suspiciousFindings: Array<{type: string, severity: string, location: string}> = [];
-  
+
   suspiciousPatterns.forEach(({ pattern, severity, type }) => {
     if (pattern.test(url)) {
       suspiciousFindings.push({ type, severity, location: 'url' });
@@ -404,7 +535,7 @@ export const securityMonitoring = (req: Request, res: Response, next: NextFuncti
   // Log and handle suspicious activity
   if (suspiciousFindings.length > 0) {
     const highSeverityCount = suspiciousFindings.filter(f => f.severity === 'critical' || f.severity === 'high').length;
-    
+
     logger.warn('Suspicious request detected', {
       ip: clientIP,
       method: req.method,
@@ -417,7 +548,7 @@ export const securityMonitoring = (req: Request, res: Response, next: NextFuncti
 
     // Increment security metrics
     securityMetrics.incrementSuspiciousRequests();
-    
+
     // Mark IP as suspicious for repeated offenses
     markSuspiciousIP(clientIP);
 
@@ -438,7 +569,7 @@ export const securityMonitoring = (req: Request, res: Response, next: NextFuncti
     const duration = Date.now() - startTime;
     const responseSizeHeader = res.get('Content-Length');
     const responseSize = responseSizeHeader ? parseInt(responseSizeHeader) : 0;
-    
+
     if (duration > 10000) { // Requests taking longer than 10 seconds
       logger.warn('Slow request detected', {
         ip: clientIP,
@@ -520,46 +651,71 @@ function sanitizeObject(obj: unknown, isQueryParam: boolean = false): unknown {
   return obj;
 }
 
+// SECURITY: Enhanced sanitization with CORRECT order (CWE-79, CWE-116)
+// CRITICAL: Order matters! Normalization → Removal → Escaping
+// This prevents bypass attacks using unicode and encoding tricks
 function sanitizeString(str: string, isKey: boolean = false): string {
   if (typeof str !== 'string') return str;
 
-  let sanitized = str;
-  
-  // Remove script tags and their content
-  sanitized = sanitized.replace(/<script[^>]*>.*?<\/script>/gi, '');
-  
-  // Remove potentially dangerous HTML tags
-  sanitized = sanitized.replace(/<(script|object|embed|link|meta|style|iframe)[^>]*>/gi, '');
-  
-  // For keys, be more restrictive
+  // For keys - only safe characters allowed
   if (isKey) {
-    sanitized = sanitized.replace(/[^a-zA-Z0-9_\-.]/g, '');
-  } else {
-    // Remove HTML tags but preserve content
-    sanitized = sanitized.replace(/<[^>]+>/g, '');
-    
-    // Decode HTML entities
-    sanitized = sanitized
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&#x27;/g, "'")
-      .replace(/&#x2F;/g, '/')
-      .replace(/&amp;/g, '&'); // This should be last
+    // Use whitelist approach for keys
+    return str.replace(/[^a-zA-Z0-9_\-.]/g, '').trim();
   }
-  
+
+  let sanitized = str;
+
+  // PHASE 1: NORMALIZATION (CWE-176, CWE-180)
+  // Must happen FIRST to prevent unicode bypass attacks
+
+  // Step 1: Normalize unicode to canonical form
+  // This prevents attacks using unicode lookalikes and combining characters
+  sanitized = sanitized.normalize('NFKC');
+
+  // PHASE 2: REMOVAL (CWE-79, CWE-116)
+  // Remove dangerous content AFTER normalization
+
+  // Step 2: Remove null bytes and control characters
+  sanitized = sanitized.replace(/\0/g, '');
+  sanitized = sanitized.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
+
+  // Step 3: Remove all script tags and their content (case-insensitive)
+  sanitized = sanitized.replace(/<script[^>]*>.*?<\/script>/gis, '');
+
+  // Step 4: Remove javascript: and data: protocols
+  sanitized = sanitized.replace(/javascript:/gi, '');
+  sanitized = sanitized.replace(/data:text\/html/gi, '');
+
+  // Step 5: Remove on* event handlers
+  sanitized = sanitized.replace(/on\w+\s*=/gi, '');
+
+  // Step 6: Remove dangerous HTML tags
+  sanitized = sanitized.replace(/<(script|object|embed|link|meta|style|iframe|frame|frameset|applet|base)[^>]*>/gi, '');
+
+  // PHASE 3: ESCAPING (CWE-79)
+  // Must happen LAST after all removal to ensure proper encoding
+
+  // Step 7: Escape HTML entities to prevent XSS
+  sanitized = sanitized
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;');
+
   return sanitized.trim();
 }
 
 // Enhanced IP whitelist for admin endpoints with CIDR support
 export const adminIPWhitelist = (req: Request, res: Response, next: NextFunction) => {
   const ADMIN_IP_WHITELIST = process.env.ADMIN_IP_WHITELIST;
-  
+
   // Skip in development unless explicitly set
   if (NODE_ENV === 'development' && !ADMIN_IP_WHITELIST) {
     return next();
   }
-  
+
   if (!ADMIN_IP_WHITELIST) {
     logger.warn('Admin IP whitelist not configured in production');
     return next();
@@ -570,7 +726,7 @@ export const adminIPWhitelist = (req: Request, res: Response, next: NextFunction
 
   // Check exact IP matches and common local IPs in development
   let isAllowed = allowedIPs.includes(clientIP);
-  
+
   // In development, also allow common localhost variants
   if (NODE_ENV === 'development') {
     const devIPs = ['127.0.0.1', '::1', '::ffff:127.0.0.1', 'localhost'];
@@ -602,7 +758,7 @@ export const adminIPWhitelist = (req: Request, res: Response, next: NextFunction
       allowedIPs: allowedIPs.length,
       timestamp: new Date().toISOString()
     });
-    
+
     res.status(403).json({
       error: 'Access denied. Your IP address is not authorized for admin access.',
       ip: clientIP, // Include IP in response for debugging
@@ -611,82 +767,103 @@ export const adminIPWhitelist = (req: Request, res: Response, next: NextFunction
   }
 };
 
-// Security health check endpoint data
-export const getSecurityStatus = () => {
-  const suspiciousIPsArray = Array.from(suspiciousIPs.entries()).map(([ip, data]) => ({
-    ip,
-    count: data.count,
-    lastSeen: data.lastSeen,
-    blocked: data.blocked
-  }));
-
-  return {
-    suspiciousIPs: suspiciousIPsArray.length,
-    blockedIPs: suspiciousIPsArray.filter(ip => ip.blocked).length,
-    redisConnected: !!redisClient,
-    environment: NODE_ENV,
-    corsOriginsConfigured: !!process.env.CORS_WHITELIST,
-    adminIPWhitelistConfigured: !!process.env.ADMIN_IP_WHITELIST,
-    httpsEnabled: process.env.USE_HTTPS === 'true' || process.env.HTTPS === 'true'
-  };
-};
-
 // Export configured middleware
 export const corsMiddleware = cors(corsOptions);
 export const helmetMiddleware = helmet(helmetOptions);
 
-// Enhanced security monitoring with IP reputation tracking
-const suspiciousIPs = new Map<string, { count: number; lastSeen: Date; blocked: boolean }>();
-const SUSPICIOUS_THRESHOLD = 10;
-const BLOCK_DURATION = 60 * 60 * 1000; // 1 hour
-
-// IP reputation middleware
-export const ipReputationCheck = (req: Request, res: Response, next: NextFunction) => {
-  const clientIP = req.ip || req.socket?.remoteAddress || 'unknown';
-  const now = new Date();
-  
-  const ipData = suspiciousIPs.get(clientIP);
-  if (ipData) {
-    // Check if IP is currently blocked
-    if (ipData.blocked && (now.getTime() - ipData.lastSeen.getTime()) < BLOCK_DURATION) {
-      logger.warn('Blocked IP attempted access', { ip: clientIP, blockedUntil: new Date(ipData.lastSeen.getTime() + BLOCK_DURATION) });
-      return res.status(403).json({ 
-        error: 'Access denied. IP temporarily blocked due to suspicious activity.',
-        blockedUntil: new Date(ipData.lastSeen.getTime() + BLOCK_DURATION)
-      });
-    }
-    
-    // Reset block if duration has passed
-    if (ipData.blocked && (now.getTime() - ipData.lastSeen.getTime()) >= BLOCK_DURATION) {
-      ipData.blocked = false;
-      ipData.count = 0;
-      logger.info('IP unblocked after timeout', { ip: clientIP });
-    }
+// Nonce-based CSP middleware for development
+export const nonceCSPMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  if (NODE_ENV !== 'development') {
+    return next();
   }
-  
+
+  // Generate a unique nonce for this request
+  const nonce = crypto.randomBytes(16).toString('base64');
+
+  // Make nonce available to views/templates
+  res.locals.cspNonce = nonce;
+  (req as any).cspNonce = nonce;
+
+  // Set nonce-based CSP headers for development
+  const cspDirectives = [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://cdn.jsdelivr.net https://unpkg.com`,
+    `style-src 'self' 'nonce-${nonce}' https://fonts.googleapis.com https://cdn.jsdelivr.net https://unpkg.com`,
+    "img-src 'self' data: https: http:",
+    "connect-src 'self' wss: ws: https://api.telegram.org" +
+      (process.env.FRONTEND_URL ? ` ${process.env.FRONTEND_URL}` : '') +
+      (process.env.ADMIN_PANEL_URL ? ` ${process.env.ADMIN_PANEL_URL}` : ''),
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "object-src 'none'",
+    "media-src 'self' data: https:",
+    "frame-src 'none'",
+    "manifest-src 'self'",
+    "worker-src 'self' blob:",
+    "child-src 'none'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "upgrade-insecure-requests"
+  ];
+
+  res.setHeader('Content-Security-Policy-Report-Only', cspDirectives.join('; '));
+
   next();
 };
 
-// Function to mark IP as suspicious
-export const markSuspiciousIP = (ip: string) => {
-  const now = new Date();
-  const ipData = suspiciousIPs.get(ip) || { count: 0, lastSeen: now, blocked: false };
-  
-  ipData.count++;
-  ipData.lastSeen = now;
-  
-  if (ipData.count >= SUSPICIOUS_THRESHOLD && !ipData.blocked) {
-    ipData.blocked = true;
-    logger.warn('IP blocked due to suspicious activity', { ip, count: ipData.count });
+// Enhanced security monitoring with Redis-backed IP reputation tracking
+import { ipReputationService } from '../services/IPReputationService';
+
+// IP reputation middleware (Redis-backed)
+export const ipReputationCheck = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const clientIP = req.ip || req.socket?.remoteAddress || 'unknown';
+
+    if (clientIP === 'unknown') {
+      return next();
+    }
+
+    // Check if IP is blocked
+    const blockStatus = await ipReputationService.isBlocked(clientIP);
+
+    if (blockStatus.blocked) {
+      logger.warn('Blocked IP attempted access', {
+        ip: clientIP,
+        reason: blockStatus.reason,
+        blockedUntil: blockStatus.blockedUntil
+      });
+
+      return res.status(403).json({
+        error: 'Access denied. IP temporarily blocked due to suspicious activity.',
+        blockedUntil: blockStatus.blockedUntil,
+        reason: blockStatus.reason
+      });
+    }
+
+    next();
+  } catch (error) {
+    logger.error('IP reputation check failed:', error);
+    // Fail open - allow request on error to prevent blocking legitimate traffic
+    next();
   }
-  
-  suspiciousIPs.set(ip, ipData);
+};
+
+// Function to mark IP as suspicious (Redis-backed)
+export const markSuspiciousIP = async (ip: string, reason: string = 'suspicious_activity') => {
+  try {
+    await ipReputationService.markSuspicious(ip, reason);
+  } catch (error) {
+    logger.error('Failed to mark IP as suspicious:', { ip, reason, error });
+  }
 };
 
 // Enhanced security middleware bundle for easy application
+// SECURITY ENHANCEMENT: Added customSecurityHeaders, nonce-based CSP for dev
 export const securityMiddlewareBundle = [
   ...(NODE_ENV === 'development' || !ENABLE_IP_REPUTATION ? [] : [ipReputationCheck]),
   helmetMiddleware,
+  ...(NODE_ENV === 'development' ? [nonceCSPMiddleware] : []), // NEW: Nonce-based CSP for dev
+  customSecurityHeaders, // NEW: Additional security headers (Permissions-Policy, etc.)
   corsMiddleware,
   securityMonitoring,
   sanitizeInput,
@@ -716,20 +893,28 @@ export const adminSecurityBundle = [
   adminIPWhitelist
 ];
 
-// Cleanup function for production
-export const cleanupSecurityData = () => {
-  const now = new Date();
-  const cleanupThreshold = 24 * 60 * 60 * 1000; // 24 hours
-  
-  for (const [ip, data] of suspiciousIPs.entries()) {
-    if (now.getTime() - data.lastSeen.getTime() > cleanupThreshold) {
-      suspiciousIPs.delete(ip);
+// Cleanup function for production (Redis-backed, auto-expires via TTL)
+export const cleanupSecurityData = async () => {
+  try {
+    // Redis automatically expires old data via TTL
+    // IP reputation service has its own cleanup task running
+
+    // Clean up fallback memory storage
+    const now = Date.now();
+    const cleanupThreshold = 24 * 60 * 60 * 1000; // 24 hours
+
+    for (const [key, data] of bruteForceAttemptsFallback.entries()) {
+      if (now - data.lastAttempt > cleanupThreshold) {
+        bruteForceAttemptsFallback.delete(key);
+      }
     }
+
+    logger.info('Security data cleanup completed', {
+      fallbackRecords: bruteForceAttemptsFallback.size
+    });
+  } catch (error) {
+    logger.error('Security data cleanup error', { error });
   }
-  
-  logger.info('Security data cleanup completed', {
-    remainingSuspiciousIPs: suspiciousIPs.size
-  });
 };
 
 // Run cleanup every hour in production

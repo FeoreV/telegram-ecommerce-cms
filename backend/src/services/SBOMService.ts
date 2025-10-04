@@ -1,7 +1,9 @@
+import { spawnSync } from 'child_process';
+import crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
-import crypto from 'crypto';
-import { execSync } from 'child_process';
+import { getSecurityKeyId } from '../config/securityKeys';
+import { sanitizeForLog } from '../utils/inputSanitizer';
 import { logger } from '../utils/logger';
 
 export interface SBOMComponent {
@@ -184,17 +186,17 @@ export class SBOMService {
 
       // Generate serial number
       const serialNumber = `urn:uuid:${crypto.randomUUID()}`;
-      
+
       // Get project metadata
       const packageJson = this.readPackageJson(_projectPath);
       await this.generateMetadata(packageJson);
 
       // Analyze components
       const components: SBOMComponent[] = [];
-      
+
       // NPM dependencies
       const npmComponents = await this.analyzeNPMDependencies(
-        _projectPath, 
+        _projectPath,
         includeDevDependencies
       );
       components.push(...npmComponents);
@@ -279,7 +281,7 @@ export class SBOMService {
    */
   private readPackageJson(_projectPath: string): any {
     const packageJsonPath = path.join(_projectPath, 'package.json');
-    
+
     if (!fs.existsSync(packageJsonPath)) {
       throw new Error('package.json not found');
     }
@@ -326,18 +328,36 @@ export class SBOMService {
 
     try {
       // Get dependency tree
-      const npmListCmd = includeDevDependencies 
-        ? 'npm list --json --all'
-        : 'npm list --json --prod --all';
+      // Sanitize project path to prevent command injection (CWE-94)
+      const { sanitizeFilePath } = await import('../utils/commandSanitizer.js');
+      const safePath = sanitizeFilePath(projectPath);
 
-      const npmOutput = execSync(npmListCmd, {
-        cwd: projectPath,
+      const npmArgs = includeDevDependencies
+        ? ['list', '--json', '--all']
+        : ['list', '--json', '--prod', '--all'];
+
+      // SECURITY FIX: CWE-78, CWE-94 - Use spawnSync instead of execSync to prevent command injection
+      const { prepareSafeCommand } = await import('../utils/commandSanitizer.js');
+      const { command, args } = prepareSafeCommand('npm', npmArgs);
+
+      const npmResult = spawnSync(command, args, {
+        cwd: safePath,
         encoding: 'utf8',
-        stdio: 'pipe'
+        stdio: ['ignore', 'pipe', 'pipe']
       });
 
+      if (npmResult.error) {
+        throw npmResult.error;
+      }
+
+      if (npmResult.status !== 0) {
+        throw new Error(`NPM command failed: ${npmResult.stderr}`);
+      }
+
+      const npmOutput = npmResult.stdout;
+
       const dependencyTree = JSON.parse(npmOutput);
-      
+
       // Process dependencies recursively
       await this.processNPMDependencies(dependencyTree.dependencies || {}, components);
 
@@ -364,7 +384,7 @@ export class SBOMService {
     for (const [name, info] of Object.entries(dependencies as any)) {
       const packageInfo = info as any;
       const key = `${name}@${packageInfo.version}`;
-      
+
       if (processed.has(key)) {
         continue;
       }
@@ -385,18 +405,30 @@ export class SBOMService {
    */
   private async createNPMComponent(name: string, info: any): Promise<SBOMComponent> {
     const purl = `pkg:npm/${name}@${info.version}`;
-    
+
     // Get package info
     let packageInfo: any = {};
     try {
-      const packageInfoCmd = `npm view ${name}@${info.version} --json`;
-      const packageOutput = execSync(packageInfoCmd, {
+      // Sanitize package name and version to prevent command injection (CWE-94)
+      const { sanitizePackageName, sanitizeVersion } = await import('../utils/commandSanitizer.js');
+      const safeName = sanitizePackageName(name);
+      const safeVersion = sanitizeVersion(info.version);
+
+      // SECURITY FIX: CWE-78, CWE-94 - Use spawnSync instead of execSync
+      const { prepareSafeCommand } = await import('../utils/commandSanitizer.js');
+      const { command, args } = prepareSafeCommand('npm', ['view', `${safeName}@${safeVersion}`, '--json']);
+
+      const packageResult = spawnSync(command, args, {
         encoding: 'utf8',
-        stdio: 'pipe'
+        stdio: ['ignore', 'pipe', 'pipe']
       });
-      packageInfo = JSON.parse(packageOutput);
-    } catch (error) {
-      logger.warn(`Failed to get package info for ${name}@${info.version}`);
+
+      if (packageResult.status === 0 && packageResult.stdout) {
+        packageInfo = JSON.parse(packageResult.stdout);
+      }
+    } catch (error: unknown) {
+      // SECURITY FIX: CWE-117 - Sanitize log data to prevent log injection
+      logger.warn(`Failed to get package info for ${sanitizeForLog(name)}@${sanitizeForLog(info.version)}`, error as Record<string, unknown>);
     }
 
     // Calculate hash
@@ -433,7 +465,7 @@ export class SBOMService {
    */
   private extractLicenses(packageInfo: any): string[] {
     const licenses: string[] = [];
-    
+
     if (packageInfo.license) {
       if (typeof packageInfo.license === 'string') {
         licenses.push(packageInfo.license);
@@ -501,15 +533,19 @@ export class SBOMService {
 
       for (const manager of managers) {
         try {
-          const output = execSync(manager.cmd, {
+          // SECURITY FIX: CWE-78, CWE-94 - Use spawnSync instead of execSync
+          const [command, ...args] = manager.cmd.split(' ');
+          const result = spawnSync(command, args, {
             encoding: 'utf8',
-            stdio: 'pipe'
+            stdio: ['ignore', 'pipe', 'pipe']
           });
-          
-          const packages = manager.parser(output);
-          components.push(...packages);
-          break; // Use first successful manager
-        } catch (error) {
+
+          if (result.status === 0 && result.stdout) {
+            const packages = manager.parser(result.stdout);
+            components.push(...packages);
+            break; // Use first successful manager
+          }
+        } catch (_error) {
           // Try next package manager
           continue;
         }
@@ -659,7 +695,7 @@ export class SBOMService {
 
     try {
       const dockerfilePath = path.join(_projectPath, 'Dockerfile');
-      
+
       if (!fs.existsSync(dockerfilePath)) {
         return components;
       }
@@ -831,7 +867,7 @@ export class SBOMService {
       if (component.dependencies.length > 0) {
         dependencies.push({
           ref: component.purl,
-          dependsOn: component.dependencies.map(dep => 
+          dependsOn: component.dependencies.map(dep =>
             `pkg:npm/${dep}@latest` // Simplified for this example
           )
         });
@@ -866,12 +902,13 @@ export class SBOMService {
         }
 
       } catch (err: unknown) {
-        logger.warn(`Failed to check vulnerabilities for ${component.name}:`, err as Record<string, unknown>);
+        // SECURITY FIX: CWE-117 - Sanitize log data to prevent log injection
+        logger.warn(`Failed to check vulnerabilities for ${sanitizeForLog(component.name)}:`, err as Record<string, unknown>);
       }
     }
 
     const totalVulnerabilities = components.reduce(
-      (sum, comp) => sum + comp.vulnerabilities.length, 
+      (sum, comp) => sum + comp.vulnerabilities.length,
       0
     );
 
@@ -888,18 +925,21 @@ export class SBOMService {
     const vulnerabilities: Vulnerability[] = [];
 
     try {
-      // Use npm audit for vulnerability checking
-      const auditCmd = `npm audit --json --package-lock-only`;
-      const auditOutput = execSync(auditCmd, {
+      // SECURITY FIX: CWE-78, CWE-94 - Use spawnSync instead of execSync
+      const auditResult = spawnSync('npm', ['audit', '--json', '--package-lock-only'], {
         encoding: 'utf8',
-        stdio: 'pipe'
+        stdio: ['ignore', 'pipe', 'pipe']
       });
 
-      const auditData = JSON.parse(auditOutput);
-      
+      if (auditResult.status !== 0 && !auditResult.stdout) {
+        return vulnerabilities;
+      }
+
+      const auditData = JSON.parse(auditResult.stdout);
+
       if (auditData.vulnerabilities && auditData.vulnerabilities[component.name]) {
         const vulnData = auditData.vulnerabilities[component.name];
-        
+
         for (const advisory of vulnData.via || []) {
           if (typeof advisory === 'object') {
             vulnerabilities.push({
@@ -917,9 +957,10 @@ export class SBOMService {
         }
       }
 
-    } catch (error) {
+    } catch (error: unknown) {
       // npm audit may fail if no vulnerabilities found
-      logger.debug(`No NPM vulnerabilities found for ${component.name}`);
+      // SECURITY FIX: CWE-117 - Sanitize log data to prevent log injection
+      logger.debug(`No NPM vulnerabilities found for ${sanitizeForLog(component.name)}`, error as Record<string, unknown>);
     }
 
     return vulnerabilities;
@@ -954,17 +995,31 @@ export class SBOMService {
     const vulnerabilities: Vulnerability[] = [];
 
     try {
-      // Use Trivy for Docker image scanning
+      // SECURITY FIX: Use Trivy with safe command execution (CWE-94, CWE-78)
+      const { sanitizeImageRef } = await import('../utils/commandSanitizer.js');
       const image = `${component.name}:${component.version}`;
-      const trivyCmd = `trivy image --format json --quiet ${image}`;
-      
-      const trivyOutput = execSync(trivyCmd, {
+      const safeImage = sanitizeImageRef(image);
+
+      // Use spawnSync for safer command execution with argument array
+      const result = spawnSync('trivy', ['image', '--format', 'json', '--quiet', safeImage], {
         encoding: 'utf8',
-        stdio: 'pipe'
+        stdio: ['ignore', 'pipe', 'pipe']
       });
 
-      const trivyData = JSON.parse(trivyOutput);
-      
+      if (result.error) {
+        throw result.error;
+      }
+
+      if (result.status !== 0) {
+        logger.warn('Trivy scan failed', {
+          status: result.status,
+          stderr: result.stderr
+        });
+        return vulnerabilities;
+      }
+
+      const trivyData = JSON.parse(result.stdout);
+
       for (const result of trivyData.Results || []) {
         for (const vuln of result.Vulnerabilities || []) {
           vulnerabilities.push({
@@ -982,7 +1037,8 @@ export class SBOMService {
       }
 
     } catch (err: unknown) {
-      logger.debug(`Trivy scan failed for ${component.name}:`, err as Record<string, unknown>);
+      // SECURITY FIX: CWE-117 - Sanitize log data to prevent log injection
+      logger.debug(`Trivy scan failed for ${sanitizeForLog(component.name)}:`, err as Record<string, unknown>);
     }
 
     return vulnerabilities;
@@ -995,11 +1051,12 @@ export class SBOMService {
     try {
       const sbomString = JSON.stringify(sbom, null, 2);
       const hash = crypto.createHash('sha256').update(sbomString).digest('hex');
-      
-      // In production, this would use proper digital signatures
+
+      // In production, this would use proper digital signatures with configured key ID
+      const keyId = getSecurityKeyId('sbomSigningKeyId');
       sbom.signature = {
         algorithm: 'SHA-256',
-        keyId: 'botrt-sbom-signing-key',
+        keyId: keyId,
         value: hash
       };
 
@@ -1021,7 +1078,7 @@ export class SBOMService {
     try {
       const sbomJson = JSON.stringify(sbom, null, 2);
       fs.writeFileSync(outputPath, sbomJson, 'utf8');
-      
+
       logger.info('SBOM exported successfully', {
         outputPath,
         size: sbomJson.length

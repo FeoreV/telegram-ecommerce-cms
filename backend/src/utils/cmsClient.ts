@@ -37,7 +37,13 @@ class MedusaClient {
 
   async retrieveProduct(id: string) {
     const client = this.get();
-    const resp = await client.get(`/store/products/${id}`);
+    // Validate ID format to prevent SQL injection
+    if (!id || typeof id !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(id)) {
+      throw new Error('Invalid product ID format');
+    }
+    // Use encodeURIComponent to safely encode the ID
+    const encodedId = encodeURIComponent(id);
+    const resp = await client.get(`/store/products/${encodedId}`);
     return resp.data;
   }
 }

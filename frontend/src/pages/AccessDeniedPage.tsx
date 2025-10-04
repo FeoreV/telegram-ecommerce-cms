@@ -1,19 +1,19 @@
-import React from 'react'
-import { 
-  Box, 
-  Typography, 
-  Button, 
-  Paper,
-  Grid,
-  useTheme,
-  alpha,
-  Alert
-} from '@mui/material'
-import { 
-  Block as BlockIcon,
-  ContactSupport as SupportIcon,
-  ExitToApp as LogoutIcon
+import {
+    Block as BlockIcon,
+    ExitToApp as LogoutIcon,
+    ContactSupport as SupportIcon
 } from '@mui/icons-material'
+import {
+    Alert,
+    alpha,
+    Box,
+    Button,
+    Grid,
+    Paper,
+    Typography,
+    useTheme
+} from '@mui/material'
+import React from 'react'
 import { tokenManager } from '../services/apiClient'
 
 interface AccessDeniedPageProps {
@@ -36,7 +36,7 @@ const AccessDeniedPage: React.FC<AccessDeniedPageProps> = ({ userRole }) => {
   const getRoleDescription = (role: string) => {
     const descriptions: Record<string, string> = {
       'USER': 'Regular User - Limited platform access',
-      'CUSTOMER': 'Customer - Shopping and order access only', 
+      'CUSTOMER': 'Customer - Shopping and order access only',
       'GUEST': 'Guest User - View-only access',
     }
     return descriptions[role] || `${role} - Contact administrator for access details`
@@ -67,16 +67,16 @@ const AccessDeniedPage: React.FC<AccessDeniedPageProps> = ({ userRole }) => {
       >
         {/* Access Denied Icon */}
         <Box sx={{ mb: 3 }}>
-          <BlockIcon 
-            sx={{ 
-              fontSize: 80, 
+          <BlockIcon
+            sx={{
+              fontSize: 80,
               color: theme.palette.error.main,
               mb: 2
-            }} 
+            }}
           />
-          <Typography 
-            variant="h3" 
-            sx={{ 
+          <Typography
+            variant="h3"
+            sx={{
               fontWeight: 'bold',
               color: theme.palette.error.main,
               mb: 1
@@ -87,9 +87,9 @@ const AccessDeniedPage: React.FC<AccessDeniedPageProps> = ({ userRole }) => {
         </Box>
 
         {/* Error Message */}
-        <Alert 
-          severity="error" 
-          sx={{ 
+        <Alert
+          severity="error"
+          sx={{
             mb: 3,
             textAlign: 'left',
             '& .MuiAlert-message': {
@@ -101,7 +101,7 @@ const AccessDeniedPage: React.FC<AccessDeniedPageProps> = ({ userRole }) => {
             Admin Panel Access Restricted
           </Typography>
           <Typography variant="body2" sx={{ mt: 1 }}>
-            Your current role <strong>"{userRole}"</strong> does not have permission to access the admin panel.
+            Your current role <strong>&quot;{userRole}&quot;</strong> does not have permission to access the admin panel.
           </Typography>
         </Alert>
 
@@ -149,7 +149,7 @@ const AccessDeniedPage: React.FC<AccessDeniedPageProps> = ({ userRole }) => {
               fullWidth
               startIcon={<SupportIcon />}
               onClick={handleContactSupport}
-              sx={{ 
+              sx={{
                 py: 1.5,
                 borderRadius: 2,
                 textTransform: 'none',
@@ -167,7 +167,7 @@ const AccessDeniedPage: React.FC<AccessDeniedPageProps> = ({ userRole }) => {
               fullWidth
               startIcon={<LogoutIcon />}
               onClick={handleLogout}
-              sx={{ 
+              sx={{
                 py: 1.5,
                 borderRadius: 2,
                 textTransform: 'none',
@@ -180,9 +180,9 @@ const AccessDeniedPage: React.FC<AccessDeniedPageProps> = ({ userRole }) => {
         </Grid>
 
         {/* Help Text */}
-        <Typography 
-          variant="caption" 
-          sx={{ 
+        <Typography
+          variant="caption"
+          sx={{
             mt: 4,
             display: 'block',
             color: theme.palette.text.disabled

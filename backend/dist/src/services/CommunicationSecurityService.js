@@ -35,11 +35,12 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.communicationSecurityService = exports.CommunicationSecurityService = exports.NotificationPriority = exports.RedactionLevel = exports.CommunicationType = void 0;
 const crypto = __importStar(require("crypto"));
-const logger_1 = require("../utils/logger");
 const errorUtils_1 = require("../utils/errorUtils");
-const SecurityLogService_1 = require("./SecurityLogService");
-const EncryptionService_1 = require("./EncryptionService");
+const logger_1 = require("../utils/logger");
 const DataClassificationService_1 = require("./DataClassificationService");
+const EncryptionService_1 = require("./EncryptionService");
+const SecurityLogService_1 = require("./SecurityLogService");
+const securityKeys_1 = require("../config/securityKeys");
 var CommunicationType;
 (function (CommunicationType) {
     CommunicationType["TELEGRAM_MESSAGE"] = "telegram_message";
@@ -617,8 +618,18 @@ If this was not you, please contact support immediately.`,
     interpolateTemplate(template, variables) {
         let result = template;
         for (const [key, value] of Object.entries(variables)) {
-            const pattern = new RegExp(`\\{${key}\\}`, 'g');
-            result = result.replace(pattern, String(value || ''));
+            const escapeRegex = (str) => {
+                return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            };
+            const placeholder = `{${key}}`;
+            if (!key.match(/[.*+?^${}()|[\]\\]/)) {
+                result = result.split(placeholder).join(String(value || ''));
+            }
+            else {
+                const escapedKey = escapeRegex(key);
+                const pattern = new RegExp(`\\{${escapedKey}\\}`, 'g');
+                result = result.replace(pattern, String(value || ''));
+            }
         }
         return result;
     }
@@ -806,7 +817,7 @@ If this was not you, please contact support immediately.`,
                 action: 'content_encryption_applied',
                 details: {
                     algorithm: 'AES-256-GCM',
-                    keyId: 'communication-encryption-key'
+                    keyId: (0, securityKeys_1.getSecurityKeyId)('communicationEncryptionKeyId')
                 }
             });
         }

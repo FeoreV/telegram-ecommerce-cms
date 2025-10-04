@@ -7,33 +7,33 @@ export const commonSchemas = {
   email: z.string().email('Invalid email format').max(320),
   phone: z.string().regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number format'),
   url: z.string().url('Invalid URL format').max(2048),
-  
+
   // Identifiers
   username: z.string()
     .min(3, 'Username must be at least 3 characters')
     .max(50, 'Username must not exceed 50 characters')
     .regex(/^[a-zA-Z0-9_-]+$/, 'Username can only contain letters, numbers, underscores, and hyphens'),
-  
+
   password: z.string()
     .min(8, 'Password must be at least 8 characters')
     .max(128, 'Password must not exceed 128 characters')
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, 
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
            'Password must contain at least one lowercase letter, one uppercase letter, one number, and one special character'),
-  
+
   // Text fields
   shortText: z.string().max(255, 'Text must not exceed 255 characters').trim(),
   mediumText: z.string().max(1000, 'Text must not exceed 1000 characters').trim(),
   longText: z.string().max(10000, 'Text must not exceed 10000 characters').trim(),
-  
+
   // Numeric fields
   positiveInt: z.number().int().positive('Must be a positive integer'),
   nonNegativeInt: z.number().int().min(0, 'Must be a non-negative integer'),
   price: z.number().min(0, 'Price must be non-negative').max(999999.99, 'Price too large'),
-  
+
   // Date fields
   pastDate: z.date().max(new Date(), 'Date cannot be in the future'),
   futureDate: z.date().min(new Date(), 'Date cannot be in the past'),
-  
+
   // File upload
   fileUpload: z.object({
     filename: z.string().max(255, 'Filename too long'),
@@ -76,13 +76,29 @@ export const userSchemas = {
   }),
 
   telegramAuth: z.object({
-    id: z.number().positive('Invalid Telegram ID'),
-    first_name: commonSchemas.shortText.optional(),
-    last_name: commonSchemas.shortText.optional(),
-    username: commonSchemas.username.optional(),
-    photo_url: commonSchemas.url.optional(),
-    auth_date: z.number().positive('Invalid auth date'),
-    hash: z.string().min(1, 'Hash is required')
+    telegramId: z.string()
+      .regex(/^\d+$/, 'Invalid Telegram ID format')
+      .min(1, 'Telegram ID is required'),
+    username: z.string()
+      .max(32, 'Username must not exceed 32 characters')
+      .optional(),
+    firstName: z.string()
+      .max(64, 'First name must not exceed 64 characters')
+      .optional(),
+    lastName: z.string()
+      .max(64, 'Last name must not exceed 64 characters')
+      .optional(),
+    photoUrl: commonSchemas.url.optional(),
+    authDate: z.string()
+      .regex(/^\d+$/, 'Invalid auth date format')
+      .refine((val) => {
+        const timestamp = parseInt(val);
+        return timestamp > 0 && timestamp <= Math.floor(Date.now() / 1000) + 60;
+      }, 'Invalid auth date'),
+    hash: z.string()
+      .length(64, 'Invalid hash length - must be 64 characters')
+      .regex(/^[a-f0-9]{64}$/, 'Hash must be a valid hex string'),
+    sessionId: z.string().uuid().optional()
   })
 };
 
@@ -214,7 +230,7 @@ export const orderSchemas = {
       country: z.string().length(2, 'Country must be 2-letter code').toUpperCase(),
       additionalInfo: commonSchemas.mediumText.optional()
     }),
-    paymentMethod: z.enum(['cash', 'card', 'bank_transfer', 'crypto', 'other']).refine(val => 
+    paymentMethod: z.enum(['cash', 'card', 'bank_transfer', 'crypto', 'other']).refine(val =>
       ['cash', 'card', 'bank_transfer', 'crypto', 'other'].includes(val), {
         message: 'Invalid payment method'
       }),
@@ -223,7 +239,7 @@ export const orderSchemas = {
   }),
 
   updateStatus: z.object({
-    status: z.enum(['PENDING_ADMIN', 'PAID', 'SHIPPED', 'DELIVERED', 'CANCELLED']).refine(val => 
+    status: z.enum(['PENDING_ADMIN', 'PAID', 'SHIPPED', 'DELIVERED', 'CANCELLED']).refine(val =>
       ['PENDING_ADMIN', 'PAID', 'SHIPPED', 'DELIVERED', 'CANCELLED'].includes(val), {
         message: 'Invalid order status'
       }),
@@ -325,7 +341,7 @@ export const adminSchemas = {
     username: commonSchemas.username,
     email: commonSchemas.email,
     password: commonSchemas.password,
-    role: z.enum(['OWNER', 'ADMIN', 'VENDOR', 'CUSTOMER']).refine(val => 
+    role: z.enum(['OWNER', 'ADMIN', 'VENDOR', 'CUSTOMER']).refine(val =>
       ['OWNER', 'ADMIN', 'VENDOR', 'CUSTOMER'].includes(val), {
         message: 'Invalid user role'
       }),

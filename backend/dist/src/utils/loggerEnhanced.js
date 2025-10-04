@@ -91,7 +91,10 @@ const maskSensitiveString = (str) => {
     if (typeof str !== 'string') {
         return String(str);
     }
-    let masked = str;
+    let masked = str
+        .replace(/[\r\n]/g, ' ')
+        .replace(/[\x00-\x1F\x7F]/g, '')
+        .trim();
     try {
         if (SENSITIVE_PATTERNS.jwt.test(str)) {
             const parts = str.split('.');

@@ -1,7 +1,7 @@
-import crypto from 'crypto';
-import { secureAuthService } from './SecureAuthService';
-import { logger } from '../utils/logger';
 import { User } from '@prisma/client';
+import crypto from 'crypto';
+import { logger } from '../utils/logger';
+import { secureAuthService } from './SecureAuthService';
 
 export interface TelegramAuthData {
   id: string;
@@ -96,7 +96,7 @@ export class TelegramAuthService {
             authAge,
             maxAge: this.config.maxAuthAge
           });
-          
+
           return {
             isValid: false,
             reason: `Auth data expired (${Math.floor(authAge / 60)} minutes old)`
@@ -112,7 +112,7 @@ export class TelegramAuthService {
           username: authData.username,
           authDate: authData.auth_date
         });
-        
+
         return {
           isValid: false,
           reason: 'Invalid HMAC signature'
@@ -342,7 +342,7 @@ export class TelegramAuthService {
    */
   private async findOrCreateTelegramUser(userData: ValidatedTelegramUserData): Promise<User> {
     try {
-      const { databaseService } = await import('../lib/database');
+      const { databaseService } = await import('../lib/database.js');
       const prisma = databaseService.getPrisma();
 
       // Try to find existing user by Telegram ID
@@ -415,10 +415,10 @@ export class TelegramAuthService {
       if (parts.length !== 2) {
         return null;
       }
-      
+
       const botId = parseInt(parts[0]);
       return isNaN(botId) ? null : botId;
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }
@@ -460,7 +460,7 @@ export class TelegramAuthService {
 
       const expectedPath = `/api/telegram/webhook/${botId}/${tokenHash}`;
       const urlObj = new URL(url);
-      
+
       return urlObj.pathname === expectedPath;
 
     } catch (error) {
@@ -476,14 +476,14 @@ export class TelegramAuthService {
   checkTelegramRateLimit(identifier: string, limit: number = 30, windowMs: number = 60000): boolean {
     const now = Date.now();
     const key = `telegram:${identifier}`;
-    
+
     let bucket = this.telegramRateLimiter.get(key);
-    
+
     if (!bucket || now > bucket.resetTime) {
       bucket = { count: 0, resetTime: now + windowMs };
       this.telegramRateLimiter.set(key, bucket);
     }
-    
+
     if (bucket.count >= limit) {
       logger.warn('Telegram rate limit exceeded', {
         identifier,
@@ -493,7 +493,7 @@ export class TelegramAuthService {
       });
       return false;
     }
-    
+
     bucket.count++;
     return true;
   }

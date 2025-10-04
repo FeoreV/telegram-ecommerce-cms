@@ -3,6 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getNotificationStats = exports.deleteNotification = exports.markAllNotificationsAsRead = exports.markNotificationAsRead = exports.getNotifications = void 0;
 const prisma_1 = require("../lib/prisma");
 const errorHandler_1 = require("../middleware/errorHandler");
+const logger_1 = require("../utils/logger");
+const sanitizer_1 = require("../utils/sanitizer");
+const validator_1 = require("../utils/validator");
 exports.getNotifications = (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { page = 1, limit = 20, unreadOnly = false, type, priority, } = req.query;
     if (!req.user) {
@@ -55,11 +58,30 @@ exports.getNotifications = (0, errorHandler_1.asyncHandler)(async (req, res) => 
         }),
     ]);
     res.json({
-        notifications: notifications.map(notification => ({
-            ...notification,
-            channels: JSON.parse(notification.channels),
-            data: notification.data ? JSON.parse(notification.data) : null,
-        })),
+        notifications: notifications.map(notification => {
+            let channels = [];
+            let data = null;
+            try {
+                if (notification.channels && (0, validator_1.validateJson)(notification.channels)) {
+                    channels = JSON.parse(notification.channels);
+                }
+                if (notification.data && (0, validator_1.validateJson)(notification.data)) {
+                    data = JSON.parse(notification.data);
+                    data = (0, sanitizer_1.sanitizeObjectForLog)(data);
+                }
+            }
+            catch (error) {
+                logger_1.logger.error('Failed to parse notification data', {
+                    notificationId: notification.id,
+                    error
+                });
+            }
+            return {
+                ...notification,
+                channels,
+                data,
+            };
+        }),
         pagination: {
             page: Number(page),
             limit: Number(limit),
@@ -89,11 +111,40 @@ exports.markNotificationAsRead = (0, errorHandler_1.asyncHandler)(async (req, re
             readAt: new Date(),
         },
     });
+    let channels = [];
+    let data = null;
+    try {
+        if (updatedNotification.channels && (0, validator_1.validateJson)(updatedNotification.channels)) {
+            channels = JSON.parse(updatedNotification.channels);
+            channels = channels.map(ch => (0, sanitizer_1.sanitizeObjectForLog)({ ch })).map((obj) => obj.ch);
+        }
+        if (updatedNotification.data && (0, validator_1.validateJson)(updatedNotification.data)) {
+            data = JSON.parse(updatedNotification.data);
+            data = (0, sanitizer_1.sanitizeObjectForLog)(data);
+        }
+    }
+    catch (error) {
+        logger_1.logger.error('Failed to parse notification data', {
+            notificationId: updatedNotification.id,
+            error
+        });
+        channels = [];
+        data = null;
+    }
     res.json({
         notification: {
-            ...updatedNotification,
-            channels: JSON.parse(updatedNotification.channels),
-            data: updatedNotification.data ? JSON.parse(updatedNotification.data) : null,
+            id: updatedNotification.id,
+            userId: updatedNotification.userId,
+            title: updatedNotification.title,
+            message: updatedNotification.message,
+            type: updatedNotification.type,
+            priority: updatedNotification.priority,
+            storeId: updatedNotification.storeId,
+            orderId: updatedNotification.orderId,
+            readAt: updatedNotification.readAt,
+            createdAt: updatedNotification.createdAt,
+            channels,
+            data,
         },
         message: 'Notification marked as read',
     });

@@ -1,40 +1,37 @@
-import React, { useState } from 'react';
 import {
-  Box,
-  Card,
-  CardContent,
-  CardMedia,
-  Typography,
-  Button,
-  Grid,
-  Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Divider,
-  Avatar,
-  Paper,
-} from '@mui/material';
-import {
-  ShoppingCart as EcommerceIcon,
-  Restaurant as RestaurantIcon,
-  Computer as DigitalIcon,
-  LocalFlorist as BeautyIcon,
-  Build as ServiceIcon,
-  School as EducationIcon,
-  FitnessCenter as FitnessIcon,
-  Pets as PetIcon,
-  CheckCircle as CheckIcon,
-  Palette as DesignIcon,
-  ChatBubble as ChatIcon,
-  Notifications as NotificationIcon,
-  Analytics as AnalyticsIcon,
+    Analytics as AnalyticsIcon,
+    LocalFlorist as BeautyIcon,
+    ChatBubble as ChatIcon,
+    CheckCircle as CheckIcon,
+    Palette as DesignIcon,
+    Computer as DigitalIcon,
+    ShoppingCart as EcommerceIcon,
+    FitnessCenter as FitnessIcon,
+    Notifications as NotificationIcon,
+    Restaurant as RestaurantIcon,
 } from '@mui/icons-material';
+import {
+    Avatar,
+    Box,
+    Button,
+    Card,
+    CardContent,
+    Chip,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    Divider,
+    Grid,
+    List,
+    ListItem,
+    ListItemIcon,
+    ListItemText,
+    Paper,
+    Typography,
+} from '@mui/material';
+import React, { useState } from 'react';
+import { BotSettings } from './BotConstructor';
 
 interface BotTemplate {
   id: string;
@@ -51,7 +48,7 @@ interface BotTemplate {
     autoResponses: number;
     notifications: number;
   };
-  settings: any;
+  settings: BotSettings;
 }
 
 const TEMPLATES: BotTemplate[] = [
@@ -406,7 +403,7 @@ const BotTemplates: React.FC<BotTemplatesProps> = ({ onSelectTemplate, onClose }
       <Typography variant="h5" gutterBottom>
         🎨 Выберите шаблон для вашего бота
       </Typography>
-      
+
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         Готовые шаблоны помогут быстро настроить бота под ваш тип бизнеса
       </Typography>
@@ -416,23 +413,23 @@ const BotTemplates: React.FC<BotTemplatesProps> = ({ onSelectTemplate, onClose }
           <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
             {category}
           </Typography>
-          
+
           <Grid container spacing={3}>
             {TEMPLATES.filter(t => t.category === category).map((template) => (
               <Grid item xs={12} md={6} lg={4} key={template.id}>
-                <Card 
-                  sx={{ 
+                <Card
+                  sx={{
                     cursor: 'pointer',
                     transition: 'all 0.3s',
-                    '&:hover': { 
+                    '&:hover': {
                       elevation: 8,
                       transform: 'translateY(-2px)'
                     }
                   }}
                   onClick={() => handleTemplateClick(template)}
                 >
-                  <Box sx={{ 
-                    height: 60, 
+                  <Box sx={{
+                    height: 60,
                     bgcolor: template.color,
                     display: 'flex',
                     alignItems: 'center',
@@ -443,28 +440,28 @@ const BotTemplates: React.FC<BotTemplatesProps> = ({ onSelectTemplate, onClose }
                       {template.icon}
                     </Avatar>
                   </Box>
-                  
+
                   <CardContent>
                     <Typography variant="h6" gutterBottom>
                       {template.name}
                     </Typography>
-                    
+
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                       {template.description}
                     </Typography>
 
                     <Box display="flex" flexWrap="wrap" gap={0.5} mb={2}>
-                      <Chip 
-                        icon={<DesignIcon />} 
-                        label={template.preview.theme} 
-                        size="small" 
-                        variant="outlined" 
+                      <Chip
+                        icon={<DesignIcon />}
+                        label={`Каталог: ${template.preview.catalogStyle}`}
+                        size="small"
+                        variant="outlined"
                       />
-                      <Chip 
-                        icon={<ChatIcon />} 
-                        label={`${template.preview.autoResponses} ответов`} 
-                        size="small" 
-                        variant="outlined" 
+                      <Chip
+                        icon={<ChatIcon />}
+                        label={`Автоответов: ${template.preview.autoResponses}`}
+                        size="small"
+                        variant="outlined"
                       />
                     </Box>
 
@@ -495,14 +492,14 @@ const BotTemplates: React.FC<BotTemplatesProps> = ({ onSelectTemplate, onClose }
                 </Box>
               </Box>
             </DialogTitle>
-            
+
             <DialogContent>
               <Grid container spacing={3}>
                 <Grid item xs={12} md={6}>
                   <Typography variant="h6" gutterBottom>
                     📋 Возможности шаблона
                   </Typography>
-                  
+
                   <List dense>
                     {selectedTemplate.features.map((feature, index) => (
                       <ListItem key={index}>
@@ -519,12 +516,12 @@ const BotTemplates: React.FC<BotTemplatesProps> = ({ onSelectTemplate, onClose }
                   <Typography variant="h6" gutterBottom>
                     👀 Предварительный просмотр
                   </Typography>
-                  
+
                   <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
                     <Typography variant="subtitle2" gutterBottom color="text.secondary">
                       Приветственное сообщение:
                     </Typography>
-                    <Typography variant="body2" sx={{ 
+                    <Typography variant="body2" sx={{
                       whiteSpace: 'pre-line',
                       p: 2,
                       bgcolor: 'grey.100',
@@ -535,25 +532,25 @@ const BotTemplates: React.FC<BotTemplatesProps> = ({ onSelectTemplate, onClose }
                     </Typography>
 
                     <Box display="flex" flexWrap="wrap" gap={1}>
-                      <Chip 
-                        icon={<DesignIcon />} 
-                        label={`Каталог: ${selectedTemplate.preview.catalogStyle}`} 
-                        size="small" 
+                      <Chip
+                        icon={<DesignIcon />}
+                        label={`Каталог: ${selectedTemplate.preview.catalogStyle}`}
+                        size="small"
                       />
-                      <Chip 
-                        icon={<ChatIcon />} 
-                        label={`Автоответов: ${selectedTemplate.preview.autoResponses}`} 
-                        size="small" 
+                      <Chip
+                        icon={<ChatIcon />}
+                        label={`Автоответов: ${selectedTemplate.preview.autoResponses}`}
+                        size="small"
                       />
-                      <Chip 
-                        icon={<NotificationIcon />} 
-                        label={`Уведомлений: ${selectedTemplate.preview.notifications}`} 
-                        size="small" 
+                      <Chip
+                        icon={<NotificationIcon />}
+                        label={`Уведомлений: ${selectedTemplate.preview.notifications}`}
+                        size="small"
                       />
-                      <Chip 
-                        icon={<AnalyticsIcon />} 
-                        label="Аналитика включена" 
-                        size="small" 
+                      <Chip
+                        icon={<AnalyticsIcon />}
+                        label="Аналитика включена"
+                        size="small"
                       />
                     </Box>
                   </Paper>
@@ -571,8 +568,8 @@ const BotTemplates: React.FC<BotTemplatesProps> = ({ onSelectTemplate, onClose }
               <Button onClick={() => setPreviewOpen(false)}>
                 Отмена
               </Button>
-              <Button 
-                variant="contained" 
+              <Button
+                variant="contained"
                 onClick={handleUseTemplate}
                 startIcon={selectedTemplate.icon}
                 sx={{ bgcolor: selectedTemplate.color }}

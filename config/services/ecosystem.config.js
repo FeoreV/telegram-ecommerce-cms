@@ -10,15 +10,13 @@ module.exports = {
       max_memory_restart: '1G',
       env: {
         NODE_ENV: 'production',
-        PORT: 3001,
-        ADMIN_COOKIE_SECRET: 'your-admin-cookie-secret',
-        SESSION_SECRET: 'your-session-secret'
+        PORT: 3001
+        // ADMIN_COOKIE_SECRET and SESSION_SECRET should be set via environment variables or .env file
       },
       env_production: {
         NODE_ENV: 'production',
-        PORT: 3001,
-        ADMIN_COOKIE_SECRET: 'your-admin-cookie-secret',
-        SESSION_SECRET: 'your-session-secret'
+        PORT: 3001
+        // ADMIN_COOKIE_SECRET and SESSION_SECRET should be set via environment variables or .env file
       }
     },
     {

@@ -418,7 +418,10 @@ class SIEMIntegrationService {
         return headers;
     }
     async getOAuth2Token() {
-        return 'oauth2_token_placeholder';
+        if (!process.env.SIEM_OAUTH2_CLIENT_ID || !process.env.SIEM_OAUTH2_CLIENT_SECRET) {
+            throw new Error('SIEM OAuth2 credentials not configured. Set SIEM_OAUTH2_CLIENT_ID and SIEM_OAUTH2_CLIENT_SECRET');
+        }
+        throw new Error('OAuth2 token acquisition not yet implemented. Configure SIEM authentication in environment variables.');
     }
     formatForElasticsearch(events) {
         return events.map(event => {

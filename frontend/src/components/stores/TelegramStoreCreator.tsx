@@ -1,31 +1,31 @@
-import React, { useState, useEffect } from 'react';
 import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Button,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Grid,
-  Divider,
-  Alert,
-  CircularProgress,
-  Chip,
-  Link
-} from '@mui/material';
-import {
-  QrCode,
-  Telegram,
-  Close,
-  Launch,
-  ContentCopy,
-  CheckCircle
+    CheckCircle,
+    Close,
+    ContentCopy,
+    Launch,
+    QrCode,
+    Telegram
 } from '@mui/icons-material';
+import {
+    Alert,
+    Box,
+    Button,
+    Card,
+    CardContent,
+    Chip,
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    Divider,
+    Grid,
+    IconButton,
+    Link,
+    Typography
+} from '@mui/material';
 import QRCode from 'qrcode';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 
 interface TelegramStoreCreatorProps {
@@ -50,7 +50,7 @@ const TelegramStoreCreator: React.FC<TelegramStoreCreatorProps> = ({
 
   const generateQRCode = async () => {
     if (!botUrl) return;
-    
+
     setIsGeneratingQR(true);
     try {
       const qrUrl = await QRCode.toDataURL(botUrl, {
@@ -92,8 +92,8 @@ const TelegramStoreCreator: React.FC<TelegramStoreCreatorProps> = ({
 
   return (
     <>
-      <Card 
-        sx={{ 
+      <Card
+        sx={{
           background: 'linear-gradient(135deg, #0088cc 0%, #005999 100%)',
           color: 'white',
           position: 'relative',
@@ -167,24 +167,24 @@ const TelegramStoreCreator: React.FC<TelegramStoreCreatorProps> = ({
               Что нужно будет указать:
             </Typography>
             <Box display="flex" gap={1} mt={1} flexWrap="wrap">
-              <Chip 
-                label="Название" 
-                size="small" 
+              <Chip
+                label="Название"
+                size="small"
                 sx={{ backgroundColor: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
               />
-              <Chip 
-                label="Описание" 
-                size="small" 
+              <Chip
+                label="Описание"
+                size="small"
                 sx={{ backgroundColor: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
               />
-              <Chip 
-                label="Валюта" 
-                size="small" 
+              <Chip
+                label="Валюта"
+                size="small"
                 sx={{ backgroundColor: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
               />
-              <Chip 
-                label="Контакты" 
-                size="small" 
+              <Chip
+                label="Контакты"
+                size="small"
                 sx={{ backgroundColor: 'rgba(255, 255, 255, 0.2)', color: 'white' }}
               />
             </Box>
@@ -193,8 +193,8 @@ const TelegramStoreCreator: React.FC<TelegramStoreCreatorProps> = ({
       </Card>
 
       {/* QR Code Dialog */}
-      <Dialog 
-        open={dialogOpen} 
+      <Dialog
+        open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         maxWidth="sm"
         fullWidth
@@ -220,7 +220,7 @@ const TelegramStoreCreator: React.FC<TelegramStoreCreatorProps> = ({
                 <Typography variant="h6" gutterBottom color="primary">
                   QR-код для быстрого доступа
                 </Typography>
-                
+
                 {isGeneratingQR ? (
                   <Box display="flex" justifyContent="center" alignItems="center" height={256}>
                     <CircularProgress />
@@ -238,10 +238,10 @@ const TelegramStoreCreator: React.FC<TelegramStoreCreatorProps> = ({
                     }}
                   />
                 ) : (
-                  <Box 
-                    display="flex" 
-                    justifyContent="center" 
-                    alignItems="center" 
+                  <Box
+                    display="flex"
+                    justifyContent="center"
+                    alignItems="center"
                     height={256}
                     border="1px dashed #ddd"
                     borderRadius={2}
@@ -276,7 +276,7 @@ const TelegramStoreCreator: React.FC<TelegramStoreCreatorProps> = ({
                 </li>
                 <li>
                   <Typography variant="body2">
-                    Нажмите "Начать" в боте
+                    Нажмите &quot;Начать&quot; в боте
                   </Typography>
                 </li>
                 <li>
@@ -308,27 +308,27 @@ const TelegramStoreCreator: React.FC<TelegramStoreCreatorProps> = ({
                 <Typography variant="body2" gutterBottom>
                   Или скопируйте ссылку:
                 </Typography>
-                <Box 
-                  display="flex" 
-                  alignItems="center" 
+                <Box
+                  display="flex"
+                  alignItems="center"
                   gap={1}
                   p={1}
                   bgcolor="grey.100"
                   borderRadius={1}
                 >
-                  <Link 
-                    href={botUrl} 
-                    target="_blank" 
-                    sx={{ 
-                      flexGrow: 1, 
+                  <Link
+                    href={botUrl}
+                    target="_blank"
+                    sx={{
+                      flexGrow: 1,
                       fontSize: '0.875rem',
                       textDecoration: 'none'
                     }}
                   >
                     {botUrl}
                   </Link>
-                  <IconButton 
-                    size="small" 
+                  <IconButton
+                    size="small"
                     onClick={handleCopyLink}
                     color={copySuccess ? 'success' : 'default'}
                   >

@@ -4,13 +4,32 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BotHandlerService = void 0;
-const botDataService_js_1 = __importDefault(require("./botDataService.js"));
+const i18n_js_1 = require("../utils/i18n.js");
 const logger_js_1 = require("../utils/logger.js");
+const sanitizer_js_1 = require("../utils/sanitizer.js");
+const botDataService_js_1 = __importDefault(require("./botDataService.js"));
 class BotHandlerService {
     constructor(storeId) {
         this.sessions = new Map();
+        this.language = 'ru';
         this.storeId = storeId;
         this.dataService = new botDataService_js_1.default(storeId);
+        this.initializeLanguage();
+    }
+    async initializeLanguage() {
+        try {
+            const storeInfo = await this.dataService.getStoreInfo();
+            const lang = storeInfo.botSettings?.language;
+            if (lang && (0, i18n_js_1.isSupportedLanguage)(lang)) {
+                this.language = lang;
+            }
+        }
+        catch (_error) {
+            logger_js_1.logger.warn(`Could not load language for store ${(0, sanitizer_js_1.sanitizeForLog)(this.storeId)}, using default (ru)`);
+        }
+    }
+    translate(key) {
+        return (0, i18n_js_1.t)(key, this.language);
     }
     async handleMessage(bot, msg) {
         try {
@@ -32,12 +51,22 @@ class BotHandlerService {
             this.saveSession(userId, session);
         }
         catch (error) {
-            logger_js_1.logger.error(`Error handling message for store ${this.storeId}:`, error);
-            await bot.sendMessage(msg.chat.id, '❌ Произошла ошибка. Попробуйте позже.');
+            logger_js_1.logger.error(`Error handling message for store ${(0, sanitizer_js_1.sanitizeForLog)(this.storeId)}:`, error);
+            if (error instanceof Error && error.message.startsWith('STORE_NOT_FOUND')) {
+                logger_js_1.logger.error(`⛔ Store ${(0, sanitizer_js_1.sanitizeForLog)(this.storeId)} no longer exists - bot should be stopped`);
+                await bot.sendMessage(msg.chat.id, '⚠️ Этот магазин больше не активен. Свяжитесь с администратором для получения дополнительной информации.').catch(() => { });
+                throw error;
+            }
+            await bot.sendMessage(msg.chat.id, `❌ ${this.translate('error.generic')}`).catch(() => { });
         }
     }
     async handleCommand(bot, chatId, command, session) {
         const cmd = command.split(' ')[0].toLowerCase();
+        const customCommandResponse = await this.checkCustomCommands(cmd);
+        if (customCommandResponse) {
+            await bot.sendMessage(chatId, customCommandResponse, { parse_mode: 'Markdown' });
+            return;
+        }
         switch (cmd) {
             case '/start':
                 await this.handleStartCommand(bot, chatId, session);
@@ -53,7 +82,30 @@ class BotHandlerService {
                 await this.showHelp(bot, chatId);
                 break;
             default:
-                await bot.sendMessage(chatId, '❓ Неизвестная команда. Используйте /help для просмотра доступных команд.');
+                await bot.sendMessage(chatId, this.translate('error.unknown_command'));
+        }
+    }
+    async checkCustomCommands(command) {
+        try {
+            const storeInfo = await this.dataService.getStoreInfo();
+            const settings = storeInfo.botSettings;
+            if (!settings?.customCommands || !Array.isArray(settings.customCommands)) {
+                return null;
+            }
+            for (const customCmd of settings.customCommands) {
+                if (!customCmd.enabled)
+                    continue;
+                const cmdPattern = customCmd.command.toLowerCase().trim();
+                const inputCmd = command.toLowerCase().trim();
+                if (inputCmd === cmdPattern || inputCmd === `/${cmdPattern}`) {
+                    return customCmd.response;
+                }
+            }
+            return null;
+        }
+        catch (error) {
+            logger_js_1.logger.error('Error checking custom commands:', error);
+            return null;
         }
     }
     async handleTextMessage(bot, chatId, text, session) {
@@ -62,7 +114,48 @@ class BotHandlerService {
                 await this.handleCustomerInfo(bot, chatId, text, session);
                 break;
             default:
-                await bot.sendMessage(chatId, 'Используйте /catalog для просмотра каталога товаров или /help для справки');
+                {
+                    const autoResponse = await this.checkAutoResponses(text);
+                    if (autoResponse) {
+                        await bot.sendMessage(chatId, autoResponse, { parse_mode: 'Markdown' });
+                    }
+                    else {
+                        await bot.sendMessage(chatId, 'Используйте /catalog для просмотра каталога товаров или /help для справки');
+                    }
+                }
+        }
+    }
+    async checkAutoResponses(text) {
+        try {
+            const storeInfo = await this.dataService.getStoreInfo();
+            const settings = storeInfo.botSettings;
+            if (!settings)
+                return null;
+            if (settings.autoResponses?.responses && Array.isArray(settings.autoResponses.responses)) {
+                for (const autoResp of settings.autoResponses.responses) {
+                    if (!autoResp.enabled)
+                        continue;
+                    const trigger = autoResp.trigger.toLowerCase().trim();
+                    const messageText = text.toLowerCase().trim();
+                    if (messageText === trigger || messageText.includes(trigger)) {
+                        return autoResp.response;
+                    }
+                }
+            }
+            if (settings.faqs && Array.isArray(settings.faqs)) {
+                for (const faq of settings.faqs) {
+                    const question = faq.question.toLowerCase().trim();
+                    const messageText = text.toLowerCase().trim();
+                    if (messageText.includes(question) || question.includes(messageText)) {
+                        return `❓ **${faq.question}**\n\n${faq.answer}`;
+                    }
+                }
+            }
+            return null;
+        }
+        catch (error) {
+            logger_js_1.logger.error('Error checking auto responses:', error);
+            return null;
         }
     }
     async handleStartCommand(bot, chatId, _session) {
@@ -139,7 +232,7 @@ class BotHandlerService {
                 });
             }
             catch (error) {
-                logger_js_1.logger.warn(`Failed to send header image for store ${this.storeId}:`, error);
+                logger_js_1.logger.warn(`Failed to send header image for store ${(0, sanitizer_js_1.sanitizeForLog)(this.storeId)}:`, error);
                 await bot.sendMessage(chatId, message, {
                     parse_mode: 'Markdown',
                     ...keyboard
@@ -194,7 +287,7 @@ class BotHandlerService {
             });
         }
         catch (error) {
-            logger_js_1.logger.error(`Error showing catalog for store ${this.storeId}:`, error);
+            logger_js_1.logger.error(`Error showing catalog for store ${(0, sanitizer_js_1.sanitizeForLog)(this.storeId)}:`, error);
             await bot.sendMessage(chatId, '❌ Ошибка загрузки каталога');
         }
     }
@@ -276,7 +369,7 @@ class BotHandlerService {
             });
         }
         catch (error) {
-            logger_js_1.logger.error(`Error showing orders for store ${this.storeId}:`, error);
+            logger_js_1.logger.error(`Error showing orders for store ${(0, sanitizer_js_1.sanitizeForLog)(this.storeId)}:`, error);
             await bot.sendMessage(chatId, '❌ Ошибка загрузки заказов');
         }
     }
@@ -327,20 +420,30 @@ class BotHandlerService {
             session.currentAction = undefined;
         }
         catch (error) {
-            logger_js_1.logger.error(`Error handling search for store ${this.storeId}:`, error);
+            logger_js_1.logger.error(`Error handling search for store ${(0, sanitizer_js_1.sanitizeForLog)(this.storeId)}:`, error);
             await bot.sendMessage(chatId, '❌ Ошибка поиска');
         }
     }
     async showHelp(bot, chatId) {
         try {
             const storeInfo = await this.dataService.getStoreInfo();
+            const menuCustomization = storeInfo.botSettings?.menuCustomization || {};
             let message = `❓ **Помощь и контакты**\n\n`;
             message += `**Доступные команды:**\n`;
             message += `/start - Главное меню\n`;
-            message += `/catalog - Каталог товаров\n`;
-            message += `/orders - Мои заказы\n`;
-            message += `/help - Эта справка\n\n`;
-            message += `**Как сделать заказ:**\n`;
+            message += `/catalog - ${menuCustomization.catalogText || 'Каталог товаров'}\n`;
+            message += `/orders - ${menuCustomization.ordersText || 'Мои заказы'}\n`;
+            message += `/help - ${menuCustomization.helpText || 'Эта справка'}\n`;
+            if (storeInfo.botSettings?.customCommands && Array.isArray(storeInfo.botSettings.customCommands)) {
+                const enabledCommands = storeInfo.botSettings.customCommands.filter((cmd) => cmd.enabled);
+                if (enabledCommands.length > 0) {
+                    message += `\n**Дополнительные команды:**\n`;
+                    enabledCommands.forEach((cmd) => {
+                        message += `/${cmd.command} - ${cmd.description || 'Дополнительная команда'}\n`;
+                    });
+                }
+            }
+            message += `\n**Как сделать заказ:**\n`;
             message += `1️⃣ Выберите товар в каталоге\n`;
             message += `2️⃣ Выберите количество\n`;
             message += `3️⃣ Подтвердите заказ\n`;
@@ -373,7 +476,7 @@ class BotHandlerService {
             });
         }
         catch (error) {
-            logger_js_1.logger.error(`Error showing help for store ${this.storeId}:`, error);
+            logger_js_1.logger.error(`Error showing help for store ${(0, sanitizer_js_1.sanitizeForLog)(this.storeId)}:`, error);
             await bot.sendMessage(chatId, '❌ Ошибка загрузки информации');
         }
     }
@@ -410,8 +513,8 @@ class BotHandlerService {
                 }
             });
         }
-        catch (error) {
-            logger_js_1.logger.error(`Error showing profile for store ${this.storeId}:`, error);
+        catch (_error) {
+            logger_js_1.logger.error(`Error showing profile for store ${(0, sanitizer_js_1.sanitizeForLog)(this.storeId)}:`, _error);
             await bot.sendMessage(chatId, '❌ Ошибка загрузки профиля');
         }
     }
@@ -442,7 +545,7 @@ class BotHandlerService {
             const storeInfo = await this.dataService.getStoreInfo();
             return storeInfo.currency || 'USD';
         }
-        catch (error) {
+        catch (_error) {
             return 'USD';
         }
     }
@@ -510,7 +613,7 @@ class BotHandlerService {
             this.saveSession(userId, session);
         }
         catch (error) {
-            logger_js_1.logger.error(`Error handling callback query for store ${this.storeId}:`, error);
+            logger_js_1.logger.error(`Error handling callback query for store ${(0, sanitizer_js_1.sanitizeForLog)(this.storeId)}:`, error);
         }
     }
     async showCategoryProducts(bot, chatId, categoryId, _session) {
@@ -553,7 +656,7 @@ class BotHandlerService {
             });
         }
         catch (error) {
-            logger_js_1.logger.error(`Error showing category products for store ${this.storeId}:`, error);
+            logger_js_1.logger.error(`Error showing category products for store ${(0, sanitizer_js_1.sanitizeForLog)(this.storeId)}:`, error);
             await bot.sendMessage(chatId, '❌ Ошибка загрузки товаров');
         }
     }
@@ -601,7 +704,7 @@ class BotHandlerService {
             });
         }
         catch (error) {
-            logger_js_1.logger.error(`Error showing product for store ${this.storeId}:`, error);
+            logger_js_1.logger.error(`Error showing product for store ${(0, sanitizer_js_1.sanitizeForLog)(this.storeId)}:`, error);
             await bot.sendMessage(chatId, '❌ Товар не найден');
         }
     }
@@ -648,7 +751,7 @@ class BotHandlerService {
             }
         }
         catch (error) {
-            logger_js_1.logger.error(`Error handling customer info for store ${this.storeId}:`, error);
+            logger_js_1.logger.error(`Error handling customer info for store ${(0, sanitizer_js_1.sanitizeForLog)(this.storeId)}:`, error);
             await bot.sendMessage(chatId, '❌ Ошибка при обработке информации. Попробуйте снова.');
         }
     }
@@ -697,29 +800,61 @@ class BotHandlerService {
                 notes: `Заказ из бота магазина`
             });
             const storeInfo = await this.dataService.getStoreInfo();
-            const paymentSettings = storeInfo.botSettings?.paymentSettings || {};
+            let botSettings = storeInfo.botSettings;
+            if (typeof botSettings === 'string') {
+                try {
+                    botSettings = JSON.parse(botSettings);
+                }
+                catch (error) {
+                    logger_js_1.logger.error(`Failed to parse botSettings for store ${(0, sanitizer_js_1.sanitizeForLog)(this.storeId)}:`, error);
+                    botSettings = {};
+                }
+            }
+            const paymentSettings = botSettings?.paymentSettings || {};
+            const paymentRequisites = botSettings?.paymentRequisites || {};
             let message = `✅ **Заказ успешно создан!** #${order.orderNumber || order.id}\n\n`;
             message += `🛍️ Товар: ${product.name}\n`;
             message += `📦 Количество: ${quantity} шт.\n`;
             message += `💳 **Сумма к оплате: ${totalAmount} ${currency}**\n`;
             message += `🏪 Магазин: ${storeInfo.name}\n\n`;
             message += `💰 **Инструкции по оплате:**\n`;
-            if (paymentSettings.paymentInstructions) {
-                message += `📝 ${paymentSettings.paymentInstructions}\n\n`;
+            const instructions = paymentSettings.instructions || botSettings?.paymentInstructions;
+            if (instructions) {
+                message += `📝 ${instructions}\n\n`;
             }
             else {
                 message += `📝 Переведите точную сумму по реквизитам ниже\n\n`;
             }
-            if (paymentSettings.cardNumber || paymentSettings.requisites) {
+            const bankDetails = paymentSettings.bankDetails;
+            if (bankDetails && (bankDetails.accountNumber || bankDetails.accountName)) {
                 message += `💳 **Реквизиты для оплаты:**\n`;
-                if (paymentSettings.cardNumber) {
-                    message += `💳 Карта: \`${paymentSettings.cardNumber}\`\n`;
+                if (bankDetails.accountNumber) {
+                    message += `💳 Номер счета: \`${bankDetails.accountNumber}\`\n`;
                 }
-                if (paymentSettings.recipientName) {
-                    message += `👤 Получатель: ${paymentSettings.recipientName}\n`;
+                if (bankDetails.accountName) {
+                    message += `👤 Получатель: ${bankDetails.accountName}\n`;
                 }
-                if (paymentSettings.bankName) {
-                    message += `🏦 Банк: ${paymentSettings.bankName}\n`;
+                if (bankDetails.bankName) {
+                    message += `🏦 Банк: ${bankDetails.bankName}\n`;
+                }
+                if (bankDetails.notes) {
+                    message += `📝 Примечание: ${bankDetails.notes}\n`;
+                }
+                message += `\n⚠️ **Важно:** Указывайте точную сумму при переводе!\n\n`;
+            }
+            else if (paymentRequisites && (paymentRequisites.card || paymentRequisites.receiver)) {
+                message += `💳 **Реквизиты для оплаты:**\n`;
+                if (paymentRequisites.card) {
+                    message += `💳 Номер карты: \`${paymentRequisites.card}\`\n`;
+                }
+                if (paymentRequisites.receiver) {
+                    message += `👤 Получатель: ${paymentRequisites.receiver}\n`;
+                }
+                if (paymentRequisites.bank) {
+                    message += `🏦 Банк: ${paymentRequisites.bank}\n`;
+                }
+                if (paymentRequisites.comment) {
+                    message += `📝 Комментарий: ${paymentRequisites.comment}\n`;
                 }
                 message += `\n⚠️ **Важно:** Указывайте точную сумму при переводе!\n\n`;
             }
@@ -746,10 +881,10 @@ class BotHandlerService {
                 parse_mode: 'Markdown',
                 ...keyboard
             });
-            logger_js_1.logger.info(`Order created for store ${this.storeId}: ${order.id}`);
+            logger_js_1.logger.info(`Order created for store ${(0, sanitizer_js_1.sanitizeForLog)(this.storeId)}: ${order.id}`);
         }
         catch (error) {
-            logger_js_1.logger.error(`Error creating order for store ${this.storeId}:`, error);
+            logger_js_1.logger.error(`Error creating order for store ${(0, sanitizer_js_1.sanitizeForLog)(this.storeId)}:`, error);
             await bot.sendMessage(chatId, '❌ Ошибка при создании заказа. Попробуйте позже.');
         }
     }
@@ -790,7 +925,7 @@ class BotHandlerService {
             });
         }
         catch (error) {
-            logger_js_1.logger.error(`Error handling direct purchase for store ${this.storeId}:`, error);
+            logger_js_1.logger.error(`Error handling direct purchase for store ${(0, sanitizer_js_1.sanitizeForLog)(this.storeId)}:`, error);
             await bot.sendMessage(chatId, '❌ Ошибка при оформлении заказа');
         }
     }

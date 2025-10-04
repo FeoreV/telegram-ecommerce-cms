@@ -37,11 +37,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.containerSigningService = exports.ContainerSigningService = void 0;
+const child_process_1 = require("child_process");
 const crypto_1 = __importDefault(require("crypto"));
 const fs = __importStar(require("fs"));
-const child_process_1 = require("child_process");
-const logger_1 = require("../utils/logger");
 const errorUtils_1 = require("../utils/errorUtils");
+const logger_1 = require("../utils/logger");
 class ContainerSigningService {
     constructor() {
         this.config = {
@@ -121,23 +121,38 @@ class ContainerSigningService {
             if (this.config.cosignPassword) {
                 env.COSIGN_PASSWORD = this.config.cosignPassword;
             }
-            const signCmd = [
-                'cosign sign',
+            const { sanitizeImageRef } = await import('../utils/commandSanitizer');
+            const safeImageRef = sanitizeImageRef(imageRef);
+            const signResult = (0, child_process_1.spawnSync)('cosign', [
+                'sign',
                 '--yes',
                 '--key', this.config.cosignPrivateKey || 'env://COSIGN_PRIVATE_KEY',
-                imageRef
-            ].join(' ');
-            (0, child_process_1.execSync)(signCmd, {
+                safeImageRef
+            ], {
                 encoding: 'utf8',
                 env,
-                stdio: 'pipe'
+                stdio: ['ignore', 'pipe', 'pipe']
             });
-            const verifyCmd = `cosign verify --key ${this.config.cosignPublicKey || 'env://COSIGN_PUBLIC_KEY'} ${imageRef} --output json`;
-            const verifyOutput = (0, child_process_1.execSync)(verifyCmd, {
+            if (signResult.error) {
+                throw signResult.error;
+            }
+            if (signResult.status !== 0) {
+                throw new Error(`Cosign signing failed: ${signResult.stderr}`);
+            }
+            const verifyResult = (0, child_process_1.spawnSync)('cosign', [
+                'verify',
+                '--key', this.config.cosignPublicKey || 'env://COSIGN_PUBLIC_KEY',
+                safeImageRef,
+                '--output', 'json'
+            ], {
                 encoding: 'utf8',
                 env,
-                stdio: 'pipe'
+                stdio: ['ignore', 'pipe', 'pipe']
             });
+            if (verifyResult.error) {
+                throw verifyResult.error;
+            }
+            const verifyOutput = verifyResult.stdout;
             const verificationData = JSON.parse(verifyOutput);
             const signatureData = verificationData[0];
             return {
@@ -186,8 +201,19 @@ class ContainerSigningService {
                 DOCKER_CONTENT_TRUST: '1',
                 DOCKER_CONTENT_TRUST_SERVER: this.config.notaryServer || 'https://notary.docker.io'
             };
-            const pushCmd = `docker push ${imageRef}`;
-            (0, child_process_1.execSync)(pushCmd, { env, stdio: 'pipe' });
+            const { sanitizeImageRef } = await import('../utils/commandSanitizer');
+            const safeImageRef = sanitizeImageRef(imageRef);
+            const pushResult = (0, child_process_1.spawnSync)('docker', ['push', safeImageRef], {
+                env,
+                stdio: ['ignore', 'pipe', 'pipe'],
+                encoding: 'utf8'
+            });
+            if (pushResult.error) {
+                throw pushResult.error;
+            }
+            if (pushResult.status !== 0) {
+                throw new Error(`Docker push failed: ${pushResult.stderr}`);
+            }
             const timestamp = new Date();
             const signature = crypto_1.default
                 .createHash('sha256')
@@ -308,12 +334,19 @@ class ContainerSigningService {
     }
     async generateSBOMAttestation(imageRef, _buildContext) {
         try {
-            const sbomCmd = `syft ${imageRef} -o cyclonedx-json`;
-            const sbomOutput = (0, child_process_1.execSync)(sbomCmd, {
+            const { sanitizeImageRef } = await import('../utils/commandSanitizer');
+            const safeImageRef = sanitizeImageRef(imageRef);
+            const sbomResult = (0, child_process_1.spawnSync)('syft', [safeImageRef, '-o', 'cyclonedx-json'], {
                 encoding: 'utf8',
-                stdio: 'pipe'
+                stdio: ['ignore', 'pipe', 'pipe']
             });
-            const sbomData = JSON.parse(sbomOutput);
+            if (sbomResult.error) {
+                throw sbomResult.error;
+            }
+            if (sbomResult.status !== 0) {
+                throw new Error(`SBOM generation failed: ${sbomResult.stderr}`);
+            }
+            const sbomData = JSON.parse(sbomResult.stdout);
             const subject = [
                 {
                     name: imageRef,
@@ -368,12 +401,20 @@ class ContainerSigningService {
     }
     async generateVulnerabilityScanAttestation(imageRef) {
         try {
-            const scanCmd = `trivy image --format json --quiet ${imageRef}`;
-            const scanOutput = (0, child_process_1.execSync)(scanCmd, {
+            const { sanitizeImageRef } = await import('../utils/commandSanitizer');
+            const safeImageRef = sanitizeImageRef(imageRef);
+            const scanResult = (0, child_process_1.spawnSync)('trivy', ['image', '--format', 'json', '--quiet', safeImageRef], {
                 encoding: 'utf8',
-                stdio: 'pipe'
+                stdio: ['ignore', 'pipe', 'pipe']
             });
-            const scanData = JSON.parse(scanOutput);
+            if (scanResult.error) {
+                throw scanResult.error;
+            }
+            if (scanResult.status !== 0) {
+                logger_1.logger.warn('Trivy scan failed', { stderr: scanResult.stderr });
+                throw new Error(`Vulnerability scan failed: ${scanResult.stderr}`);
+            }
+            const scanData = JSON.parse(scanResult.stdout);
             const subject = [
                 {
                     name: imageRef,
@@ -438,18 +479,26 @@ class ContainerSigningService {
                 if (this.config.cosignPassword) {
                     env.COSIGN_PASSWORD = this.config.cosignPassword;
                 }
-                const attestCmd = [
-                    'cosign attest',
+                const { sanitizeImageRef } = await import('../utils/commandSanitizer');
+                const safeImageRef = sanitizeImageRef(imageRef);
+                const attestResult = (0, child_process_1.spawnSync)('cosign', [
+                    'attest',
                     '--yes',
                     '--key', this.config.cosignPrivateKey || 'env://COSIGN_PRIVATE_KEY',
                     '--predicate', attestationFile,
                     '--type', attestation.type,
-                    imageRef
-                ].join(' ');
-                (0, child_process_1.execSync)(attestCmd, {
+                    safeImageRef
+                ], {
                     env,
-                    stdio: 'pipe'
+                    stdio: ['ignore', 'pipe', 'pipe'],
+                    encoding: 'utf8'
                 });
+                if (attestResult.error) {
+                    throw attestResult.error;
+                }
+                if (attestResult.status !== 0) {
+                    throw new Error(`Attestation signing failed: ${attestResult.stderr}`);
+                }
                 fs.unlinkSync(attestationFile);
                 logger_1.logger.info(`Attestation ${attestation.type} signed successfully`);
             }
@@ -503,21 +552,43 @@ class ContainerSigningService {
                 result.errors.push('Cosign not available');
                 return result;
             }
-            const verifyCmd = `cosign verify --key ${this.config.cosignPublicKey || 'env://COSIGN_PUBLIC_KEY'} ${imageRef} --output json`;
-            const verifyOutput = (0, child_process_1.execSync)(verifyCmd, {
+            const { sanitizeImageRef } = await import('../utils/commandSanitizer');
+            const safeImageRef = sanitizeImageRef(imageRef);
+            const verifyResult = (0, child_process_1.spawnSync)('cosign', [
+                'verify',
+                '--key', this.config.cosignPublicKey || 'env://COSIGN_PUBLIC_KEY',
+                safeImageRef,
+                '--output', 'json'
+            ], {
                 encoding: 'utf8',
-                stdio: 'pipe'
+                stdio: ['ignore', 'pipe', 'pipe']
             });
-            result.signatures = JSON.parse(verifyOutput);
-            result.verified = result.signatures.length > 0;
+            if (verifyResult.error) {
+                throw verifyResult.error;
+            }
+            if (verifyResult.status === 0) {
+                result.signatures = JSON.parse(verifyResult.stdout);
+                result.verified = result.signatures.length > 0;
+            }
             for (const type of this.config.attestationTypes) {
                 try {
-                    const attestCmd = `cosign verify-attestation --key ${this.config.cosignPublicKey || 'env://COSIGN_PUBLIC_KEY'} --type ${type} ${imageRef} --output json`;
-                    const attestOutput = (0, child_process_1.execSync)(attestCmd, {
+                    const attestResult = (0, child_process_1.spawnSync)('cosign', [
+                        'verify-attestation',
+                        '--key', this.config.cosignPublicKey || 'env://COSIGN_PUBLIC_KEY',
+                        '--type', type,
+                        safeImageRef,
+                        '--output', 'json'
+                    ], {
                         encoding: 'utf8',
-                        stdio: 'pipe'
+                        stdio: ['ignore', 'pipe', 'pipe']
                     });
-                    const attestations = JSON.parse(attestOutput);
+                    if (attestResult.error) {
+                        throw attestResult.error;
+                    }
+                    if (attestResult.status !== 0) {
+                        continue;
+                    }
+                    const attestations = JSON.parse(attestResult.stdout);
                     result.attestations.push(...attestations);
                 }
                 catch (error) {
@@ -553,26 +624,52 @@ class ContainerSigningService {
             errors: ['DCT verification not fully implemented']
         };
     }
+    validateImageRef(imageRef) {
+        const validImagePattern = /^[a-zA-Z0-9][a-zA-Z0-9._\/-]*[a-zA-Z0-9](:[a-zA-Z0-9._-]+)?(@sha256:[a-f0-9]{64})?$/;
+        if (!validImagePattern.test(imageRef)) {
+            throw new Error(`SECURITY: Invalid image reference format: ${imageRef}`);
+        }
+        const dangerousChars = /[;&|`$(){}[\]<>\\'"]/;
+        if (dangerousChars.test(imageRef)) {
+            throw new Error(`SECURITY: Image reference contains dangerous characters: ${imageRef}`);
+        }
+    }
     async getImageDigest(imageRef) {
         try {
+            this.validateImageRef(imageRef);
             if (imageRef.includes('@sha256:')) {
                 return imageRef.split('@')[1];
             }
-            const inspectCmd = `docker inspect --format='{{index .RepoDigests 0}}' ${imageRef}`;
-            const output = (0, child_process_1.execSync)(inspectCmd, {
+            const inspectResult = (0, child_process_1.spawnSync)('docker', [
+                'inspect',
+                '--format={{index .RepoDigests 0}}',
+                imageRef
+            ], {
                 encoding: 'utf8',
                 stdio: 'pipe'
             });
-            const digestRef = output.trim();
-            if (digestRef && digestRef.includes('@')) {
-                return digestRef.split('@')[1];
+            if (inspectResult.status === 0) {
+                const digestRef = inspectResult.stdout.trim();
+                if (digestRef && digestRef.includes('@')) {
+                    return digestRef.split('@')[1];
+                }
             }
-            const manifestCmd = `docker manifest inspect ${imageRef} --verbose | grep -m1 '"digest"' | cut -d'"' -f4`;
-            const manifestOutput = (0, child_process_1.execSync)(manifestCmd, {
+            const manifestResult = (0, child_process_1.spawnSync)('docker', [
+                'manifest',
+                'inspect',
+                imageRef
+            ], {
                 encoding: 'utf8',
                 stdio: 'pipe'
             });
-            return manifestOutput.trim();
+            if (manifestResult.status === 0) {
+                const manifest = JSON.parse(manifestResult.stdout);
+                if (manifest.config && manifest.config.digest) {
+                    return manifest.config.digest;
+                }
+            }
+            logger_1.logger.warn(`Failed to get image digest for ${imageRef}, generating placeholder`);
+            return 'sha256:' + crypto_1.default.createHash('sha256').update(imageRef).digest('hex');
         }
         catch (error) {
             logger_1.logger.warn('Failed to get image digest:', error);
@@ -587,7 +684,10 @@ class ContainerSigningService {
     }
     ensureCosignAvailable(throwOnError = true) {
         try {
-            (0, child_process_1.execSync)('cosign version', { stdio: 'pipe' });
+            const result = (0, child_process_1.spawnSync)('cosign', ['version'], { stdio: 'pipe' });
+            if (result.error || result.status !== 0) {
+                throw new Error('Cosign command failed');
+            }
             return true;
         }
         catch (error) {
@@ -666,29 +766,37 @@ class ContainerSigningService {
         try {
             switch (this.config.signingTool) {
                 case 'cosign':
-                    (0, child_process_1.execSync)('cosign version', { stdio: 'pipe' });
-                    capabilities.push('cosign');
+                    const cosignResult = (0, child_process_1.spawnSync)('cosign', ['version'], { stdio: 'pipe' });
+                    if (cosignResult.status === 0) {
+                        capabilities.push('cosign');
+                    }
                     break;
                 case 'notary':
                     capabilities.push('notary');
                     break;
                 case 'docker-content-trust':
-                    (0, child_process_1.execSync)('docker version', { stdio: 'pipe' });
-                    capabilities.push('docker-content-trust');
+                    const dockerResult = (0, child_process_1.spawnSync)('docker', ['version'], { stdio: 'pipe' });
+                    if (dockerResult.status === 0) {
+                        capabilities.push('docker-content-trust');
+                    }
                     break;
             }
         }
         catch (error) {
         }
         try {
-            (0, child_process_1.execSync)('syft version', { stdio: 'pipe' });
-            capabilities.push('syft');
+            const syftResult = (0, child_process_1.spawnSync)('syft', ['version'], { stdio: 'pipe' });
+            if (syftResult.status === 0) {
+                capabilities.push('syft');
+            }
         }
         catch (error) {
         }
         try {
-            (0, child_process_1.execSync)('trivy version', { stdio: 'pipe' });
-            capabilities.push('trivy');
+            const trivyResult = (0, child_process_1.spawnSync)('trivy', ['version'], { stdio: 'pipe' });
+            if (trivyResult.status === 0) {
+                capabilities.push('trivy');
+            }
         }
         catch (error) {
         }

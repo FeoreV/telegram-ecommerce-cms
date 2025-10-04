@@ -28,6 +28,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  CircularProgress,
 } from '@mui/material';
 import {
   CheckCircle,
@@ -44,6 +45,9 @@ import {
   Close,
 } from '@mui/icons-material';
 import { green, red, orange, blue } from '@mui/material/colors';
+import { orderService } from '../../services/orderService';
+import { storeService } from '../../services/storeService';
+import { toast } from 'react-toastify';
 
 interface Order {
   id: string;
@@ -112,67 +116,40 @@ export default function PaymentVerification({ onOrderUpdate }: PaymentVerificati
     search: '',
     storeId: '',
   });
+  const [stores, setStores] = useState<any[]>([]);
 
-  // Mock data for development
+  // Load orders from API
   useEffect(() => {
-    const mockOrders: Order[] = [
-      {
-        id: '1',
-        orderNumber: 'ORD-001',
-        customer: {
-          firstName: 'Иван',
-          lastName: 'Петров',
-          username: 'ivan_petrov',
-          telegramId: '123456789',
-        },
-        store: {
-          name: 'Электроника Store',
-          id: 'store1',
-        },
-        totalAmount: 29999,
-        currency: 'RUB',
-        status: 'PENDING_ADMIN',
-        paymentProof: '/api/uploads/payment-proofs/receipt-123.jpg',
-        createdAt: '2025-01-15T10:30:00Z',
-        items: [
-          {
-            product: { name: 'iPhone 15 Pro', images: '/api/uploads/products/iphone15.jpg' },
-            quantity: 1,
-            price: 29999,
-          },
-        ],
-      },
-      {
-        id: '2',
-        orderNumber: 'ORD-002',
-        customer: {
-          firstName: 'Мария',
-          lastName: 'Сидорова',
-          username: 'maria_s',
-          telegramId: '987654321',
-        },
-        store: {
-          name: 'Одежда Fashion',
-          id: 'store2',
-        },
-        totalAmount: 5999,
-        currency: 'RUB',
-        status: 'PENDING_ADMIN',
-        paymentProof: '/api/uploads/payment-proofs/receipt-456.jpg',
-        createdAt: '2025-01-15T11:45:00Z',
-        items: [
-          {
-            product: { name: 'Зимняя куртка', images: '/api/uploads/products/jacket.jpg' },
-            quantity: 1,
-            price: 5999,
-          },
-        ],
-      },
-    ];
+    loadOrders();
+    loadStores();
+  }, [filters]);
 
-    setOrders(mockOrders);
-    setLoading(false);
-  }, []);
+  const loadOrders = async () => {
+    setLoading(true);
+    try {
+      const response = await orderService.getOrders({
+        status: filters.status as any,
+        search: filters.search,
+        storeId: filters.storeId || undefined,
+        limit: 100,
+      });
+      setOrders(response.items || []);
+    } catch (error: any) {
+      console.error('Error loading orders:', error);
+      toast.error('Ошибка при загрузке заказов');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadStores = async () => {
+    try {
+      const response = await storeService.getStores({ limit: 100 });
+      setStores(response.items || []);
+    } catch (error) {
+      console.error('Error loading stores:', error);
+    }
+  };
 
   const filteredOrders = orders.filter((order) => {
     const matchesStatus = !filters.status || order.status === filters.status;
@@ -199,26 +176,35 @@ export default function PaymentVerification({ onOrderUpdate }: PaymentVerificati
     setRejectReason('');
   };
 
-  const handleConfirmAction = () => {
+  const handleConfirmAction = async () => {
     const { action, orderId } = actionDialog;
     
     if (action === 'reject' && !rejectReason.trim()) {
       return;
     }
 
-    // Update order status locally
-    setOrders(prev => prev.map(order => 
-      order.id === orderId 
-        ? { ...order, status: action === 'approve' ? 'PAID' : 'REJECTED' }
-        : order
-    ));
+    try {
+      if (action === 'approve') {
+        await orderService.confirmPayment(orderId);
+        toast.success('Оплата подтверждена');
+      } else {
+        await orderService.rejectOrder(orderId, { reason: rejectReason });
+        toast.success('Заказ отклонен');
+      }
 
-    // Call parent callback
-    onOrderUpdate?.(orderId, action, action === 'reject' ? rejectReason : undefined);
+      // Reload orders after action
+      await loadOrders();
 
-    setActionDialog({ open: false, action: 'approve', orderId: '' });
-    setRejectReason('');
-    setDialogOpen(false);
+      // Call parent callback
+      onOrderUpdate?.(orderId, action, action === 'reject' ? rejectReason : undefined);
+    } catch (error: any) {
+      console.error('Error processing order:', error);
+      toast.error(error.response?.data?.error || 'Ошибка при обработке заказа');
+    } finally {
+      setActionDialog({ open: false, action: 'approve', orderId: '' });
+      setRejectReason('');
+      setDialogOpen(false);
+    }
   };
 
   const getCustomerName = (customer: Order['customer']) => {
@@ -293,8 +279,11 @@ export default function PaymentVerification({ onOrderUpdate }: PaymentVerificati
               label="Магазин"
             >
               <MenuItem value="">Все магазины</MenuItem>
-              <MenuItem value="store1">Электроника Store</MenuItem>
-              <MenuItem value="store2">Одежда Fashion</MenuItem>
+              {stores.map((store) => (
+                <MenuItem key={store.id} value={store.id}>
+                  {store.name}
+                </MenuItem>
+              ))}
             </Select>
           </FormControl>
 
@@ -304,9 +293,17 @@ export default function PaymentVerification({ onOrderUpdate }: PaymentVerificati
         </Stack>
       </Box>
 
+      {/* Loading State */}
+      {loading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+          <CircularProgress />
+        </Box>
+      )}
+
       {/* Orders Grid */}
-      <Grid container spacing={3}>
-        {filteredOrders.map((order) => (
+      {!loading && (
+        <Grid container spacing={3}>
+          {filteredOrders.map((order) => (
           <Grid item xs={12} md={6} lg={4} key={order.id}>
             <Card 
               sx={{ 
@@ -423,10 +420,11 @@ export default function PaymentVerification({ onOrderUpdate }: PaymentVerificati
               </Box>
             </Card>
           </Grid>
-        ))}
-      </Grid>
+          ))}
+        </Grid>
+      )}
 
-      {filteredOrders.length === 0 && (
+      {!loading && filteredOrders.length === 0 && (
         <Box sx={{ textAlign: 'center', py: 8 }}>
           <Typography variant="h6" color="text.secondary">
             Заказы не найдены

@@ -2,13 +2,13 @@ import TelegramBot from 'node-telegram-bot-api';
 import { apiService } from '../services/apiService';
 import { cmsService } from '../services/cmsService';
 import { ttlCache } from '../utils/cache';
-import { userSessions } from '../utils/sessionManager';
 import { logger } from '../utils/logger';
-import { ApiPagination } from '../types/apiResponses';
+import { sanitizeForLog } from '../utils/sanitizer';
+import { userSessions } from '../utils/sessionManager';
 
 export async function handleStores(
-  bot: TelegramBot, 
-  msg: TelegramBot.Message, 
+  bot: TelegramBot,
+  msg: TelegramBot.Message,
   callbackQuery?: TelegramBot.CallbackQuery
 ) {
   const chatId = msg.chat.id;
@@ -18,7 +18,7 @@ export async function handleStores(
   if (!userId) return;
 
   const session = userSessions.getSession(userId);
-  
+
   // Debug: log session info
   logger.debug(`Store handler - session check:`, {
     telegramId: session.telegramId,
@@ -26,7 +26,7 @@ export async function handleStores(
     hasToken: !!session.token,
     role: session.role
   });
-  
+
   try {
     if (callbackQuery?.data === 'store_list') {
       await showStoreList(bot, chatId, session);
@@ -70,7 +70,7 @@ async function showStoreList(bot: TelegramBot, chatId: number, session: any) {
       role: session.role,
       sessionKeys: Object.keys(session)
     });
-    
+
     if (!session.token) {
       logger.warn(`No token found for user ${session.telegramId}`);
       await bot.editMessageText(
@@ -79,7 +79,7 @@ async function showStoreList(bot: TelegramBot, chatId: number, session: any) {
       );
       return;
     }
-    
+
     const storesResponse = await apiService.getStores(session.token, 1, 10);
     const stores = storesResponse.stores ?? storesResponse.items ?? [];
 
@@ -96,20 +96,20 @@ async function showStoreList(bot: TelegramBot, chatId: number, session: any) {
 
     stores.forEach((store: any, index: number) => {
       const storeEmoji = index === 0 ? '🛍️' : index === 1 ? '🎁' : index === 2 ? '🛒' : '🏪';
-      
+
       text += `${storeEmoji} *${store.name}*\n`;
       if (store.description) {
-        const shortDesc = store.description.length > 100 
-          ? store.description.substring(0, 100) + '...' 
+        const shortDesc = store.description.length > 100
+          ? store.description.substring(0, 100) + '...'
           : store.description;
         text += `📄 ${shortDesc}\n`;
       }
       text += `📦 Товаров: ${store._count.products} • 💰 ${store.currency}\n\n`;
 
       keyboard.inline_keyboard.push([
-        { 
-          text: `${storeEmoji} ${store.name}`, 
-          callback_data: `store_select_${store.id}` 
+        {
+          text: `${storeEmoji} ${store.name}`,
+          callback_data: `store_select_${store.id}`
         }
       ]);
     });
@@ -153,7 +153,7 @@ async function showStore(bot: TelegramBot, chatId: number, session: any, storeId
       );
       return;
     }
-    
+
     const storeResponse = await apiService.getStore(storeId, session.token);
     const store = storeResponse.store;
 
@@ -161,7 +161,7 @@ async function showStore(bot: TelegramBot, chatId: number, session: any, storeId
     userSessions.updateSession(session.telegramId, { currentStore: storeId });
 
     let text = `🏪 *${store.name}*\n\n`;
-    
+
     if (store.description) {
       text += `📄 ${store.description}\n\n`;
     }
@@ -190,9 +190,9 @@ async function showStore(bot: TelegramBot, chatId: number, session: any, storeId
     const keyboard = {
       inline_keyboard: [
         [
-          { 
-            text: '🛍️ Посмотреть товары', 
-            callback_data: `store_products_${storeId}` 
+          {
+            text: '🛍️ Посмотреть товары',
+            callback_data: `store_products_${storeId}`
           }
         ],
         [
@@ -229,7 +229,7 @@ async function showStoreProducts(bot: TelegramBot, chatId: number, session: any,
       );
       return;
     }
-    
+
     const [storeResponse, productsResponse] = await Promise.all([
       apiService.getStore(storeId, session.token),
       // If CMS is configured, prefer CMS product listing; fallback to backend
@@ -299,22 +299,22 @@ async function showStoreProducts(bot: TelegramBot, chatId: number, session: any,
     products.forEach((product: any, index: number) => {
       const priceEmoji = product.price > 1000 ? '💎' : '💰';
       const stockStatus = product.stock > 10 ? '✅' : product.stock > 0 ? '⚠️' : '❌';
-      
+
       text += `${index + 1}. *${product.name}*\n`;
       text += `${priceEmoji} ${product.price} ${store.currency} • ${stockStatus} ${product.stock} шт.\n`;
-      
+
       if (product.description) {
-        const shortDesc = product.description.length > 80 
-          ? product.description.substring(0, 80) + '...' 
+        const shortDesc = product.description.length > 80
+          ? product.description.substring(0, 80) + '...'
           : product.description;
         text += `📝 ${shortDesc}\n`;
       }
       text += `\n`;
 
       keyboard.inline_keyboard.push([
-        { 
-          text: `🛒 ${product.name}`, 
-          callback_data: isCMS ? `cms_product_view_${product.id}` : `product_view_${product.id}` 
+        {
+          text: `🛒 ${product.name}`,
+          callback_data: isCMS ? `cms_product_view_${product.id}` : `product_view_${product.id}`
         }
       ]);
     });
@@ -373,7 +373,7 @@ async function showCreateStoreForm(bot: TelegramBot, chatId: number, session: an
   const text = `
 🏪 *Создание нового магазина*
 
-Создайте свой магазин прямо в Telegram! 
+Создайте свой магазин прямо в Telegram!
 
 *Что вам потребуется:*
 • Название магазина
@@ -445,7 +445,7 @@ async function startStoreCreation(bot: TelegramBot, chatId: number, session: any
 }
 
 export async function handleStoreCreationMessage(
-  bot: TelegramBot, 
+  bot: TelegramBot,
   msg: TelegramBot.Message
 ) {
   const chatId = msg.chat.id;
@@ -455,7 +455,7 @@ export async function handleStoreCreationMessage(
   if (!userId || !text) return;
 
   const session = userSessions.getSession(userId);
-  
+
   if (!session.storeCreation) return;
 
   try {
@@ -577,7 +577,7 @@ async function handleStoreDescriptionInput(bot: TelegramBot, chatId: number, ses
 
 async function handleStoreSlugInput(bot: TelegramBot, chatId: number, session: any, slug: string) {
   const slugRegex = /^[a-z0-9-]+$/;
-  
+
   if (!slugRegex.test(slug) || slug.length < 3 || slug.length > 30) {
     await bot.sendMessage(chatId, '❌ Некорректный формат. Используйте только латинские буквы, цифры и дефисы (3-30 символов):');
     return;
@@ -633,7 +633,7 @@ async function handleStoreSlugInput(bot: TelegramBot, chatId: number, session: a
 
 async function handleStoreCurrencyInput(bot: TelegramBot, chatId: number, session: any, currency: string) {
   const validCurrencies = ['USD', 'EUR', 'RUB', 'UAH'];
-  
+
   if (!validCurrencies.includes(currency)) {
     await bot.sendMessage(chatId, '❌ Выберите валюту из предложенных вариантов.');
     return;
@@ -678,7 +678,7 @@ Email: info@mystore.com
 
 async function handleStoreContactInput(bot: TelegramBot, chatId: number, session: any, contact: string) {
   let contactInfo = null;
-  
+
   if (contact.toLowerCase() !== 'пропустить') {
     contactInfo = { description: contact };
   }
@@ -696,7 +696,7 @@ async function handleStoreContactInput(bot: TelegramBot, chatId: number, session
 
 async function createStoreFromSession(bot: TelegramBot, chatId: number, session: any) {
   const storeData = session.storeCreation.data;
-  
+
   const loadingMsg = await bot.sendMessage(chatId, '🔄 Создаю магазин...');
 
   try {
@@ -744,11 +744,11 @@ async function createStoreFromSession(bot: TelegramBot, chatId: number, session:
       }
     });
 
-    logger.info(`Store created via Telegram: ${store.id} by user ${session.userId}`);
+    logger.info(`Store created via Telegram: ${store.id} by user ${sanitizeForLog(session.userId)}`);
 
   } catch (error) {
     logger.error('Store creation API error:', error);
-    
+
     await bot.editMessageText(
       '❌ Ошибка при создании магазина. Проверьте данные и попробуйте еще раз.',
       { chat_id: chatId, message_id: loadingMsg.message_id }

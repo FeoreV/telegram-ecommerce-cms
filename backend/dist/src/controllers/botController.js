@@ -1,13 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getBotSettings = exports.getGlobalWebhookStats = exports.getWebhookStatus = exports.disableWebhook = exports.enableWebhook = exports.restartBot = exports.getGlobalBotStats = exports.getBotStats = exports.updateBotSettings = exports.removeBot = exports.createBot = exports.getUserBots = void 0;
+const zod_1 = require("zod");
+const prisma_js_1 = require("../lib/prisma.js");
 const botFactoryService_js_1 = require("../services/botFactoryService.js");
 const webhookManagerService_js_1 = require("../services/webhookManagerService.js");
-const prisma_js_1 = require("../lib/prisma.js");
-const logger_js_1 = require("../utils/logger.js");
 const asyncHandler_js_1 = require("../utils/asyncHandler.js");
+const logger_js_1 = require("../utils/logger.js");
+const sanitizer_1 = require("../utils/sanitizer");
 const validation_js_1 = require("../utils/validation.js");
-const zod_1 = require("zod");
 const createBotSchema = zod_1.z.object({
     storeId: zod_1.z.string().min(1, 'Store ID is required'),
     botToken: zod_1.z.string().min(1, 'Bot token is required').regex(/^\d+:[A-Za-z0-9_-]+$/, 'Invalid bot token format'),
@@ -19,8 +20,85 @@ const updateBotSettingsSchema = zod_1.z.object({
         language: zod_1.z.enum(['ru', 'en', 'uk']).optional(),
         timezone: zod_1.z.string().optional(),
         auto_responses: zod_1.z.boolean().optional(),
-        payment_methods: zod_1.z.array(zod_1.z.string()).optional()
-    })
+        payment_methods: zod_1.z.array(zod_1.z.string()).optional(),
+        welcomeMessage: zod_1.z.string().optional(),
+        currency: zod_1.z.string().optional(),
+        startCustomization: zod_1.z.object({
+            emoji: zod_1.z.string().optional(),
+            greeting: zod_1.z.string().optional(),
+            welcomeText: zod_1.z.string().optional(),
+            showStats: zod_1.z.boolean().optional(),
+            showDescription: zod_1.z.boolean().optional(),
+            additionalText: zod_1.z.string().optional(),
+            headerImage: zod_1.z.string().optional(),
+            catalogButton: zod_1.z.object({ text: zod_1.z.string(), emoji: zod_1.z.string().optional() }).optional(),
+            profileButton: zod_1.z.object({ text: zod_1.z.string(), emoji: zod_1.z.string().optional() }).optional(),
+            helpButton: zod_1.z.object({ text: zod_1.z.string(), emoji: zod_1.z.string().optional() }).optional(),
+            extraButtons: zod_1.z.array(zod_1.z.object({
+                text: zod_1.z.string(),
+                url: zod_1.z.string().optional(),
+                callback_data: zod_1.z.string().optional()
+            })).optional()
+        }).optional(),
+        menuCustomization: zod_1.z.object({
+            catalogText: zod_1.z.string().optional(),
+            ordersText: zod_1.z.string().optional(),
+            profileText: zod_1.z.string().optional(),
+            helpText: zod_1.z.string().optional()
+        }).optional(),
+        autoResponses: zod_1.z.object({
+            responses: zod_1.z.array(zod_1.z.object({
+                trigger: zod_1.z.string(),
+                response: zod_1.z.string(),
+                enabled: zod_1.z.boolean().optional()
+            })).optional()
+        }).optional(),
+        faqs: zod_1.z.array(zod_1.z.object({
+            question: zod_1.z.string(),
+            answer: zod_1.z.string()
+        })).optional(),
+        customCommands: zod_1.z.array(zod_1.z.object({
+            command: zod_1.z.string(),
+            description: zod_1.z.string().optional(),
+            response: zod_1.z.string(),
+            enabled: zod_1.z.boolean().optional()
+        })).optional(),
+        paymentSettings: zod_1.z.object({
+            enabled: zod_1.z.boolean().optional(),
+            instructions: zod_1.z.string().optional(),
+            bankDetails: zod_1.z.object({
+                accountName: zod_1.z.string().optional(),
+                accountNumber: zod_1.z.string().optional(),
+                bankName: zod_1.z.string().optional(),
+                notes: zod_1.z.string().optional()
+            }).optional()
+        }).optional(),
+        notificationSettings: zod_1.z.object({
+            newOrderAlert: zod_1.z.boolean().optional(),
+            paymentConfirmation: zod_1.z.boolean().optional(),
+            orderStatusUpdate: zod_1.z.boolean().optional()
+        }).optional(),
+        appearance: zod_1.z.object({
+            theme: zod_1.z.string().optional(),
+            primaryColor: zod_1.z.string().optional(),
+            useEmojis: zod_1.z.boolean().optional()
+        }).optional(),
+        catalog: zod_1.z.object({
+            itemsPerPage: zod_1.z.number().optional(),
+            showImages: zod_1.z.boolean().optional(),
+            sortBy: zod_1.z.string().optional()
+        }).optional(),
+        notifications: zod_1.z.object({
+            orderCreated: zod_1.z.boolean().optional(),
+            orderPaid: zod_1.z.boolean().optional(),
+            stockLow: zod_1.z.boolean().optional()
+        }).optional(),
+        advanced: zod_1.z.object({
+            enableAnalytics: zod_1.z.boolean().optional(),
+            sessionTimeout: zod_1.z.number().optional(),
+            debugMode: zod_1.z.boolean().optional()
+        }).optional()
+    }).passthrough()
 });
 exports.getUserBots = (0, asyncHandler_js_1.asyncHandler)(async (req, res) => {
     const userId = req.user.id;
@@ -44,7 +122,13 @@ exports.getUserBots = (0, asyncHandler_js_1.asyncHandler)(async (req, res) => {
         });
     }
     const stores = await prisma_js_1.prisma.store.findMany({
-        where: storeQuery,
+        where: {
+            ...storeQuery,
+            OR: [
+                { botToken: { not: null } },
+                { botUsername: { not: null } }
+            ]
+        },
         select: {
             id: true,
             name: true,
@@ -130,7 +214,7 @@ exports.createBot = (0, asyncHandler_js_1.asyncHandler)(async (req, res) => {
             botCreatedAt: true
         }
     });
-    logger_js_1.logger.info(`✅ Bot created for store ${store.name} by user ${req.user.id}`);
+    logger_js_1.logger.info(`✅ Bot created for store ${(0, sanitizer_1.sanitizeForLog)(store.name)} by user ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
     res.status(201).json({
         success: true,
         message: `Бот @${updatedStore?.botUsername} успешно создан`,
@@ -153,6 +237,7 @@ exports.removeBot = (0, asyncHandler_js_1.asyncHandler)(async (req, res) => {
             id: true,
             name: true,
             botUsername: true,
+            botToken: true,
             botStatus: true
         }
     });
@@ -162,10 +247,10 @@ exports.removeBot = (0, asyncHandler_js_1.asyncHandler)(async (req, res) => {
             message: 'Магазин не найден'
         });
     }
-    if (!store.botUsername) {
+    if (!store.botUsername && !store.botToken) {
         return res.status(400).json({
             success: false,
-            message: 'У этого магазина нет бота'
+            message: 'У этого магазина нет данных бота для удаления'
         });
     }
     const result = await botFactoryService_js_1.botFactoryService.removeBot(storeId);
@@ -175,10 +260,11 @@ exports.removeBot = (0, asyncHandler_js_1.asyncHandler)(async (req, res) => {
             message: result.error
         });
     }
-    logger_js_1.logger.info(`🗑️ Bot @${store.botUsername} removed from store ${store.name} by user ${req.user.id}`);
+    const botIdentifier = store.botUsername ? `@${store.botUsername}` : 'Бот';
+    logger_js_1.logger.info(`🗑️ ${(0, sanitizer_1.sanitizeForLog)(botIdentifier)} removed from store ${(0, sanitizer_1.sanitizeForLog)(store.name)} by user ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
     res.json({
         success: true,
-        message: `Бот @${store.botUsername} успешно удален`
+        message: `${botIdentifier} успешно удален из магазина ${store.name}`
     });
 });
 exports.updateBotSettings = (0, asyncHandler_js_1.asyncHandler)(async (req, res) => {
@@ -215,10 +301,22 @@ exports.updateBotSettings = (0, asyncHandler_js_1.asyncHandler)(async (req, res)
             updatedAt: new Date()
         }
     });
-    logger_js_1.logger.info(`⚙️ Bot settings updated for store ${store.name} by user ${req.user.id}`);
+    logger_js_1.logger.info(`⚙️ Bot settings updated for store ${(0, sanitizer_1.sanitizeForLog)(store.name)} by user ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
+    try {
+        const reloadResult = await botFactoryService_js_1.botFactoryService.reloadBotSettings(storeId);
+        if (reloadResult.success) {
+            logger_js_1.logger.info(`🔄 Bot settings reloaded for store ${(0, sanitizer_1.sanitizeForLog)(storeId)}`);
+        }
+        else {
+            logger_js_1.logger.warn(`⚠️ Could not reload bot settings: ${reloadResult.error}`);
+        }
+    }
+    catch (error) {
+        logger_js_1.logger.error('Error reloading bot settings:', error);
+    }
     res.json({
         success: true,
-        message: 'Настройки бота обновлены',
+        message: 'Настройки бота обновлены и применены',
         settings: newSettings
     });
 });
@@ -478,7 +576,7 @@ exports.getWebhookStatus = (0, asyncHandler_js_1.asyncHandler)(async (req, res) 
             }
         });
     }
-    catch (error) {
+    catch {
         res.json({
             success: true,
             webhook: {
@@ -515,7 +613,7 @@ exports.getGlobalWebhookStats = (0, asyncHandler_js_1.asyncHandler)(async (req, 
             }
         });
     }
-    catch (error) {
+    catch {
         const dbStats = await prisma_js_1.prisma.store.count({
             where: {
                 botWebhookUrl: { not: null },

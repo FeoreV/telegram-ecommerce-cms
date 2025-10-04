@@ -37,11 +37,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sbomService = exports.SBOMService = void 0;
+const child_process_1 = require("child_process");
+const crypto_1 = __importDefault(require("crypto"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
-const crypto_1 = __importDefault(require("crypto"));
-const child_process_1 = require("child_process");
 const logger_1 = require("../utils/logger");
+const securityKeys_1 = require("../config/securityKeys");
 class SBOMService {
     constructor() {
         this.vulnerabilityDatabases = new Map();
@@ -162,14 +163,25 @@ class SBOMService {
     async analyzeNPMDependencies(projectPath, includeDevDependencies) {
         const components = [];
         try {
-            const npmListCmd = includeDevDependencies
-                ? 'npm list --json --all'
-                : 'npm list --json --prod --all';
-            const npmOutput = (0, child_process_1.execSync)(npmListCmd, {
-                cwd: projectPath,
+            const { sanitizeFilePath } = await import('../utils/commandSanitizer');
+            const safePath = sanitizeFilePath(projectPath);
+            const npmArgs = includeDevDependencies
+                ? ['list', '--json', '--all']
+                : ['list', '--json', '--prod', '--all'];
+            const { prepareSafeCommand } = await import('../utils/commandSanitizer');
+            const { command, args } = prepareSafeCommand('npm', npmArgs);
+            const npmResult = (0, child_process_1.spawnSync)(command, args, {
+                cwd: safePath,
                 encoding: 'utf8',
-                stdio: 'pipe'
+                stdio: ['ignore', 'pipe', 'pipe']
             });
+            if (npmResult.error) {
+                throw npmResult.error;
+            }
+            if (npmResult.status !== 0) {
+                throw new Error(`NPM command failed: ${npmResult.stderr}`);
+            }
+            const npmOutput = npmResult.stdout;
             const dependencyTree = JSON.parse(npmOutput);
             await this.processNPMDependencies(dependencyTree.dependencies || {}, components);
             logger_1.logger.info('NPM dependencies analyzed', {
@@ -201,15 +213,21 @@ class SBOMService {
         const purl = `pkg:npm/${name}@${info.version}`;
         let packageInfo = {};
         try {
-            const packageInfoCmd = `npm view ${name}@${info.version} --json`;
-            const packageOutput = (0, child_process_1.execSync)(packageInfoCmd, {
+            const { sanitizePackageName, sanitizeVersion } = await import('../utils/commandSanitizer');
+            const safeName = sanitizePackageName(name);
+            const safeVersion = sanitizeVersion(info.version);
+            const { prepareSafeCommand } = await import('../utils/commandSanitizer');
+            const { command, args } = prepareSafeCommand('npm', ['view', `${safeName}@${safeVersion}`, '--json']);
+            const packageResult = (0, child_process_1.spawnSync)(command, args, {
                 encoding: 'utf8',
-                stdio: 'pipe'
+                stdio: ['ignore', 'pipe', 'pipe']
             });
-            packageInfo = JSON.parse(packageOutput);
+            if (packageResult.status === 0 && packageResult.stdout) {
+                packageInfo = JSON.parse(packageResult.stdout);
+            }
         }
         catch (error) {
-            logger_1.logger.warn(`Failed to get package info for ${name}@${info.version}`);
+            logger_1.logger.warn(`Failed to get package info for ${name}@${info.version}`, error);
         }
         const hash = crypto_1.default.createHash('sha256')
             .update(`${name}@${info.version}`)
@@ -290,15 +308,18 @@ class SBOMService {
             ];
             for (const manager of managers) {
                 try {
-                    const output = (0, child_process_1.execSync)(manager.cmd, {
+                    const [command, ...args] = manager.cmd.split(' ');
+                    const result = (0, child_process_1.spawnSync)(command, args, {
                         encoding: 'utf8',
-                        stdio: 'pipe'
+                        stdio: ['ignore', 'pipe', 'pipe']
                     });
-                    const packages = manager.parser(output);
-                    components.push(...packages);
-                    break;
+                    if (result.status === 0 && result.stdout) {
+                        const packages = manager.parser(result.stdout);
+                        components.push(...packages);
+                        break;
+                    }
                 }
-                catch (error) {
+                catch (_error) {
                     continue;
                 }
             }
@@ -585,12 +606,14 @@ class SBOMService {
     async checkNPMVulnerabilities(component) {
         const vulnerabilities = [];
         try {
-            const auditCmd = `npm audit --json --package-lock-only`;
-            const auditOutput = (0, child_process_1.execSync)(auditCmd, {
+            const auditResult = (0, child_process_1.spawnSync)('npm', ['audit', '--json', '--package-lock-only'], {
                 encoding: 'utf8',
-                stdio: 'pipe'
+                stdio: ['ignore', 'pipe', 'pipe']
             });
-            const auditData = JSON.parse(auditOutput);
+            if (auditResult.status !== 0 && !auditResult.stdout) {
+                return vulnerabilities;
+            }
+            const auditData = JSON.parse(auditResult.stdout);
             if (auditData.vulnerabilities && auditData.vulnerabilities[component.name]) {
                 const vulnData = auditData.vulnerabilities[component.name];
                 for (const advisory of vulnData.via || []) {
@@ -611,7 +634,7 @@ class SBOMService {
             }
         }
         catch (error) {
-            logger_1.logger.debug(`No NPM vulnerabilities found for ${component.name}`);
+            logger_1.logger.debug(`No NPM vulnerabilities found for ${component.name}`, error);
         }
         return vulnerabilities;
     }
@@ -630,13 +653,24 @@ class SBOMService {
     async checkDockerVulnerabilities(component) {
         const vulnerabilities = [];
         try {
+            const { sanitizeImageRef } = await import('../utils/commandSanitizer');
             const image = `${component.name}:${component.version}`;
-            const trivyCmd = `trivy image --format json --quiet ${image}`;
-            const trivyOutput = (0, child_process_1.execSync)(trivyCmd, {
+            const safeImage = sanitizeImageRef(image);
+            const result = (0, child_process_1.spawnSync)('trivy', ['image', '--format', 'json', '--quiet', safeImage], {
                 encoding: 'utf8',
-                stdio: 'pipe'
+                stdio: ['ignore', 'pipe', 'pipe']
             });
-            const trivyData = JSON.parse(trivyOutput);
+            if (result.error) {
+                throw result.error;
+            }
+            if (result.status !== 0) {
+                logger_1.logger.warn('Trivy scan failed', {
+                    status: result.status,
+                    stderr: result.stderr
+                });
+                return vulnerabilities;
+            }
+            const trivyData = JSON.parse(result.stdout);
             for (const result of trivyData.Results || []) {
                 for (const vuln of result.Vulnerabilities || []) {
                     vulnerabilities.push({
@@ -662,9 +696,10 @@ class SBOMService {
         try {
             const sbomString = JSON.stringify(sbom, null, 2);
             const hash = crypto_1.default.createHash('sha256').update(sbomString).digest('hex');
+            const keyId = (0, securityKeys_1.getSecurityKeyId)('sbomSigningKeyId');
             sbom.signature = {
                 algorithm: 'SHA-256',
-                keyId: 'botrt-sbom-signing-key',
+                keyId: keyId,
                 value: hash
             };
             logger_1.logger.info('SBOM signed successfully', {

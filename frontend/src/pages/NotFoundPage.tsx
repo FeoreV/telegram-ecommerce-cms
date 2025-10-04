@@ -1,20 +1,19 @@
-import React from 'react'
-import { 
-  Box, 
-  Typography, 
-  Button, 
-  Paper,
-  Grid,
-  useTheme,
-  alpha
-} from '@mui/material'
-import { useNavigate } from 'react-router-dom'
-import { 
-  Home as HomeIcon,
-  Dashboard as DashboardIcon,
-  ArrowBack as ArrowBackIcon,
-  SearchOff as SearchOffIcon
+import {
+    ArrowBack as ArrowBackIcon,
+    Dashboard as DashboardIcon,
+    SearchOff as SearchOffIcon
 } from '@mui/icons-material'
+import {
+    alpha,
+    Box,
+    Button,
+    Grid,
+    Paper,
+    Typography,
+    useTheme
+} from '@mui/material'
+import React, { ComponentType } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../contexts/AuthContext'
 import { getPrimaryRedirect, getRoutesForRole } from '../routes/config'
@@ -35,11 +34,15 @@ const NotFoundPage: React.FC = () => {
   }
 
   const getRoutesWithLabels = () =>
-    availableRoutes.map((route) => ({
-      path: route.path,
-      label: route.label ?? route.path,
-      icon: route.icon ?? HomeIcon,
-    }))
+    availableRoutes
+      .filter((route): route is typeof route & { label: string; icon: ComponentType } =>
+        route.showInSidebar === true
+      )
+      .map((route) => ({
+        path: route.path,
+        label: route.label,
+        icon: route.icon,
+      }))
 
   return (
     <Box
@@ -66,16 +69,16 @@ const NotFoundPage: React.FC = () => {
       >
         {/* 404 Icon and Number */}
         <Box sx={{ mb: 3 }}>
-          <SearchOffIcon 
-            sx={{ 
-              fontSize: 80, 
+          <SearchOffIcon
+            sx={{
+              fontSize: 80,
               color: theme.palette.primary.main,
               mb: 2
-            }} 
+            }}
           />
-          <Typography 
-            variant="h1" 
-            sx={{ 
+          <Typography
+            variant="h1"
+            sx={{
               fontSize: { xs: '4rem', sm: '6rem' },
               fontWeight: 'bold',
               color: theme.palette.primary.main,
@@ -88,9 +91,9 @@ const NotFoundPage: React.FC = () => {
         </Box>
 
         {/* Error Message */}
-        <Typography 
-          variant="h4" 
-          sx={{ 
+        <Typography
+          variant="h4"
+          sx={{
             mb: 2,
             fontWeight: 500,
             color: theme.palette.text.primary
@@ -98,18 +101,18 @@ const NotFoundPage: React.FC = () => {
         >
           Page Not Found
         </Typography>
-        
-        <Typography 
-          variant="body1" 
-          sx={{ 
+
+        <Typography
+          variant="body1"
+          sx={{
             mb: 4,
             color: theme.palette.text.secondary,
             maxWidth: 400,
             mx: 'auto'
           }}
         >
-          The page you're looking for doesn't exist or may have been moved. 
-          Let's get you back to where you need to be.
+          The page you&apos;re looking for doesn&apos;t exist or may have been moved.
+          We&apos;re sorry for the inconvenience.
         </Typography>
 
         {/* Navigation Buttons */}
@@ -121,7 +124,7 @@ const NotFoundPage: React.FC = () => {
               fullWidth
               startIcon={<DashboardIcon />}
               onClick={handleGoHome}
-              sx={{ 
+              sx={{
                 py: 1.5,
                 borderRadius: 2,
                 textTransform: 'none',
@@ -138,7 +141,7 @@ const NotFoundPage: React.FC = () => {
               fullWidth
               startIcon={<ArrowBackIcon />}
               onClick={handleGoBack}
-              sx={{ 
+              sx={{
                 py: 1.5,
                 borderRadius: 2,
                 textTransform: 'none',
@@ -152,9 +155,9 @@ const NotFoundPage: React.FC = () => {
 
         {/* Available Routes */}
         <Box sx={{ textAlign: 'left' }}>
-          <Typography 
-            variant="h6" 
-            sx={{ 
+          <Typography
+            variant="h6"
+            sx={{
               mb: 2,
               textAlign: 'center',
               color: theme.palette.text.primary
@@ -162,7 +165,7 @@ const NotFoundPage: React.FC = () => {
           >
             Available Pages
           </Typography>
-          
+
           <Grid container spacing={1}>
             {getRoutesWithLabels().map((route) => (
               <Grid item xs={12} sm={6} key={route.path}>
@@ -193,9 +196,9 @@ const NotFoundPage: React.FC = () => {
         </Box>
 
         {/* Help Text */}
-        <Typography 
-          variant="caption" 
-          sx={{ 
+        <Typography
+          variant="caption"
+          sx={{
             mt: 4,
             display: 'block',
             color: theme.palette.text.disabled

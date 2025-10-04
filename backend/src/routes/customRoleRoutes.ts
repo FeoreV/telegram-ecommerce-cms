@@ -1,16 +1,16 @@
 import { Router } from 'express';
-import { 
-  createCustomRole,
-  getCustomRoles,
-  getCustomRole,
-  updateCustomRole,
-  deleteCustomRole,
-  assignCustomRole,
-  getAvailablePermissions
+import {
+    assignCustomRole,
+    createCustomRole,
+    deleteCustomRole,
+    getAvailablePermissions,
+    getCustomRole,
+    getCustomRoles,
+    updateCustomRole
 } from '../controllers/customRoleController';
 import { authMiddleware } from '../middleware/auth';
-import { requirePermission } from '../middleware/permissions';
-import { Permission } from '../middleware/permissions';
+import { csrfProtection } from '../middleware/csrfProtection';
+import { Permission, requirePermission } from '../middleware/permissions';
 
 const router = Router();
 
@@ -32,9 +32,11 @@ router.get(
  * @route POST /api/custom-roles
  * @desc Создать кастомную роль
  * @access ADMIN, OWNER
+ * @security CSRF protected
  */
 router.post(
   '/',
+  csrfProtection,
   requirePermission(Permission.USER_CREATE),
   createCustomRole
 );
@@ -65,9 +67,11 @@ router.get(
  * @route PUT /api/custom-roles/:id
  * @desc Обновить кастомную роль
  * @access ADMIN, OWNER
+ * @security CSRF protected
  */
 router.put(
   '/:id',
+  csrfProtection,
   requirePermission(Permission.USER_UPDATE),
   updateCustomRole
 );
@@ -76,9 +80,11 @@ router.put(
  * @route DELETE /api/custom-roles/:id
  * @desc Удалить кастомную роль
  * @access ADMIN, OWNER
+ * @security CSRF protected
  */
 router.delete(
   '/:id',
+  csrfProtection,
   requirePermission(Permission.USER_DELETE),
   deleteCustomRole
 );
@@ -87,9 +93,11 @@ router.delete(
  * @route POST /api/custom-roles/assign
  * @desc Назначить кастомную роль пользователю
  * @access ADMIN, OWNER
+ * @security CSRF protected
  */
 router.post(
   '/assign',
+  csrfProtection,
   requirePermission(Permission.USER_UPDATE),
   assignCustomRole
 );

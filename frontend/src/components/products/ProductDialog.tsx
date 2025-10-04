@@ -25,6 +25,8 @@ import {
   AccordionSummary,
   AccordionDetails,
   Divider,
+  Tabs,
+  Tab,
 } from '@mui/material'
 import {
   Add,
@@ -32,6 +34,9 @@ import {
   CloudUpload,
   ExpandMore,
   Image as ImageIcon,
+  Info,
+  Category as CategoryIcon,
+  Settings,
 } from '@mui/icons-material'
 import { useForm, Controller, useFieldArray } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
@@ -40,6 +45,7 @@ import { Product, Store, Category } from '../../types'
 import { productService, CreateProductRequest, UpdateProductRequest } from '../../services/productService'
 import { storeService } from '../../services/storeService'
 import { toast } from 'react-toastify'
+import VariantManager from './VariantManager'
 
 const schema = yup.object({
   name: yup.string().required('Название товара обязательно').min(2, 'Минимум 2 символа'),
@@ -98,6 +104,7 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
   const [imageUploading, setImageUploading] = useState(false)
   const [stores, setStores] = useState<Store[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [activeTab, setActiveTab] = useState(0)
   const isEdit = !!product
 
   const {
@@ -226,6 +233,8 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
   const onSubmit = async (data: any) => {
     setLoading(true)
     try {
+      console.log('ProductDialog - Submitting data:', data)
+      
       if (isEdit && product) {
         const updateData: UpdateProductRequest = {
           name: data.name,
@@ -238,6 +247,8 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
           images: data.images,
           variants: data.variants,
         }
+        console.log('ProductDialog - Update data:', updateData)
+        console.log('ProductDialog - Variants:', data.variants)
         await productService.updateProduct(product.id, updateData)
         toast.success('Товар обновлен!')
       } else {
@@ -266,20 +277,39 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
   }
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="xl" fullWidth>
       <DialogTitle>
-        {isEdit ? 'Редактировать товар' : 'Создать новый товар'}
+        <Box display="flex" alignItems="center" justifyContent="space-between">
+          <Typography variant="h5" component="span">
+            {isEdit ? 'Редактировать товар' : 'Создать новый товар'}
+          </Typography>
+          {isEdit && product && (
+            <Chip
+              label={product.isActive ? 'Активен' : 'Не активен'}
+              color={product.isActive ? 'success' : 'default'}
+              size="small"
+            />
+          )}
+        </Box>
       </DialogTitle>
       <form onSubmit={handleSubmit(onSubmit)}>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 3 }}>
+          <Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)}>
+            <Tab icon={<Info />} iconPosition="start" label="Основная информация" />
+            <Tab icon={<ImageIcon />} iconPosition="start" label="Изображения" />
+            <Tab icon={<Settings />} iconPosition="start" label="Варианты товара" />
+          </Tabs>
+        </Box>
         <DialogContent>
-          <Grid container spacing={3}>
-            {/* Basic Information */}
-            <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom color="primary">
-                Основная информация
-              </Typography>
-              <Divider sx={{ mb: 2 }} />
-            </Grid>
+          {/* Tab 0: Basic Information */}
+          {activeTab === 0 && (
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Typography variant="h6" gutterBottom color="primary">
+                  Основная информация
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+              </Grid>
 
             <Grid item xs={12} md={8}>
               <Controller
@@ -417,7 +447,11 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
                 render={({ field }) => (
                   <FormControl fullWidth margin="normal">
                     <InputLabel>Категория</InputLabel>
-                    <Select {...field} label="Категория">
+                    <Select 
+                      {...field} 
+                      value={field.value || ''} 
+                      label="Категория"
+                    >
                       <MenuItem value="">Без категории</MenuItem>
                       {categories.map((category) => (
                         <MenuItem key={category.id} value={category.id}>
@@ -429,14 +463,18 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
                 )}
               />
             </Grid>
-
-            {/* Images Section */}
-            <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom color="primary" sx={{ mt: 2 }}>
-                Изображения товара
-              </Typography>
-              <Divider sx={{ mb: 2 }} />
             </Grid>
+          )}
+
+          {/* Tab 1: Images Section */}
+          {activeTab === 1 && (
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Typography variant="h6" gutterBottom color="primary">
+                  Изображения товара
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+              </Grid>
 
             <Grid item xs={12}>
               <input
@@ -506,118 +544,23 @@ const ProductDialog: React.FC<ProductDialogProps> = ({
                 )}
               </Grid>
             </Grid>
-
-            {/* Variants Section */}
-            <Grid item xs={12}>
-              <Accordion>
-                <AccordionSummary expandIcon={<ExpandMore />}>
-                  <Typography variant="h6" color="primary">
-                    Варианты товара ({variantFields.length})
-                  </Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                  <Box>
-                    <Button
-                      variant="outlined"
-                      startIcon={<Add />}
-                      onClick={addVariant}
-                      sx={{ mb: 2 }}
-                    >
-                      Добавить вариант
-                    </Button>
-
-                    {variantFields.map((field, index) => (
-                      <Card key={field.id} sx={{ mb: 2, p: 2 }}>
-                        <Grid container spacing={2} alignItems="center">
-                          <Grid item xs={12} sm={3}>
-                            <Controller
-                              name={`variants.${index}.name`}
-                              control={control}
-                              render={({ field }) => (
-                                <TextField
-                                  {...field}
-                                  label="Название варианта"
-                                  fullWidth
-                                  size="small"
-                                  placeholder="Размер, Цвет, Вкус..."
-                                />
-                              )}
-                            />
-                          </Grid>
-                          <Grid item xs={12} sm={3}>
-                            <Controller
-                              name={`variants.${index}.value`}
-                              control={control}
-                              render={({ field }) => (
-                                <TextField
-                                  {...field}
-                                  label="Значение"
-                                  fullWidth
-                                  size="small"
-                                  placeholder="XL, Красный, Ванильный..."
-                                />
-                              )}
-                            />
-                          </Grid>
-                          <Grid item xs={12} sm={2}>
-                            <Controller
-                              name={`variants.${index}.price`}
-                              control={control}
-                              render={({ field }) => (
-                                <TextField
-                                  {...field}
-                                  label="Цена"
-                                  type="number"
-                                  fullWidth
-                                  size="small"
-                                  helperText="Если отличается"
-                                  inputProps={{ min: 0, step: 0.01 }}
-                                />
-                              )}
-                            />
-                          </Grid>
-                          <Grid item xs={12} sm={2}>
-                            <Controller
-                              name={`variants.${index}.stock`}
-                              control={control}
-                              render={({ field }) => (
-                                <TextField
-                                  {...field}
-                                  label="Количество"
-                                  type="number"
-                                  fullWidth
-                                  size="small"
-                                  helperText="Отдельно"
-                                  inputProps={{ min: 0 }}
-                                />
-                              )}
-                            />
-                          </Grid>
-                          <Grid item xs={12} sm={2}>
-                            <IconButton
-                              color="error"
-                              onClick={() => removeVariant(index)}
-                              size="small"
-                            >
-                              <Delete />
-                            </IconButton>
-                          </Grid>
-                        </Grid>
-                      </Card>
-                    ))}
-
-                    {variantFields.length === 0 && (
-                      <Alert severity="info">
-                        <Typography variant="body2">
-                          Добавьте варианты товара, если у него есть различные размеры, цвета или другие характеристики.
-                        </Typography>
-                      </Alert>
-                    )}
-                  </Box>
-                </AccordionDetails>
-              </Accordion>
             </Grid>
-          </Grid>
+          )}
+
+          {/* Tab 2: Variants Section */}
+          {activeTab === 2 && (
+            <Box sx={{ py: 2 }}>
+              <VariantManager
+                control={control}
+                watch={watch}
+                setValue={setValue}
+                basePrice={watch('price') || 0}
+                baseCurrency={
+                  stores.find(s => s.id === watch('storeId'))?.currency || 'USD'
+                }
+              />
+            </Box>
+          )}
         </DialogContent>
 
         <DialogActions>

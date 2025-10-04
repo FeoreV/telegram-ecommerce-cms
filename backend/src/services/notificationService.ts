@@ -1,8 +1,8 @@
-import * as nodemailer from 'nodemailer';
 import TelegramBot from 'node-telegram-bot-api';
-import { logger, serializeError } from '../utils/logger';
+import * as nodemailer from 'nodemailer';
 import { prisma } from '../lib/prisma';
 import { getIO } from '../lib/socket';
+import { logger, serializeError } from '../utils/logger';
 
 // Interfaces for typed data
 interface EmailRecipient {
@@ -53,7 +53,7 @@ export enum NotificationType {
 
 export enum NotificationChannel {
   EMAIL = 'EMAIL',
-  TELEGRAM = 'TELEGRAM', 
+  TELEGRAM = 'TELEGRAM',
   PUSH = 'PUSH',
   SOCKET = 'SOCKET',
 }
@@ -278,9 +278,9 @@ export class NotificationService {
         if (!recipient.email) return Promise.resolve();
 
         const html = this.generateEmailHTML(notification, recipient);
-        
+
         if (!emailTransporter) return Promise.resolve();
-        
+
         return emailTransporter.sendMail({
           from: process.env.SMTP_FROM || 'noreply@telegram-ecommerce.com',
           to: recipient.email,
@@ -293,7 +293,7 @@ export class NotificationService {
       logger.info(`Email notifications sent to ${recipients.length} recipients`);
 
     } catch (error) {
-      logger.error('Failed to send email notifications:', error);
+      logger.error('Failed to send email notifications:', serializeError(error));
     }
   }
 
@@ -320,7 +320,7 @@ export class NotificationService {
       }
 
       const telegramMessage = this.generateTelegramMessage(notification);
-      
+
       const telegramPromises = recipients.map(recipient => {
         return telegramBot.sendMessage(recipient.telegramId, telegramMessage, {
           parse_mode: 'Markdown',
@@ -341,7 +341,7 @@ export class NotificationService {
     try {
       // For now, we'll use Socket.IO as our push notification mechanism
       // In a production setup, you'd integrate with services like Firebase
-      
+
       const pushData = {
         type: 'push_notification',
         notification: {
@@ -390,7 +390,7 @@ export class NotificationService {
       });
 
       // Also send to admin rooms if it's a high priority notification
-      if (notification.priority === NotificationPriority.HIGH || 
+      if (notification.priority === NotificationPriority.HIGH ||
           notification.priority === NotificationPriority.CRITICAL) {
         SocketRoomService.notifyAdmins('notification', socketData);
       }
@@ -411,7 +411,7 @@ export class NotificationService {
   private static generateEmailHTML(notification: NotificationData, recipient: EmailRecipient): string {
     const priorityColors = {
       [NotificationPriority.LOW]: '#28a745',
-      [NotificationPriority.MEDIUM]: '#ffc107', 
+      [NotificationPriority.MEDIUM]: '#ffc107',
       [NotificationPriority.HIGH]: '#fd7e14',
       [NotificationPriority.CRITICAL]: '#dc3545',
     };
@@ -441,15 +441,15 @@ export class NotificationService {
             <div class="content">
                 <p>Привет, ${recipient.firstName || 'Админ'}!</p>
                 <p>${notification.message}</p>
-                
+
                 ${notification.data ? `
                 <div class="data-section">
                     <strong>Дополнительная информация:</strong>
                     <pre>${JSON.stringify(notification.data, null, 2)}</pre>
                 </div>` : ''}
-                
+
                 <p style="margin-top: 20px;">
-                    <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" 
+                    <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}"
                        style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">
                         Открыть админ панель
                     </a>
@@ -475,7 +475,7 @@ export class NotificationService {
 
     let message = `${priorityEmojis[notification.priority]} *${notification.title}*\n\n`;
     message += `${notification.message}\n\n`;
-    
+
     if (notification.data) {
       message += `📊 *Детали:*\n`;
       Object.entries(notification.data).forEach(([key, value]) => {
@@ -483,10 +483,10 @@ export class NotificationService {
       });
       message += '\n';
     }
-    
+
     message += `⏰ ${new Date().toLocaleString('ru-RU')}\n`;
     message += `🏷️ Приоритет: ${notification.priority}`;
-    
+
     return message;
   }
 
@@ -500,7 +500,7 @@ export class NotificationService {
     if (!store) return;
 
     const recipients = [store.owner.id, ...store.admins.map(a => a.user.id)];
-    
+
     await NotificationService.send({
       type: NotificationType.ORDER_CREATED,
       title: `Новый заказ в магазине ${store.name}`,
@@ -521,20 +521,20 @@ export class NotificationService {
   static async notifyLowStock(productId: string, currentStock: number, threshold: number): Promise<void> {
     const product = await prisma.product.findUnique({
       where: { id: productId },
-      include: { 
-        store: { 
-          include: { 
-            owner: true, 
-            admins: { include: { user: true } } 
-          } 
-        } 
+      include: {
+        store: {
+          include: {
+            owner: true,
+            admins: { include: { user: true } }
+          }
+        }
       }
     });
 
     if (!product) return;
 
     const recipients = [product.store.owner.id, ...product.store.admins.map(a => a.user.id)];
-    
+
     await NotificationService.send({
       type: NotificationType.LOW_STOCK,
       title: `Мало товара: ${product.name}`,
@@ -561,7 +561,7 @@ export class NotificationService {
     if (!store) return;
 
     const recipients = [store.owner.id, ...store.admins.map(a => a.user.id)];
-    
+
     await NotificationService.send({
       type: NotificationType.PAYMENT_PROOF_UPLOADED,
       title: `Чек загружен для заказа в ${store.name}`,

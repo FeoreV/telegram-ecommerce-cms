@@ -2,8 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.databaseEncryptionService = exports.DatabaseEncryptionService = void 0;
 const database_1 = require("../lib/database");
-const EncryptionService_1 = require("./EncryptionService");
 const logger_1 = require("../utils/logger");
+const sanitizer_1 = require("../utils/sanitizer");
+const EncryptionService_1 = require("./EncryptionService");
 class DatabaseEncryptionService {
     constructor() {
         this.config = {
@@ -47,7 +48,7 @@ class DatabaseEncryptionService {
             const prisma = database_1.databaseService.getPrisma();
             const result = await prisma.$queryRaw `
         SELECT EXISTS (
-          SELECT 1 FROM information_schema.schemata 
+          SELECT 1 FROM information_schema.schemata
           WHERE schema_name = 'encryption'
         ) as exists
       `;
@@ -111,16 +112,16 @@ class DatabaseEncryptionService {
                     totalProcessed++;
                 }
                 offset += batchSize;
-                logger_1.logger.info(`Processed ${totalProcessed} records in ${tableName}`);
+                logger_1.logger.info(`Processed ${totalProcessed} records in ${(0, sanitizer_1.sanitizeForLog)(tableName)}`);
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
-            logger_1.logger.info(`Completed encryption of existing data in ${tableName}`, {
+            logger_1.logger.info(`Completed encryption of existing data in ${(0, sanitizer_1.sanitizeForLog)(tableName)}`, {
                 totalProcessed
             });
             return totalProcessed;
         }
         catch (error) {
-            logger_1.logger.error(`Failed to encrypt existing data in ${tableName}:`, error);
+            logger_1.logger.error(`Failed to encrypt existing data in ${(0, sanitizer_1.sanitizeForLog)(tableName)}:`, error);
             throw error;
         }
     }
@@ -129,14 +130,14 @@ class DatabaseEncryptionService {
         const encryptedFields = this.config.encryptedFields[tableName];
         const updateFields = encryptedFields.map(field => {
             const keyName = this.getKeyNameForTable(tableName);
-            return `${field}_encrypted = CASE 
-        WHEN ${field} IS NOT NULL AND ${field}_encrypted IS NULL 
+            return `${field}_encrypted = CASE
+        WHEN ${field} IS NOT NULL AND ${field}_encrypted IS NULL
         THEN encryption.encrypt_data(${field}, '${keyName}')
-        ELSE ${field}_encrypted 
+        ELSE ${field}_encrypted
       END`;
         }).join(', ');
         const query = `
-      UPDATE ${tableName} 
+      UPDATE ${tableName}
       SET ${updateFields}
       WHERE id = $1
     `;
@@ -166,9 +167,9 @@ class DatabaseEncryptionService {
                 for (const field of fields) {
                     const result = await prisma.$queryRaw `
             SELECT encryption.rotate_encryption_key(
-              ${keyName}, 
-              ${newKeyName}, 
-              ${tableName}, 
+              ${keyName},
+              ${newKeyName},
+              ${tableName},
               ${field}
             ) as rotate_encryption_key
           `;
@@ -203,8 +204,8 @@ class DatabaseEncryptionService {
       `;
             const auditLogSize = auditResult[0]?.count || 0;
             const lastRotationResult = await prisma.$queryRaw `
-        SELECT MAX(timestamp) as timestamp 
-        FROM encryption.audit_log 
+        SELECT MAX(timestamp) as timestamp
+        FROM encryption.audit_log
         WHERE operation = 'KEY_ROTATION'
       `;
             const lastKeyRotation = lastRotationResult[0]?.timestamp || null;

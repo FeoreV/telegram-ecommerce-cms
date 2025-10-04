@@ -647,8 +647,12 @@ class InventorySecurityService {
             userId: operation.userId,
             timestamp: operation.endTime?.toISOString()
         };
+        const secret = process.env.INVENTORY_OPERATION_SECRET;
+        if (!secret) {
+            throw new Error('INVENTORY_OPERATION_SECRET environment variable is not set');
+        }
         const signature = crypto
-            .createHmac('sha256', 'inventory-operation-secret')
+            .createHmac('sha256', secret)
             .update(JSON.stringify(signatureData))
             .digest('hex');
         operation.digitalSignature = signature;

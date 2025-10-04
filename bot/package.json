@@ -26,5 +26,10 @@
     "nodemon": "^3.0.1",
     "ts-node": "^10.9.1",
     "typescript": "^5.2.2"
+  },
+  "overrides": {
+    "form-data": "^4.0.1",
+    "tough-cookie": "^5.0.0",
+    "request": "npm:@cypress/request@^3.0.6"
   }
 }

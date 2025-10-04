@@ -1,0 +1,73 @@
+#!/bin/bash
+# Pre-commit hook for security checks
+# Автоматически запускается перед каждым коммитом
+
+echo "🔍 Запуск проверок безопасности перед коммитом..."
+echo ""
+
+ERRORS=0
+
+# 1. Проверка на секреты в staged файлах
+echo "1. Проверка на секреты..."
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
+
+for file in $STAGED_FILES; do
+    # Пропускаем файлы lock, dist, node_modules
+    if [[ "$file" =~ (lock\.json|dist/|node_modules/|\.map$) ]]; then
+        continue
+    fi
+
+    # Проверка на потенциальные секреты
+    if grep -qE "(password|secret|token|api_key)\s*[:=]\s*['\"][^'\"]{8,}['\"]" "$file" 2>/dev/null; then
+        # Исключаем тестовые файлы и примеры
+        if ! echo "$file" | grep -qE "(test|spec|example|mock)"; then
+            echo "⚠️  Потенциальные секреты найдены в: $file"
+            ERRORS=$((ERRORS + 1))
+        fi
+    fi
+done
+
+# 2. Проверка .env файлов
+echo "2. Проверка .env файлов..."
+if echo "$STAGED_FILES" | grep -qE "^\.env$|\.env\.(production|local|development)$"; then
+    echo "❌ ОШИБКА: Попытка закоммитить .env файл!"
+    echo "   .env файлы содержат секреты и НЕ должны быть в git"
+    ERRORS=$((ERRORS + 1))
+fi
+
+# 3. Проверка hardcoded credentials в коде
+echo "3. Проверка hardcoded credentials..."
+for file in $STAGED_FILES; do
+    if [[ "$file" =~ \.(ts|js|tsx|jsx)$ ]]; then
+        # Ищем подозрительные паттерны
+        if grep -qE "const\s+(password|secret|apiKey)\s*=\s*['\"][a-zA-Z0-9]{8,}['\"]" "$file" 2>/dev/null; then
+            if ! echo "$file" | grep -qE "(test|spec|mock)"; then
+                echo "⚠️  Hardcoded credentials в: $file"
+                ERRORS=$((ERRORS + 1))
+            fi
+        fi
+    fi
+done
+
+# 4. Проверка на console.log в продакшн коде (для TypeScript/JavaScript)
+echo "4. Проверка на debug код..."
+for file in $STAGED_FILES; do
+    if [[ "$file" =~ \.(ts|js|tsx|jsx)$ ]] && [[ ! "$file" =~ (test|spec|\.d\.ts)$ ]]; then
+        if grep -qE "console\.(log|debug|info)" "$file" 2>/dev/null; then
+            echo "⚠️  console.log найден в: $file (удалите перед продакшеном)"
+            # Это warning, не error
+        fi
+    fi
+done
+
+echo ""
+if [ $ERRORS -gt 0 ]; then
+    echo "❌ Проверки безопасности не пройдены: $ERRORS ошибок"
+    echo ""
+    echo "Исправьте проблемы или используйте --no-verify для пропуска (НЕ РЕКОМЕНДУЕТСЯ)"
+    exit 1
+else
+    echo "✅ Все проверки безопасности пройдены"
+    exit 0
+fi
+

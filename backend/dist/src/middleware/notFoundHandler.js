@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.notFoundMiddleware = exports.secureNotFoundHandler = exports.apiNotFoundHandler = void 0;
 const logger_1 = require("../utils/logger");
+const sanitizer_1 = require("../utils/sanitizer");
 const apiNotFoundHandler = (req, res, _next) => {
     const requestInfo = {
         method: req.method,
@@ -19,7 +20,7 @@ const apiNotFoundHandler = (req, res, _next) => {
             referer: req.get('Referer'),
         }
     };
-    logger_1.logger.warn('API endpoint not found', requestInfo);
+    logger_1.logger.warn('API endpoint not found', (0, sanitizer_1.sanitizeObjectForLog)(requestInfo));
     const acceptsJson = req.accepts(['json', 'html']) === 'json';
     if (acceptsJson || req.originalUrl.startsWith('/api/')) {
         return res.status(404).json({

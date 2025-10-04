@@ -1,9 +1,50 @@
+import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
-import crypto from 'crypto';
+import { logger } from '../utils/logger';
 import { encryptionService } from './EncryptionService';
 import { getVaultService } from './VaultService';
-import { logger } from '../utils/logger';
+
+// SECURITY: Helper function to safely resolve paths and prevent traversal (CWE-22/23)
+function safePathJoin(basePath: string, ...paths: string[]): string {
+  // Validate that no path component contains absolute paths or traversal sequences
+  for (const p of paths) {
+    if (path.isAbsolute(p)) {
+      throw new Error('SECURITY: Absolute paths not allowed');
+    }
+    if (p.includes('..')) {
+      throw new Error('SECURITY: Path traversal detected in path component');
+    }
+  }
+
+  const joined = path.join(basePath, ...paths);
+  const normalized = path.normalize(joined);
+  const normalizedBase = path.normalize(basePath);
+
+  // Ensure the normalized path still starts with the base path
+  if (!normalized.startsWith(normalizedBase)) {
+    throw new Error('SECURITY: Path traversal attempt detected');
+  }
+
+  return normalized;
+}
+
+// SECURITY: Validate encrypted filename format to prevent path traversal
+function validateEncryptedFilename(filename: string): void {
+  if (!filename || typeof filename !== 'string') {
+    throw new Error('Invalid filename: must be a non-empty string');
+  }
+
+  // Only allow alphanumeric characters, dots, hyphens, and underscores
+  if (!/^[a-zA-Z0-9._-]+$/.test(filename)) {
+    throw new Error('Invalid filename format: only alphanumeric, dots, hyphens, and underscores allowed');
+  }
+
+  // Prevent path traversal attempts
+  if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+    throw new Error('SECURITY: Path traversal detected in filename');
+  }
+}
 
 export interface StorageEncryptionConfig {
   enabled: boolean;
@@ -62,10 +103,10 @@ export class StorageEncryptionService {
     try {
       // Create necessary directories
       await this.ensureDirectories();
-      
+
       // Verify encryption capabilities
       await this.verifyEncryption();
-      
+
       logger.info('Storage encryption service initialized', {
         enabled: this.config.enabled,
         algorithm: this.config.encryptionAlgorithm
@@ -108,7 +149,7 @@ export class StorageEncryptionService {
     const testData = 'encryption-test-data';
     const encrypted = await this.encryptData(Buffer.from(testData));
     const decrypted = await this.decryptData(encrypted.data, encrypted.key, encrypted.iv, encrypted.tag);
-    
+
     if (decrypted.toString() !== testData) {
       throw new Error('Encryption verification failed');
     }
@@ -137,7 +178,10 @@ export class StorageEncryptionService {
 
       // Generate encrypted filename
       const encryptedName = this.generateEncryptedFilename(originalName);
-      const encryptedPath = path.join(this.config.storageBasePath, 'encrypted', encryptedName);
+
+      // SECURITY: Validate encrypted filename to prevent path traversal (CWE-22/23)
+      validateEncryptedFilename(encryptedName);
+      const encryptedPath = safePathJoin(this.config.storageBasePath, 'encrypted', encryptedName);
 
       // Prepare encrypted file structure
       const encryptedFileData = {
@@ -201,9 +245,12 @@ export class StorageEncryptionService {
 
       // Load metadata
       const metadata = await this.loadMetadata(encryptedName);
-      
+
+      // SECURITY: Validate encrypted filename to prevent path traversal (CWE-22/23)
+      validateEncryptedFilename(encryptedName);
+
       // Read encrypted file
-      const encryptedPath = path.join(this.config.storageBasePath, 'encrypted', encryptedName);
+      const encryptedPath = safePathJoin(this.config.storageBasePath, 'encrypted', encryptedName);
       const encryptedFileContent = await fs.readFile(encryptedPath, 'utf8');
       const encryptedFileData = JSON.parse(encryptedFileContent);
 
@@ -251,11 +298,11 @@ export class StorageEncryptionService {
     try {
       // Use Vault transit engine if available, otherwise use local encryption
       const useVault = process.env.USE_VAULT === 'true';
-      
+
       if (useVault) {
         const vault = getVaultService();
         const encryptedData = await vault.encrypt('file-storage-key', data.toString('base64'));
-        
+
         // For Vault, we return the encrypted string as data
         return {
           data: Buffer.from(encryptedData),
@@ -268,9 +315,9 @@ export class StorageEncryptionService {
         // Local encryption
         const key = encryptionService.getEncryptionSecrets().dataEncryptionKey;
         const iv = crypto.randomBytes(16);
-        
+
         const cipher = crypto.createCipher(this.config.encryptionAlgorithm, Buffer.from(key, 'hex'));
-        
+
         let encrypted = cipher.update(data);
         encrypted = Buffer.concat([encrypted, cipher.final()]);
         const tag = (cipher as any).getAuthTag();
@@ -308,13 +355,13 @@ export class StorageEncryptionService {
       } else {
         // Local decryption
         const key = encryptionService.getEncryptionSecrets().dataEncryptionKey;
-        
+
         const decipher = crypto.createDecipher(this.config.encryptionAlgorithm, Buffer.from(key, 'hex'));
         (decipher as any).setAuthTag(tag);
-        
+
         let decrypted = decipher.update(encryptedData);
         decrypted = Buffer.concat([decrypted, decipher.final()]);
-        
+
         return decrypted;
       }
 
@@ -346,7 +393,7 @@ export class StorageEncryptionService {
       // In real implementation, you would need to extract these from the encrypted data
       const iv = crypto.randomBytes(16); // This should be extracted from encrypted data
       const tag = Buffer.alloc(16); // This should be extracted from encrypted data
-      
+
       const decrypted = await this.decryptData(encryptedData, 'local-v1', iv, tag);
       return decrypted;
     } catch (error) {
@@ -367,7 +414,9 @@ export class StorageEncryptionService {
    * Store file metadata
    */
   private async storeMetadata(encryptedName: string, metadata: EncryptedFileMetadata): Promise<void> {
-    const metadataPath = path.join(this.config.storageBasePath, 'encrypted', `${encryptedName}.meta`);
+    // SECURITY: Validate encrypted filename to prevent path traversal (CWE-22/23)
+    validateEncryptedFilename(encryptedName);
+    const metadataPath = safePathJoin(this.config.storageBasePath, 'encrypted', `${encryptedName}.meta`);
     await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
   }
 
@@ -375,7 +424,9 @@ export class StorageEncryptionService {
    * Load file metadata
    */
   private async loadMetadata(encryptedName: string): Promise<EncryptedFileMetadata> {
-    const metadataPath = path.join(this.config.storageBasePath, 'encrypted', `${encryptedName}.meta`);
+    // SECURITY: Validate encrypted filename to prevent path traversal (CWE-22/23)
+    validateEncryptedFilename(encryptedName);
+    const metadataPath = safePathJoin(this.config.storageBasePath, 'encrypted', `${encryptedName}.meta`);
     const metadataContent = await fs.readFile(metadataPath, 'utf8');
     return JSON.parse(metadataContent);
   }
@@ -385,8 +436,11 @@ export class StorageEncryptionService {
    */
   async deleteFile(encryptedName: string): Promise<void> {
     try {
-      const encryptedPath = path.join(this.config.storageBasePath, 'encrypted', encryptedName);
-      const metadataPath = path.join(this.config.storageBasePath, 'encrypted', `${encryptedName}.meta`);
+      // SECURITY: Validate encrypted filename to prevent path traversal (CWE-22/23)
+      validateEncryptedFilename(encryptedName);
+
+      const encryptedPath = safePathJoin(this.config.storageBasePath, 'encrypted', encryptedName);
+      const metadataPath = safePathJoin(this.config.storageBasePath, 'encrypted', `${encryptedName}.meta`);
 
       // Delete encrypted file and metadata
       await Promise.all([
@@ -407,9 +461,9 @@ export class StorageEncryptionService {
    */
   async listFiles(): Promise<EncryptedFileMetadata[]> {
     try {
-      const encryptedDir = path.join(this.config.storageBasePath, 'encrypted');
+      const encryptedDir = safePathJoin(this.config.storageBasePath, 'encrypted');
       const files = await fs.readdir(encryptedDir);
-      
+
       const metadataFiles = files.filter(file => file.endsWith('.meta'));
       const metadataList: EncryptedFileMetadata[] = [];
 
@@ -436,7 +490,7 @@ export class StorageEncryptionService {
   async getStorageStats(): Promise<StorageStats> {
     try {
       const files = await this.listFiles();
-      
+
       const totalFiles = files.length;
       const totalSize = files.reduce((sum, file) => sum + file.size, 0);
       const encryptedFiles = files.length; // All files are encrypted
@@ -462,33 +516,45 @@ export class StorageEncryptionService {
    */
   async encryptExistingFiles(sourceDir: string): Promise<number> {
     try {
+      // SECURITY: Validate source directory path to prevent traversal (CWE-22/23)
+      const normalizedSourceDir = path.normalize(sourceDir);
+      if (normalizedSourceDir.includes('..')) {
+        throw new Error('SECURITY: Path traversal detected in source directory');
+      }
+
       let processedCount = 0;
-      const files = await fs.readdir(sourceDir, { withFileTypes: true });
+      const files = await fs.readdir(normalizedSourceDir, { withFileTypes: true });
 
       for (const file of files) {
         if (file.isFile()) {
-          const filePath = path.join(sourceDir, file.name);
-          
+          // SECURITY: Validate filename
+          validateEncryptedFilename(file.name);
+          const filePath = safePathJoin(normalizedSourceDir, file.name);
+
           try {
             await this.encryptFile(filePath, file.name);
             processedCount++;
-            
+
             // Optionally delete original file after successful encryption
             if (process.env.DELETE_ORIGINAL_AFTER_ENCRYPTION === 'true') {
               await fs.unlink(filePath);
             }
-            
+
           } catch (error) {
-            logger.error(`Failed to encrypt file ${file.name}:`, error);
+            const sanitizedFilename = file.name.replace(/[\r\n]/g, ' ');
+            const sanitizedError = error instanceof Error ? error.message.replace(/[\r\n]/g, ' ') : String(error).replace(/[\r\n]/g, ' ');
+            logger.error(`Failed to encrypt file ${sanitizedFilename}:`, { error: sanitizedError, filename: sanitizedFilename });
           }
         }
       }
 
-      logger.info(`Encrypted ${processedCount} existing files from ${sourceDir}`);
+      const sanitizedSourceDir = normalizedSourceDir.replace(/[\r\n]/g, ' ');
+      logger.info(`Encrypted ${processedCount} existing files from ${sanitizedSourceDir}`, { count: processedCount, sourceDir: sanitizedSourceDir });
       return processedCount;
 
     } catch (error) {
-      logger.error('Failed to encrypt existing files:', error);
+      const sanitizedError = error instanceof Error ? error.message.replace(/[\r\n]/g, ' ') : String(error).replace(/[\r\n]/g, ' ');
+      logger.error('Failed to encrypt existing files:', { error: sanitizedError });
       throw error;
     }
   }
@@ -504,7 +570,7 @@ export class StorageEncryptionService {
   }> {
     try {
       const stats = await this.getStorageStats();
-      
+
       // Check if directories exist
       const directories = {
         storage: await this.directoryExists(this.config.storageBasePath),
@@ -544,7 +610,7 @@ export class StorageEncryptionService {
     try {
       const stats = await fs.stat(dirPath);
       return stats.isDirectory();
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }

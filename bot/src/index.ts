@@ -1,15 +1,15 @@
-import TelegramBot from 'node-telegram-bot-api';
-import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
-import { logger } from './utils/logger';
+import express, { Request, Response } from 'express';
+import TelegramBot from 'node-telegram-bot-api';
+import { setupHandlers } from './handlers';
+import { CustomerNotificationData, NotificationHandler } from './handlers/notificationHandler';
+import { DEFAULT_SECURITY_CONFIG, PRODUCTION_SECURITY_CONFIG, TelegramBotSecurity } from './middleware/security';
 import { apiService } from './services/apiService';
 import { cmsService } from './services/cmsService';
-import { setupHandlers } from './handlers';
-import { userSessions } from './utils/sessionManager';
+import { DEFAULT_WEBHOOK_CONFIG, PRODUCTION_WEBHOOK_CONFIG, TelegramWebhookService } from './services/webhookService';
+import { logger } from './utils/logger';
 import { redisSessionStore } from './utils/redisStore';
-import { NotificationHandler, CustomerNotificationData } from './handlers/notificationHandler';
-import { TelegramWebhookService, PRODUCTION_WEBHOOK_CONFIG, DEFAULT_WEBHOOK_CONFIG } from './services/webhookService';
-import { TelegramBotSecurity, PRODUCTION_SECURITY_CONFIG, DEFAULT_SECURITY_CONFIG } from './middleware/security';
+import { sanitizeForLog } from './utils/sanitizer';
 
 // Load environment variables
 dotenv.config();
@@ -45,15 +45,17 @@ let security: TelegramBotSecurity | null = null;
 if (!useWebhook) {
   const securityConfig = isProduction ? PRODUCTION_SECURITY_CONFIG : DEFAULT_SECURITY_CONFIG;
   security = new TelegramBotSecurity(securityConfig);
-  
+
   // Apply security middleware to bot messages
   bot.on('message', async (msg) => {
     if (security) {
       const rateLimitPassed = await security.checkRateLimit(msg.from?.id?.toString() || '');
       const antiSpamPassed = rateLimitPassed ? !security.checkSpam(msg.from?.id?.toString() || '', msg.text || '') : false;
-      
+
       if (!rateLimitPassed || !antiSpamPassed) {
-        logger.warn(`Message blocked from user ${msg.from?.id}`, {
+        // SECURITY FIX (CWE-117): Sanitize for logging
+        const { sanitizeForLog } = require('./utils/sanitizer');
+        logger.warn(`Message blocked from user ${sanitizeForLog(msg.from?.id)}`, {
           rateLimitPassed,
           antiSpamPassed,
           userId: msg.from?.id,
@@ -74,7 +76,7 @@ async function initializeServices() {
     // Use secure webhook service
     const webhookConfig = isProduction ? PRODUCTION_WEBHOOK_CONFIG : DEFAULT_WEBHOOK_CONFIG;
     webhookService = new TelegramWebhookService(bot, webhookConfig);
-    
+
     try {
       await webhookService.start();
       logger.info('✅ Secure webhook service started successfully');
@@ -90,10 +92,10 @@ async function initializeServices() {
     // Health check endpoint
     app.get('/health', (req: Request, res: Response) => {
       const stats = security?.getSecurityStats() || Promise.resolve({});
-      
+
       Promise.resolve(stats).then(securityStats => {
-        res.json({ 
-          status: 'OK', 
+        res.json({
+          status: 'OK',
           timestamp: new Date().toISOString(),
           bot: 'telegram-ecommerce',
           version: '1.0.0',
@@ -110,23 +112,23 @@ async function initializeServices() {
 
         // Validate required fields
         if (!notification.telegramId || !notification.type || !notification.orderData) {
-          return res.status(400).json({ 
-            error: 'Missing required fields: telegramId, type, orderData' 
+          return res.status(400).json({
+            error: 'Missing required fields: telegramId, type, orderData'
           });
         }
 
         // Send notification
         const success = await notificationHandler.sendCustomerNotificationWithRetry(notification, 3);
-        
+
         if (success) {
-          res.json({ 
-            success: true, 
+          res.json({
+            success: true,
             message: 'Notification sent successfully',
             telegramId: notification.telegramId,
             type: notification.type
           });
         } else {
-          res.status(500).json({ 
+          res.status(500).json({
             error: 'Failed to send notification after retries',
             telegramId: notification.telegramId,
             type: notification.type
@@ -134,7 +136,7 @@ async function initializeServices() {
         }
       } catch (error) {
         logger.error('Error processing customer notification:', error);
-        res.status(500).json({ 
+        res.status(500).json({
           error: 'Internal server error',
           message: error instanceof Error ? error.message : 'Unknown error'
         });
@@ -201,7 +203,7 @@ async function main() {
   try {
     // Initialize API service
     apiService.initialize(process.env.API_URL || 'http://localhost:3001');
-    
+
     // Initialize Redis session store if configured
     if (process.env.REDIS_URL) {
       try {
@@ -214,7 +216,7 @@ async function main() {
     } else {
       logger.info('Redis not configured, using in-memory session store (development mode)');
     }
-    
+
     // Initialize CMS service if configured
     const cmsBase = process.env.CMS_BASE_URL;
     if (cmsBase) {
@@ -234,12 +236,12 @@ async function main() {
 
     // Error handling
     bot.on('error', (error) => {
-      logger.error('Bot error:', error);
+      logger.error('Bot error:', { error: error instanceof Error ? error.message : String(error) });
     });
 
     bot.on('polling_error', (error) => {
-      logger.error('Polling error:', error);
-      
+      logger.error('Polling error:', { error: error instanceof Error ? error.message : String(error) });
+
       // Restart polling on persistent errors
       setTimeout(() => {
         if (!useWebhook) {
@@ -250,31 +252,31 @@ async function main() {
 
     // Enhanced graceful shutdown
     const gracefulShutdown = async (signal: string) => {
-      logger.info(`${signal} received, shutting down bot gracefully`);
-      
+      logger.info(`${sanitizeForLog(signal)} received, shutting down bot gracefully`);
+
       try {
         // Stop webhook service
         if (webhookService) {
           await webhookService.stop();
           logger.info('Webhook service stopped');
         }
-        
+
         // Stop polling
         if (!useWebhook) {
           await bot.stopPolling();
           logger.info('Polling stopped');
         }
-        
+
         // Close security connections
         if (security) {
           await security.close();
           logger.info('Security service stopped');
         }
-        
+
         // Close Redis connections
         await redisSessionStore.disconnect();
         logger.info('Redis connections closed');
-        
+
         logger.info('Bot shutdown completed gracefully');
         process.exit(0);
       } catch (error) {
@@ -293,7 +295,7 @@ async function main() {
           if (security) {
             security.cleanup();
           }
-          
+
           if (webhookService) {
             const stats = webhookService.getStats();
             logger.debug('Webhook stats:', stats);
@@ -314,7 +316,9 @@ async function main() {
 
 // Start the bot
 main().catch((error) => {
-  logger.error('Unhandled error during bot startup:', error);
+  // Sanitize error to prevent log injection
+  const errorMsg = error instanceof Error ? error.message.replace(/[\r\n]/g, ' ') : String(error).replace(/[\r\n]/g, ' ');
+  logger.error('Unhandled error during bot startup:', errorMsg);
   process.exit(1);
 });
 

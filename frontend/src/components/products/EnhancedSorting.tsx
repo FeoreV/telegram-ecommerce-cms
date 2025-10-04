@@ -375,6 +375,8 @@ const EnhancedSorting: React.FC<EnhancedSortingProps> = ({
                   />
                 </Box>
               }
+              titleTypographyProps={{ component: 'div' }}
+              subheaderTypographyProps={{ component: 'div' }}
               sx={{ cursor: groupBy !== 'none' ? 'pointer' : 'default' }}
               onClick={groupBy !== 'none' ? () => toggleGroupCollapse(group.key) : undefined}
             />

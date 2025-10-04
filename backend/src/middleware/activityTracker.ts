@@ -1,5 +1,6 @@
-import { Response, NextFunction } from 'express';
+import { NextFunction, Response } from 'express';
 import { EmployeeService } from '../services/employeeService';
+import { sanitizeObjectForLog } from '../utils/sanitizer';
 import { AuthenticatedRequest } from './auth';
 
 /**
@@ -14,10 +15,10 @@ export const activityTracker = (action: string, getDetails?: (req: Authenticated
     if (req.user && req.user.role !== 'CUSTOMER') {
       try {
         const storeId = req.params.storeId || req.body.storeId || req.query.storeId as string;
-        
+
         if (storeId) {
           const details = getDetails ? getDetails(req) : undefined;
-          
+
           // Не ждем результата, чтобы не замедлять ответ
           EmployeeService.logActivity(
             req.user.id,
@@ -28,7 +29,7 @@ export const activityTracker = (action: string, getDetails?: (req: Authenticated
             req.get('User-Agent')
           ).catch((err: unknown) => {
             // Молча игнорируем ошибки логирования
-            console.warn('Failed to log employee activity:', err as Record<string, unknown>);
+            console.warn('Failed to log employee activity:', sanitizeObjectForLog(err));
           });
         }
       } catch (err: unknown) {
@@ -44,84 +45,84 @@ export const activityTracker = (action: string, getDetails?: (req: Authenticated
  */
 export const ActivityTrackers = {
   // Действия с продуктами
-  productCreated: activityTracker('PRODUCT_CREATED', (req) => ({ 
-    productId: req.body.id, 
-    productName: req.body.name 
+  productCreated: activityTracker('PRODUCT_CREATED', (req) => ({
+    productId: req.body.id,
+    productName: req.body.name
   })),
-  
-  productUpdated: activityTracker('PRODUCT_UPDATED', (req) => ({ 
+
+  productUpdated: activityTracker('PRODUCT_UPDATED', (req) => ({
     productId: req.params.id || req.body.id,
-    changes: req.body 
+    changes: req.body
   })),
-  
-  productDeleted: activityTracker('PRODUCT_DELETED', (req) => ({ 
-    productId: req.params.id 
+
+  productDeleted: activityTracker('PRODUCT_DELETED', (req) => ({
+    productId: req.params.id
   })),
 
   // Действия с заказами
-  orderViewed: activityTracker('ORDER_VIEWED', (req) => ({ 
-    orderId: req.params.id 
+  orderViewed: activityTracker('ORDER_VIEWED', (req) => ({
+    orderId: req.params.id
   })),
-  
-  orderUpdated: activityTracker('ORDER_UPDATED', (req) => ({ 
+
+  orderUpdated: activityTracker('ORDER_UPDATED', (req) => ({
     orderId: req.params.id || req.body.orderId,
     newStatus: req.body.status,
-    changes: req.body 
+    changes: req.body
   })),
-  
-  orderConfirmed: activityTracker('ORDER_CONFIRMED', (req) => ({ 
-    orderId: req.params.id || req.body.orderId 
+
+  orderConfirmed: activityTracker('ORDER_CONFIRMED', (req) => ({
+    orderId: req.params.id || req.body.orderId
   })),
-  
-  orderRejected: activityTracker('ORDER_REJECTED', (req) => ({ 
+
+  orderRejected: activityTracker('ORDER_REJECTED', (req) => ({
     orderId: req.params.id || req.body.orderId,
-    reason: req.body.rejectionReason 
+    reason: req.body.rejectionReason
   })),
 
   // Действия со складом
-  inventoryUpdated: activityTracker('INVENTORY_UPDATED', (req) => ({ 
+  inventoryUpdated: activityTracker('INVENTORY_UPDATED', (req) => ({
     productId: req.params.productId || req.body.productId,
     variantId: req.params.variantId || req.body.variantId,
     previousQty: req.body.previousQty,
     newQty: req.body.newQty,
-    changeType: req.body.changeType 
+    changeType: req.body.changeType
   })),
 
   // Действия с сотрудниками
-  employeeInvited: activityTracker('EMPLOYEE_INVITED', (req) => ({ 
+  employeeInvited: activityTracker('EMPLOYEE_INVITED', (req) => ({
     invitedEmail: req.body.email,
-    role: req.body.role 
+    role: req.body.role
   })),
-  
-  employeeRoleChanged: activityTracker('EMPLOYEE_ROLE_CHANGED', (req) => ({ 
+
+  employeeRoleChanged: activityTracker('EMPLOYEE_ROLE_CHANGED', (req) => ({
     targetUserId: req.body.userId,
     newRole: req.body.role,
-    permissions: req.body.permissions 
+    permissions: req.body.permissions
   })),
-  
-  employeeRemoved: activityTracker('EMPLOYEE_REMOVED', (req) => ({ 
+
+  employeeRemoved: activityTracker('EMPLOYEE_REMOVED', (req) => ({
     removedUserId: req.params.userId,
-    reason: req.body.reason 
+    reason: req.body.reason
   })),
 
   // Системные действия
   login: activityTracker('LOGIN'),
   logout: activityTracker('LOGOUT'),
-  
-  settingsChanged: activityTracker('SETTINGS_CHANGED', (req) => ({ 
+
+  settingsChanged: activityTracker('SETTINGS_CHANGED', (req) => ({
     section: req.body.section,
-    changes: req.body.changes 
+    changes: req.body.changes
   })),
 
   // Действия с аналитикой
-  analyticsExported: activityTracker('ANALYTICS_EXPORTED', (req) => ({ 
+  analyticsExported: activityTracker('ANALYTICS_EXPORTED', (req) => ({
     reportType: req.query.type,
     dateRange: { from: req.query.from, to: req.query.to }
   })),
-  
-  reportGenerated: activityTracker('REPORT_GENERATED', (req) => ({ 
+
+  reportGenerated: activityTracker('REPORT_GENERATED', (req) => ({
     reportType: req.body.type,
-    parameters: req.body.parameters 
+    parameters: req.body.parameters
   }))
 };
 
@@ -132,8 +133,8 @@ export const logLoginActivity = async (req: AuthenticatedRequest, res: Response,
   if (req.user && req.user.role !== 'CUSTOMER') {
     try {
       // Получаем все магазины пользователя для логирования
-      const { prisma } = await import('../lib/prisma');
-      
+      const { prisma } = await import('../lib/prisma.js');
+
       const stores = await prisma.store.findMany({
         where: {
           OR: [
@@ -158,13 +159,13 @@ export const logLoginActivity = async (req: AuthenticatedRequest, res: Response,
           req.ip,
           req.get('User-Agent')
         ).catch((err: unknown) => {
-          console.warn('Failed to log login activity:', err as Record<string, unknown>);
+          console.warn('Failed to log login activity:', sanitizeObjectForLog(err));
         });
       }
     } catch (err: unknown) {
       console.warn('Login activity tracker error:', err as Record<string, unknown>);
     }
   }
-  
+
   next();
 };

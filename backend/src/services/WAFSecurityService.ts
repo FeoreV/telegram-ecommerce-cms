@@ -1,7 +1,8 @@
-import { Request, Response, NextFunction } from 'express';
-import { logger } from '../utils/logger';
-import { tenantCacheService } from './TenantCacheService';
 import axios from 'axios';
+import { NextFunction, Request, Response } from 'express';
+import { logger } from '../utils/logger';
+import { sanitizeForLog } from '../utils/inputSanitizer';
+import { tenantCacheService } from './TenantCacheService';
 
 export interface WAFConfig {
   enableWAF: boolean;
@@ -10,31 +11,31 @@ export interface WAFConfig {
   enableIPReputation: boolean;
   enableGeoBlocking: boolean;
   enableRateLimiting: boolean;
-  
+
   // Bot protection settings
   challengeMode: 'captcha' | 'javascript' | 'proof_of_work' | 'behavioral';
   botScoreThreshold: number;
   suspiciousUserAgentThreshold: number;
-  
+
   // Rate limiting
   globalRateLimit: number; // requests per minute
   perIPRateLimit: number;
   perUserRateLimit: number;
   burstLimit: number;
-  
+
   // Anomaly detection
   anomalyThreshold: number;
   learningPeriod: number; // days
   enableMLDetection: boolean;
-  
+
   // Geographic restrictions
   blockedCountries: string[];
   allowedCountries: string[];
-  
+
   // IP reputation
   reputationSources: string[];
   reputationThreshold: number;
-  
+
   // Response actions
   blockAction: 'block' | 'challenge' | 'monitor';
   challengeAction: 'captcha' | 'js_challenge' | 'managed_challenge';
@@ -97,26 +98,26 @@ export class WAFSecurityService {
       enableIPReputation: process.env.ENABLE_IP_REPUTATION !== 'false',
       enableGeoBlocking: process.env.ENABLE_GEO_BLOCKING === 'true',
       enableRateLimiting: process.env.ENABLE_RATE_LIMITING !== 'false',
-      
+
       challengeMode: (process.env.CHALLENGE_MODE as any) || 'javascript',
       botScoreThreshold: parseInt(process.env.BOT_SCORE_THRESHOLD || '80'),
       suspiciousUserAgentThreshold: parseInt(process.env.SUSPICIOUS_UA_THRESHOLD || '70'),
-      
+
       globalRateLimit: parseInt(process.env.GLOBAL_RATE_LIMIT || '10000'), // 10k req/min
       perIPRateLimit: parseInt(process.env.PER_IP_RATE_LIMIT || '100'), // 100 req/min
       perUserRateLimit: parseInt(process.env.PER_USER_RATE_LIMIT || '500'), // 500 req/min
       burstLimit: parseInt(process.env.BURST_LIMIT || '20'),
-      
+
       anomalyThreshold: parseInt(process.env.ANOMALY_THRESHOLD || '85'),
       learningPeriod: parseInt(process.env.LEARNING_PERIOD || '7'),
       enableMLDetection: process.env.ENABLE_ML_DETECTION === 'true',
-      
+
       blockedCountries: (process.env.BLOCKED_COUNTRIES || '').split(',').filter(Boolean),
       allowedCountries: (process.env.ALLOWED_COUNTRIES || '').split(',').filter(Boolean),
-      
+
       reputationSources: ['internal', 'cloudflare', 'abuseipdb'],
       reputationThreshold: parseInt(process.env.REPUTATION_THRESHOLD || '75'),
-      
+
       blockAction: (process.env.BLOCK_ACTION as any) || 'block',
       challengeAction: (process.env.CHALLENGE_ACTION as any) || 'js_challenge'
     };
@@ -146,16 +147,16 @@ export class WAFSecurityService {
       /bot|crawler|spider|scraper/i,
       /googlebot|bingbot|slurp|duckduckbot/i,
       /facebookexternalhit|twitterbot|linkedinbot/i,
-      
+
       // Malicious bots
       /nikto|sqlmap|nessus|openvas|w3af/i,
       /masscan|nmap|zmap|zgrab/i,
       /curl|wget|python-requests|go-http-client/i,
-      
+
       // Headless browsers
       /headlesschrome|phantomjs|selenium|puppeteer/i,
       /chromedriver|geckodriver|webdriver/i,
-      
+
       // Suspicious patterns
       /^$/,  // Empty user agent
       /mozilla\/[45]\.0$/i,  // Generic Mozilla
@@ -167,24 +168,24 @@ export class WAFSecurityService {
       // SQL Injection
       /union\s+select|select\s+.*\s+from|insert\s+into|delete\s+from/i,
       /or\s+1\s*=\s*1|and\s+1\s*=\s*1|'\s+or\s+'1'\s*=\s*'1/i,
-      
+
       // XSS
       /<script|javascript:|onload=|onerror=|onclick=/i,
       /alert\(|confirm\(|prompt\(|document\.cookie/i,
-      
+
       // Path traversal
       /\.\.\/|\.\.\\|%2e%2e%2f|%2e%2e%5c/i,
-      
+
       // Command injection
       /;\s*(cat|ls|pwd|whoami|id|uname)/i,
       /\|\s*(cat|ls|pwd|whoami|id|uname)/i,
-      
+
       // XXE/SSRF
       /<!entity|<!doctype.*entity|file:\/\/|http:\/\/localhost/i,
-      
+
       // Template injection
       /\{\{.*\}\}|\$\{.*\}|<%.*%>/i,
-      
+
       // Binary content in requests
       // eslint-disable-next-line no-control-regex
       /[\u0000-\u0005]/,
@@ -342,7 +343,7 @@ export class WAFSecurityService {
       } else {
         // Fetch from multiple sources
         intelligence = await this.fetchThreatIntelligence(ipAddress);
-        
+
         // Cache result
         await tenantCacheService.set(
           'system',
@@ -498,8 +499,8 @@ export class WAFSecurityService {
   private async getCountryFromIP(ipAddress: string): Promise<string> {
     try {
       // Check for private/local IPs
-      if (ipAddress.startsWith('127.') || 
-          ipAddress.startsWith('192.168.') || 
+      if (ipAddress.startsWith('127.') ||
+          ipAddress.startsWith('192.168.') ||
           ipAddress.startsWith('10.') ||
           ipAddress.startsWith('172.16.') ||
           ipAddress === '::1' ||
@@ -509,50 +510,70 @@ export class WAFSecurityService {
       }
 
       // Enhanced IP geolocation with multiple fallback sources
+      // SECURITY FIX (CWE-918): Whitelist allowed geolocation APIs to prevent SSRF
+      const allowedGeoAPIs = ['ip-api.com', 'ipapi.co', 'ipinfo.io'];
+
+      // SECURITY: Validate IP address format to prevent injection
+      if (!/^(\d{1,3}\.){3}\d{1,3}$/.test(ipAddress)) {
+        logger.warn('SECURITY: Invalid IP address format', { ipAddress: sanitizeForLog(ipAddress) });
+        return 'UNKNOWN';
+      }
+
       const geoSources = [
         {
           name: 'ip-api',
           url: `http://ip-api.com/json/${ipAddress}`,
-          parser: (data: any) => data.countryCode
+          parser: (data: any) => data.countryCode,
+          domain: 'ip-api.com'
         },
         {
           name: 'ipapi',
           url: `https://ipapi.co/${ipAddress}/country_code/`,
-          parser: (data: string) => data.trim()
+          parser: (data: string) => data.trim(),
+          domain: 'ipapi.co'
         },
         {
           name: 'ipinfo',
           url: `https://ipinfo.io/${ipAddress}/country`,
-          parser: (data: string) => data.trim()
+          parser: (data: string) => data.trim(),
+          domain: 'ipinfo.io'
         }
       ];
 
-      // Try each source with timeout
+      // Try each source with timeout and domain validation
       for (const source of geoSources) {
         try {
-          const response = await axios.get(source.url, { 
+          // SECURITY FIX (CWE-918): Validate URL domain is in whitelist
+          const url = new URL(source.url);
+          if (!allowedGeoAPIs.includes(url.hostname)) {
+            logger.warn('SECURITY: Blocked geolocation request to non-whitelisted domain', { domain: sanitizeForLog(url.hostname) });
+            continue;
+          }
+
+          const response = await axios.get(source.url, {
             timeout: 2000,
-            headers: { 'User-Agent': 'WAF-Security-Service/1.0' }
+            headers: { 'User-Agent': 'WAF-Security-Service/1.0' },
+            maxRedirects: 0  // SECURITY: Prevent redirect-based SSRF attacks
           });
-          
+
           if (response.status === 200) {
             const country = source.parser(response.data);
             if (country && country !== 'undefined' && country.length >= 2) {
-              logger.debug(`IP ${ipAddress} resolved to country ${country} via ${source.name}`);
+              logger.debug('IP resolved to country', { ipAddress: sanitizeForLog(ipAddress), country: sanitizeForLog(country), source: sanitizeForLog(source.name) });
               return country.toUpperCase();
             }
           }
         } catch (sourceError) {
-          logger.debug(`Failed to get country from ${source.name} for IP ${ipAddress}:`, sourceError);
+          logger.debug('Failed to get country', { source: sanitizeForLog(source.name), ipAddress: sanitizeForLog(ipAddress), error: sourceError });
           continue;
         }
       }
 
       // Fallback to internal database or return unknown
       return this.getCountryFromInternalDB(ipAddress);
-      
+
     } catch (error) {
-      logger.error(`Error getting country for IP ${ipAddress}:`, error);
+      logger.error('Error getting country for IP', { ipAddress: sanitizeForLog(ipAddress), error });
       return 'UNKNOWN';
     }
   }
@@ -567,7 +588,7 @@ export class WAFSecurityService {
       '8.8.': 'US',
       '1.1.': 'US',
       '4.4.': 'US',
-      // China ranges  
+      // China ranges
       '114.114.': 'CN',
       '223.5.': 'CN',
       // Russia ranges
@@ -602,7 +623,7 @@ export class WAFSecurityService {
     const key = `rate:${ipAddress}`;
 
     let state = this.rateLimitStates.get(key);
-    
+
     if (!state || now > state.resetTime) {
       state = {
         requests: 0,
@@ -661,7 +682,7 @@ export class WAFSecurityService {
         isBot = true;
         score += 20;
         reasons.push('suspicious_user_agent');
-        
+
         // Check if it's a malicious bot
         if (/nikto|sqlmap|nessus|masscan|nmap/i.test(userAgent)) {
           isMalicious = true;
@@ -695,7 +716,7 @@ export class WAFSecurityService {
     }
 
     // Check for automation indicators
-    if (context.headers['x-requested-with'] === 'XMLHttpRequest' && 
+    if (context.headers['x-requested-with'] === 'XMLHttpRequest' &&
         !context.headers.referer) {
       score += 20;
       reasons.push('ajax_without_referer');
@@ -904,7 +925,7 @@ export class WAFSecurityService {
    */
   private sendChallengeResponse(res: Response, event: SecurityEvent): void {
     const challengeHtml = this.generateChallengeHTML(event);
-    
+
     res.status(429)
       .set('Content-Type', 'text/html')
       .send(challengeHtml);
@@ -915,7 +936,7 @@ export class WAFSecurityService {
    */
   private generateChallengeHTML(event: SecurityEvent): string {
     const challengeId = this.generateChallengeId();
-    
+
     return `
     <!DOCTYPE html>
     <html>
@@ -1068,7 +1089,7 @@ export class WAFSecurityService {
   }> {
     try {
       const stats = this.getStats();
-      
+
       return {
         status: 'healthy',
         stats

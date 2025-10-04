@@ -1,6 +1,6 @@
 import AWS from 'aws-sdk';
-import path from 'path';
 import crypto from 'crypto';
+import path from 'path';
 import { logger } from '../utils/logger';
 import { storageEncryptionService } from './StorageEncryptionService';
 
@@ -154,7 +154,7 @@ export class SecureStorageService {
             encryption: encryption.ServerSideEncryptionConfiguration
           });
 
-        } catch (error) {
+        } catch (_error) {
           logger.warn('Bucket encryption not configured, setting up default encryption');
           await this.configureBucketEncryption();
         }
@@ -184,7 +184,7 @@ export class SecureStorageService {
             await this.blockPublicAccess();
           }
 
-        } catch (error) {
+        } catch (_error: unknown) {
           logger.warn('Public access block not configured, setting up block');
           await this.blockPublicAccess();
         }
@@ -629,7 +629,7 @@ export class SecureStorageService {
 
       return result.Metadata || null;
 
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }
@@ -655,7 +655,7 @@ export class SecureStorageService {
 
       return tags;
 
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }
@@ -778,10 +778,10 @@ export class SecureStorageService {
   }> {
     try {
       const stats = this.getStats();
-      
+
       // Test bucket access
       await this.s3Client.headBucket({ Bucket: this.config.bucketName }).promise();
-      
+
       return {
         status: 'healthy',
         stats: { ...stats.config, trackedFiles: stats.trackedFiles, provider: stats.provider as StorageConfig['provider']  },

@@ -1,28 +1,27 @@
-import React, { ReactNode } from 'react'
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  IconButton,
-  Typography,
-  Box,
-  Menu,
-  MenuItem,
-  Chip,
-  Avatar,
-  Tooltip,
-} from '@mui/material'
-import {
-  MoreVert,
-  Refresh,
-  Settings,
-  Visibility,
-  VisibilityOff,
-  Delete,
-  DragIndicator,
-  Fullscreen,
-  FullscreenExit,
+    Delete,
+    DragIndicator,
+    Fullscreen,
+    FullscreenExit,
+    MoreVert,
+    Refresh,
+    Settings,
+    VisibilityOff,
 } from '@mui/icons-material'
+import {
+    Avatar,
+    Box,
+    Card,
+    CardContent,
+    CardHeader,
+    Chip,
+    IconButton,
+    Menu,
+    MenuItem,
+    Tooltip,
+    Typography,
+} from '@mui/material'
+import React, { ReactNode } from 'react'
 
 export interface DashboardWidgetProps {
   id: string
@@ -137,9 +136,9 @@ const DashboardWidget: React.FC<DashboardWidgetProps> = ({
   }
 
   return (
-    <Card 
+    <Card
       className={className}
-      sx={{ 
+      sx={{
         height: isFullscreen ? '100vh' : getSizeHeight(),
         display: 'flex',
         flexDirection: 'column',
@@ -174,7 +173,7 @@ const DashboardWidget: React.FC<DashboardWidgetProps> = ({
               {title}
             </Typography>
             {status && (
-              <Chip 
+              <Chip
                 size="small"
                 label={status}
                 color={status as any}
@@ -189,14 +188,14 @@ const DashboardWidget: React.FC<DashboardWidgetProps> = ({
         action={
           <Box display="flex" alignItems="center" gap={1}>
             {headerAction}
-            
+
             {lastUpdated && (
               <Tooltip title={`Последнее обновление: ${lastUpdated.toLocaleTimeString()}`}>
-                <Chip 
+                <Chip
                   size="small"
-                  label={lastUpdated.toLocaleTimeString('ru-RU', { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
+                  label={lastUpdated.toLocaleTimeString('ru-RU', {
+                    hour: '2-digit',
+                    minute: '2-digit'
                   })}
                   variant="outlined"
                 />
@@ -219,7 +218,7 @@ const DashboardWidget: React.FC<DashboardWidgetProps> = ({
                   Обновить
                 </MenuItem>
               )}
-              
+
               {showSettings && onSettings && (
                 <MenuItem onClick={handleSettings}>
                   <Settings sx={{ mr: 1 }} />
@@ -250,20 +249,20 @@ const DashboardWidget: React.FC<DashboardWidgetProps> = ({
             </Menu>
           </Box>
         }
-        sx={{ 
+        sx={{
           pb: 1,
           '& .MuiCardHeader-content': {
             overflow: 'hidden'
           }
         }}
       />
-      
+
       <CardContent sx={{ flex: 1, overflow: 'auto', pt: 0 }}>
         {error ? (
-          <Box 
-            display="flex" 
-            alignItems="center" 
-            justifyContent="center" 
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
             height="100%"
             color="error.main"
           >

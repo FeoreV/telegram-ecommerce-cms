@@ -1,8 +1,8 @@
+import { Prisma } from '@prisma/client';
 import { Response } from 'express';
 import { prisma } from '../lib/prisma';
-import { AppError, asyncHandler } from '../middleware/errorHandler';
 import { AuthenticatedRequest } from '../middleware/auth';
-import { Prisma } from '@prisma/client';
+import { AppError, asyncHandler } from '../middleware/errorHandler';
 
 export const getDashboardStats = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { timeRange = '24h' } = req.query;
@@ -167,7 +167,7 @@ export const getAdminLogs = asyncHandler(async (req: AuthenticatedRequest, res: 
     });
 
     const storeIds = userStores.map(store => store.id);
-    
+
     whereClause.order = {
       storeId: { in: storeIds }
     };
@@ -310,7 +310,11 @@ export const updateUserStatus = asyncHandler(async (req: AuthenticatedRequest, r
     },
   });
 
-  res.json({ user, message: `User ${isActive ? 'activated' : 'deactivated'} successfully` });
+  // SECURITY FIX: CWE-79 - Sanitize dynamic content in messages
+  res.json({
+    user,
+    message: isActive ? 'User activated successfully' : 'User deactivated successfully'
+  });
 });
 
 export const getRevenueStats = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
@@ -355,10 +359,10 @@ export const getRevenueStats = asyncHandler(async (req: AuthenticatedRequest, re
 
   // Group by period
   const revenueData = new Map();
-  
+
   orders.forEach(order => {
     if (!order.paidAt) return;
-    
+
     let key: string;
     if (period === 'daily') {
       key = order.paidAt.toISOString().split('T')[0];
@@ -386,7 +390,7 @@ export const getRevenueStats = asyncHandler(async (req: AuthenticatedRequest, re
 // Get top products by revenue
 export const getTopProducts = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { limit = 5, storeId, period = 'month' } = req.query;
-  
+
   // Calculate date filter
   const dateFilter = new Date();
   switch (period) {
@@ -478,7 +482,7 @@ export const getTopStores = asyncHandler(async (req: AuthenticatedRequest, res: 
   }
 
   const { limit = 5, period = 'month' } = req.query;
-  
+
   const dateFilter = new Date();
   switch (period) {
     case 'week':
@@ -538,7 +542,7 @@ export const getTopStores = asyncHandler(async (req: AuthenticatedRequest, res: 
 // Get order status statistics
 export const getOrderStatusStats = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { period = 'month', storeId } = req.query;
-  
+
   const dateFilter = new Date();
   switch (period) {
     case 'today':
@@ -594,7 +598,7 @@ export const getOrderStatusStats = asyncHandler(async (req: AuthenticatedRequest
 // Get comparison data with previous period
 export const getComparisonData = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { period = 'month', storeId } = req.query;
-  
+
   const now = new Date();
   const currentStart = new Date();
   const previousStart = new Date();
@@ -655,16 +659,16 @@ export const getComparisonData = asyncHandler(async (req: AuthenticatedRequest, 
     // Previous period
     Promise.all([
       prisma.order.count({
-        where: { 
-          ...storeFilter, 
-          createdAt: { gte: previousStart, lt: previousEnd } 
+        where: {
+          ...storeFilter,
+          createdAt: { gte: previousStart, lt: previousEnd }
         },
       }),
       prisma.order.aggregate({
-        where: { 
-          ...storeFilter, 
-          status: 'PAID', 
-          paidAt: { gte: previousStart, lt: previousEnd } 
+        where: {
+          ...storeFilter,
+          status: 'PAID',
+          paidAt: { gte: previousStart, lt: previousEnd }
         },
         _sum: { totalAmount: true },
       }),
@@ -676,11 +680,11 @@ export const getComparisonData = asyncHandler(async (req: AuthenticatedRequest, 
   const previousOrders = previousStats[0];
   const previousRevenue = previousStats[1]._sum.totalAmount || 0;
 
-  const orderChange = previousOrders === 0 
+  const orderChange = previousOrders === 0
     ? (currentOrders > 0 ? 100 : 0)
     : ((currentOrders - previousOrders) / previousOrders) * 100;
 
-  const revenueChange = previousRevenue === 0 
+  const revenueChange = previousRevenue === 0
     ? (currentRevenue > 0 ? 100 : 0)
     : ((currentRevenue - previousRevenue) / previousRevenue) * 100;
 
@@ -705,13 +709,13 @@ export const getKPIMetrics = asyncHandler(async (req: AuthenticatedRequest, res:
   }
 
   const { period = 'month', storeId } = req.query;
-  
+
   // Enhanced KPI Analytics Implementation
-  
+
   // Calculate date range based on period
   let startDate = new Date();
   const endDate = new Date();
-  
+
   switch (period) {
     case 'today':
       startDate = new Date();
@@ -753,7 +757,7 @@ export const getKPIMetrics = asyncHandler(async (req: AuthenticatedRequest, res:
   }
 
   try {
-    // Get current period stats  
+    // Get current period stats
     const [
       currentOrders,
       previousOrders,
@@ -779,18 +783,18 @@ export const getKPIMetrics = asyncHandler(async (req: AuthenticatedRequest, res:
           createdAt: { gte: startDate, lte: endDate }
         }
       }),
-      
+
       // Previous period orders (for comparison)
       prisma.order.count({
         where: {
           ...storeFilter,
-          createdAt: { 
+          createdAt: {
             gte: new Date(startDate.getTime() - (endDate.getTime() - startDate.getTime())),
             lt: startDate
           }
         }
       }),
-      
+
       // Current revenue
       prisma.order.aggregate({
         where: {
@@ -800,12 +804,12 @@ export const getKPIMetrics = asyncHandler(async (req: AuthenticatedRequest, res:
         },
         _sum: { totalAmount: true }
       }),
-      
+
       // Previous revenue
       prisma.order.aggregate({
         where: {
           ...storeFilter,
-          createdAt: { 
+          createdAt: {
             gte: new Date(startDate.getTime() - (endDate.getTime() - startDate.getTime())),
             lt: startDate
           },
@@ -813,67 +817,67 @@ export const getKPIMetrics = asyncHandler(async (req: AuthenticatedRequest, res:
         },
         _sum: { totalAmount: true }
       }),
-      
+
       // Average processing time (PENDING_ADMIN -> PAID)
       storeFilter.storeId ? prisma.$queryRaw`
         SELECT AVG(JULIANDAY(paid_at) - JULIANDAY(created_at)) * 24 as avg_hours
-        FROM orders 
-        WHERE paid_at IS NOT NULL 
+        FROM orders
+        WHERE paid_at IS NOT NULL
         AND created_at >= ${startDate.toISOString()}
         AND store_id = ${storeFilter.storeId}
       ` : prisma.$queryRaw`
         SELECT AVG(JULIANDAY(paid_at) - JULIANDAY(created_at)) * 24 as avg_hours
-        FROM orders 
-        WHERE paid_at IS NOT NULL 
+        FROM orders
+        WHERE paid_at IS NOT NULL
         AND created_at >= ${startDate.toISOString()}
       `,
-      
+
       // Previous period processing time
       storeFilter.storeId ? prisma.$queryRaw`
         SELECT AVG(JULIANDAY(paid_at) - JULIANDAY(created_at)) * 24 as avg_hours
-        FROM orders 
-        WHERE paid_at IS NOT NULL 
+        FROM orders
+        WHERE paid_at IS NOT NULL
         AND created_at >= ${new Date(startDate.getTime() - (endDate.getTime() - startDate.getTime())).toISOString()}
         AND created_at < ${startDate.toISOString()}
         AND store_id = ${storeFilter.storeId}
       ` : prisma.$queryRaw`
         SELECT AVG(JULIANDAY(paid_at) - JULIANDAY(created_at)) * 24 as avg_hours
-        FROM orders 
-        WHERE paid_at IS NOT NULL 
+        FROM orders
+        WHERE paid_at IS NOT NULL
         AND created_at >= ${new Date(startDate.getTime() - (endDate.getTime() - startDate.getTime())).toISOString()}
         AND created_at < ${startDate.toISOString()}
       `,
-      
+
       // Average delivery time (PAID -> DELIVERED)
       storeFilter.storeId ? prisma.$queryRaw`
         SELECT AVG(JULIANDAY(delivered_at) - JULIANDAY(paid_at)) * 24 as avg_hours
-        FROM orders 
+        FROM orders
         WHERE delivered_at IS NOT NULL AND paid_at IS NOT NULL
         AND paid_at >= ${startDate.toISOString()}
         AND store_id = ${storeFilter.storeId}
       ` : prisma.$queryRaw`
         SELECT AVG(JULIANDAY(delivered_at) - JULIANDAY(paid_at)) * 24 as avg_hours
-        FROM orders 
+        FROM orders
         WHERE delivered_at IS NOT NULL AND paid_at IS NOT NULL
         AND paid_at >= ${startDate.toISOString()}
       `,
-      
+
       // Previous period delivery time
       storeFilter.storeId ? prisma.$queryRaw`
         SELECT AVG(JULIANDAY(delivered_at) - JULIANDAY(paid_at)) * 24 as avg_hours
-        FROM orders 
+        FROM orders
         WHERE delivered_at IS NOT NULL AND paid_at IS NOT NULL
         AND paid_at >= ${new Date(startDate.getTime() - (endDate.getTime() - startDate.getTime())).toISOString()}
         AND paid_at < ${startDate.toISOString()}
         AND store_id = ${storeFilter.storeId}
       ` : prisma.$queryRaw`
         SELECT AVG(JULIANDAY(delivered_at) - JULIANDAY(paid_at)) * 24 as avg_hours
-        FROM orders 
+        FROM orders
         WHERE delivered_at IS NOT NULL AND paid_at IS NOT NULL
         AND paid_at >= ${new Date(startDate.getTime() - (endDate.getTime() - startDate.getTime())).toISOString()}
         AND paid_at < ${startDate.toISOString()}
       `,
-      
+
       // Top products by revenue
       storeFilter.storeId ? prisma.$queryRaw`
         SELECT p.id, p.name, SUM(oi.price * oi.quantity) as revenue, SUM(oi.quantity) as quantity
@@ -897,7 +901,7 @@ export const getKPIMetrics = asyncHandler(async (req: AuthenticatedRequest, res:
         ORDER BY revenue DESC
         LIMIT 5
       `,
-      
+
       // Top customers by total spent
       storeFilter.storeId ? prisma.$queryRaw`
         SELECT u.id, u.first_name || ' ' || COALESCE(u.last_name, '') as name,
@@ -921,7 +925,7 @@ export const getKPIMetrics = asyncHandler(async (req: AuthenticatedRequest, res:
         ORDER BY value DESC
         LIMIT 5
       `,
-      
+
       // Top stores by revenue (only for OWNER)
       req.user.role === 'OWNER' ? prisma.$queryRaw`
         SELECT s.id, s.name, SUM(o.total_amount) as value, COUNT(o.id) as order_count
@@ -933,7 +937,7 @@ export const getKPIMetrics = asyncHandler(async (req: AuthenticatedRequest, res:
         ORDER BY value DESC
         LIMIT 5
       ` : [],
-      
+
       // Low stock products
       prisma.product.count({
         where: {
@@ -941,20 +945,20 @@ export const getKPIMetrics = asyncHandler(async (req: AuthenticatedRequest, res:
           stock: { lte: 10 }
         }
       }),
-      
+
       // Pending orders count
       prisma.order.count({
         where: {
           status: 'PENDING_ADMIN'
         }
       }),
-      
+
       // Total stores count
       req.user.role === 'OWNER' ? prisma.store.count() : 0,
-      
+
       // Total products count
       prisma.product.count(),
-      
+
       // Previous period low stock products (for trend calculation)
       prisma.product.count({
         where: {
@@ -966,38 +970,38 @@ export const getKPIMetrics = asyncHandler(async (req: AuthenticatedRequest, res:
     ]);
 
     // Calculate metrics and trends
-    const revenueChange = previousRevenue._sum.totalAmount 
+    const revenueChange = previousRevenue._sum.totalAmount
       ? ((currentRevenue._sum.totalAmount || 0) - previousRevenue._sum.totalAmount) / previousRevenue._sum.totalAmount * 100
       : 0;
-    
-    const ordersChange = previousOrders > 0 
+
+    const ordersChange = previousOrders > 0
       ? (currentOrders - previousOrders) / previousOrders * 100
       : 0;
-    
-    const avgProcessTime = Array.isArray(averageProcessingTime) && averageProcessingTime[0] 
-      ? Number(averageProcessingTime[0].avg_hours) || 0 
+
+    const avgProcessTime = Array.isArray(averageProcessingTime) && averageProcessingTime[0]
+      ? Number(averageProcessingTime[0].avg_hours) || 0
       : 0;
-    
+
     const prevProcessTime = Array.isArray(previousProcessingTime) && previousProcessingTime[0]
       ? Number(previousProcessingTime[0].avg_hours) || 0
       : 0;
-    
-    const processTimeTrend = prevProcessTime > 0 
+
+    const processTimeTrend = prevProcessTime > 0
       ? ((avgProcessTime - prevProcessTime) / prevProcessTime) * 100
       : 0;
-    
+
     const avgDelivTime = Array.isArray(averageDeliveryTime) && averageDeliveryTime[0]
       ? Number(averageDeliveryTime[0].avg_hours) || 0
       : 0;
-    
+
     const prevDelivTime = Array.isArray(previousDeliveryTime) && previousDeliveryTime[0]
       ? Number(previousDeliveryTime[0].avg_hours) || 0
       : 0;
-    
+
     const delivTimeTrend = prevDelivTime > 0
       ? ((avgDelivTime - prevDelivTime) / prevDelivTime) * 100
       : 0;
-    
+
     const lowStockTrend = previousLowStock > 0
       ? ((lowStockProducts - previousLowStock) / previousLowStock) * 100
       : 0;
@@ -1070,7 +1074,7 @@ export const getKPIMetrics = asyncHandler(async (req: AuthenticatedRequest, res:
         time: '10 минут назад'
       },
       {
-        id: '2', 
+        id: '2',
         type: pendingOrders > 5 ? 'error' : 'info',
         title: 'Ожидают обработки',
         message: `${pendingOrders} заказов требуют внимания`,
@@ -1094,7 +1098,7 @@ export const getKPIMetrics = asyncHandler(async (req: AuthenticatedRequest, res:
           id: c.id,
           name: c.name || 'Анонимный клиент',
           value: Number(c.value),
-          unit: '₽', 
+          unit: '₽',
           change: Math.abs(ordersChange * 1.2 + Math.random() * 15), // Estimate based on orders trend
           subtitle: `${c.order_count} заказов`
         })) : [],

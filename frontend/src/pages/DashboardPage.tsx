@@ -1,61 +1,47 @@
-import React, { useState, useEffect } from 'react'
 import {
-  Grid,
-  Paper,
-  Typography,
-  Box,
-  Card,
-  CardContent,
-  Button,
-  CircularProgress,
-  Alert,
-  Chip,
-  Avatar,
-  Divider,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  LinearProgress,
-} from '@mui/material'
-import {
-  Store,
-  Inventory,
-  Receipt,
-  AttachMoney,
-  Pending,
-  CheckCircle,
-  TrendingUp,
-  TrendingDown,
-  Person,
-  Refresh,
-  DateRange,
-  DarkMode,
-  LightMode,
+    AttachMoney,
+    CheckCircle,
+    Inventory,
+    Pending,
+    Person,
+    Receipt,
+    Refresh,
+    Store
 } from '@mui/icons-material'
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { dashboardService, DashboardFilters } from '../services/dashboardService'
-import { orderService } from '../services/orderService'
+import {
+    Alert,
+    Avatar,
+    Box,
+    Button,
+    Chip,
+    FormControl,
+    Grid,
+    InputLabel,
+    MenuItem,
+    Select,
+    Typography
+} from '@mui/material'
+import { useTheme } from '@mui/material/styles'
+import React, { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { toast } from 'react-toastify'
+import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import LoadingSkeleton from '../components/ui/LoadingSkeleton'
+import PageHeader from '../components/ui/PageHeader'
+import SectionCard from '../components/ui/SectionCard'
+import StatCard from '../components/ui/StatCard'
+import { useAuth } from '../contexts/AuthContext'
+import { useDashboardRealTime } from '../hooks/useRealTimeUpdates'
+import { DashboardFilters, dashboardService } from '../services/dashboardService'
 import { storeService } from '../services/storeService'
 import { DashboardStats, Order, Store as StoreType } from '../types'
-import { useAuth } from '../contexts/AuthContext'
-import { toast } from 'react-toastify'
-import { useNavigate } from 'react-router-dom'
-import { useDashboardRealTime } from '../hooks/useRealTimeUpdates'
-import PageHeader from '../components/ui/PageHeader'
-import StatCard from '../components/ui/StatCard'
-import SectionCard from '../components/ui/SectionCard'
-import LoadingSkeleton from '../components/ui/LoadingSkeleton'
-import { useChartColors, getChartThemeProps } from '../utils/chartTheme'
-import { useTheme } from '@mui/material/styles'
-import { useThemeMode } from '../contexts/ThemeModeContext'
+import { getChartThemeProps, useChartColors } from '../utils/chartTheme'
 
 
 const DashboardPage: React.FC = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
   const theme = useTheme()
-  const { mode, toggleMode } = useThemeMode()
   const chartColors = useChartColors()
   const chartTheme = getChartThemeProps(theme)
   const [loading, setLoading] = useState(true)
@@ -76,7 +62,7 @@ const DashboardPage: React.FC = () => {
     { value: 'quarter', label: 'Квартал' },
   ]
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     setLoading(true)
     try {
       const filters: DashboardFilters = {
@@ -118,11 +104,11 @@ const DashboardPage: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedPeriod, selectedStore, user?.role, toast.error, setStats, setRecentOrders, setRevenueData, setTopProducts, setTopStores, setStores, setComparison, setLoading])
 
   useEffect(() => {
     loadDashboardData()
-  }, [selectedPeriod, selectedStore])
+  }, [selectedPeriod, selectedStore, loadDashboardData])
 
   // Real-time updates
   useDashboardRealTime(loadDashboardData)
@@ -186,7 +172,7 @@ const DashboardPage: React.FC = () => {
               ))}
             </Select>
           </FormControl>
-          
+
           {user?.role === 'OWNER' && stores.length > 0 && (
             <FormControl size="small" sx={{ minWidth: 150 }}>
               <InputLabel>Магазин</InputLabel>
@@ -207,15 +193,6 @@ const DashboardPage: React.FC = () => {
 
           <Button
             variant="outlined"
-            startIcon={mode === 'dark' ? <LightMode /> : <DarkMode />}
-            onClick={toggleMode}
-            sx={{ mr: 1 }}
-          >
-            {mode === 'dark' ? 'Светлая' : 'Тёмная'} тема
-          </Button>
-          
-          <Button
-            variant="outlined"
             startIcon={<Refresh />}
             onClick={loadDashboardData}
             disabled={loading}
@@ -225,7 +202,7 @@ const DashboardPage: React.FC = () => {
           </Box>
         }
       />
-      
+
       {/* Statistics Cards */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={6} md={2.4}>
@@ -295,24 +272,24 @@ const DashboardPage: React.FC = () => {
                   <CartesianGrid {...chartTheme.cartesianGrid} />
                   <XAxis dataKey="date" {...chartTheme.xAxis} />
                   <YAxis {...chartTheme.yAxis} />
-                  <Tooltip 
+                  <Tooltip
                     {...chartTheme.tooltip}
                     formatter={(value: any) => [formatCurrency(value), 'Выручка']}
                     labelFormatter={(label) => `Дата: ${label}`}
                   />
                   <Legend />
-                  <Line 
-                    type="monotone" 
-                    dataKey="revenue" 
-                    stroke={chartColors.chartPalette[0]} 
+                  <Line
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke={chartColors.chartPalette[0]}
                     strokeWidth={3}
                     name="Выручка"
                     dot={false}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="orders" 
-                    stroke={chartColors.chartPalette[1]} 
+                  <Line
+                    type="monotone"
+                    dataKey="orders"
+                    stroke={chartColors.chartPalette[1]}
                     strokeWidth={3}
                     name="Заказы"
                     dot={false}
@@ -361,11 +338,11 @@ const DashboardPage: React.FC = () => {
       <Grid container spacing={3}>
         {/* Recent Orders */}
         <Grid item xs={12} md={8}>
-          <SectionCard 
+          <SectionCard
             title="Последние заказы"
             action={
-              <Button 
-                variant="outlined" 
+              <Button
+                variant="outlined"
                 size="small"
                 onClick={() => navigate('/orders')}
               >
@@ -421,9 +398,9 @@ const DashboardPage: React.FC = () => {
                         {getStatusChip(order.status)}
                       </Box>
                       {order.status === 'PENDING_ADMIN' && (
-                        <Button 
-                          variant="contained" 
-                          size="small" 
+                        <Button
+                          variant="contained"
+                          size="small"
                           color="primary"
                           onClick={(e) => {
                             e.stopPropagation()
@@ -444,7 +421,7 @@ const DashboardPage: React.FC = () => {
             )}
           </SectionCard>
         </Grid>
-        
+
         {/* Quick Actions & Top Stores */}
         <Grid item xs={12} md={4}>
           <Grid container spacing={3}>
@@ -452,25 +429,25 @@ const DashboardPage: React.FC = () => {
             <Grid item xs={12}>
               <SectionCard title="Быстрые действия">
                 <Box display="flex" flexDirection="column" gap={2}>
-                  <Button 
-                    variant="contained" 
-                    startIcon={<Store />} 
+                  <Button
+                    variant="contained"
+                    startIcon={<Store />}
                     fullWidth
                     onClick={() => navigate('/stores')}
                   >
                     Управление магазинами
                   </Button>
-                  <Button 
-                    variant="outlined" 
-                    startIcon={<Inventory />} 
+                  <Button
+                    variant="outlined"
+                    startIcon={<Inventory />}
                     fullWidth
                     onClick={() => navigate('/products')}
                   >
                     Управление товарами
                   </Button>
-                  <Button 
-                    variant="outlined" 
-                    startIcon={<Receipt />} 
+                  <Button
+                    variant="outlined"
+                    startIcon={<Receipt />}
                     fullWidth
                     onClick={() => navigate('/orders')}
                   >

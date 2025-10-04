@@ -1,7 +1,13 @@
 // Use dynamic import-compatible patterns to support ESM-only adminjs in CJS builds
-// Avoid TS transforming import() under CommonJS by using eval
-const AdminJSImport = async () => (await (eval('import("adminjs")'))).default;
-const AdminJSExpressImport = async () => (await (eval('import("@adminjs/express")'))).default;
+// SECURITY FIX: Replaced eval() with safe dynamic imports
+const AdminJSImport = async () => {
+  const module = await import('adminjs');
+  return module.default;
+};
+const AdminJSExpressImport = async () => {
+  const module = await import('@adminjs/express');
+  return module.default;
+};
 // Use dynamic import to bypass module resolution issues
 import { Database as PrismaDatabase, Resource as PrismaResource } from '@adminjs/prisma';
 let Database: typeof PrismaDatabase;
@@ -20,7 +26,8 @@ export const setupSimpleAdminJS = async (app: Express) => {
 
     // Dynamically import Prisma adapter to bypass module resolution issues and ESM
     try {
-      const prismaAdapter = await (eval('import("@adminjs/prisma")')) as { Database: typeof PrismaDatabase; Resource: typeof PrismaResource };
+      // SECURITY FIX: Replaced eval() with safe dynamic import
+      const prismaAdapter = await import('@adminjs/prisma') as { Database: typeof PrismaDatabase; Resource: typeof PrismaResource };
       Database = prismaAdapter.Database;
       Resource = prismaAdapter.Resource;
 

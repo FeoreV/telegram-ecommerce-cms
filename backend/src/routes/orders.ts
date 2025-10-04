@@ -1,24 +1,26 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response, Router } from 'express';
 import { body, param } from 'express-validator';
-import { UserRole } from '../utils/jwt';
-import { requireRole } from '../middleware/auth';
-import { validate } from '../middleware/validation';
-import { auditOrderAction, AuditAction } from '../middleware/auditLog';
-import { uploadRateLimitMiddleware, getUploadStats } from '../middleware/uploadRateLimit';
-import { uploadPaymentProof } from '../middleware/uploadPaymentProof';
 import {
-  getOrders,
-  getOrder,
-  createOrder,
-  confirmPayment,
-  rejectOrder,
-  shipOrder,
-  deliverOrder,
-  cancelOrder,
-  uploadOrderPaymentProof,
-  getPaymentProof,
-  getOrderStats,
+    cancelOrder,
+    confirmPayment,
+    createOrder,
+    deliverOrder,
+    exportOrders,
+    getOrder,
+    getOrders,
+    getOrderStats,
+    getPaymentProof,
+    rejectOrder,
+    shipOrder,
+    uploadOrderPaymentProof,
 } from '../controllers/orderController';
+import { AuditAction, auditOrderAction } from '../middleware/auditLog';
+import { requireRole } from '../middleware/auth';
+import { csrfProtection } from '../middleware/csrfProtection';
+import { uploadPaymentProof } from '../middleware/uploadPaymentProof';
+import { getUploadStats, uploadRateLimitMiddleware } from '../middleware/uploadRateLimit';
+import { validate } from '../middleware/validation';
+import { UserRole } from '../utils/jwt';
 
 const router = Router();
 
@@ -28,6 +30,9 @@ router.get('/', getOrders);
 // Get order statistics
 router.get('/stats', getOrderStats);
 
+// Export orders to CSV
+router.get('/export', exportOrders);
+
 // Get single order
 router.get(
   '/:id',
@@ -36,9 +41,10 @@ router.get(
   getOrder
 );
 
-// Create order
+// Create order (SECURITY: CSRF protected)
 router.post(
   '/',
+  csrfProtection,
   [
     body('storeId').isString().withMessage('Store ID is required'),
     body('items').isArray({ min: 1 }).withMessage('Order items are required'),
@@ -52,9 +58,10 @@ router.post(
   createOrder
 );
 
-// Confirm payment (Admin only) - with audit logging
+// Confirm payment (Admin only) - with audit logging (SECURITY: CSRF protected)
 router.post(
   '/:id/confirm-payment',
+  csrfProtection,
   requireRole([UserRole.OWNER, UserRole.ADMIN]),
   [param('id').isString().withMessage('Valid order ID required')],
   validate,
@@ -62,9 +69,10 @@ router.post(
   confirmPayment
 );
 
-// Reject order (Admin only) - with audit logging
+// Reject order (Admin only) - with audit logging (SECURITY: CSRF protected)
 router.post(
   '/:id/reject',
+  csrfProtection,
   requireRole([UserRole.OWNER, UserRole.ADMIN]),
   [
     param('id').isString().withMessage('Valid order ID required'),
@@ -75,9 +83,10 @@ router.post(
   rejectOrder
 );
 
-// Upload payment proof (Customer only) with rate limiting
+// Upload payment proof (Customer only) with rate limiting (SECURITY: CSRF protected)
 router.post(
   '/:id/payment-proof',
+  csrfProtection,
   uploadRateLimitMiddleware, // Apply rate limiting first
   [param('id').isString().withMessage('Valid order ID required')],
   validate,
@@ -87,9 +96,10 @@ router.post(
   uploadOrderPaymentProof
 );
 
-// Ship order (Admin only) - with audit logging
+// Ship order (Admin only) - with audit logging (SECURITY: CSRF protected)
 router.post(
   '/:id/ship',
+  csrfProtection,
   requireRole([UserRole.OWNER, UserRole.ADMIN]),
   [
     param('id').isString().withMessage('Valid order ID required'),
@@ -101,9 +111,10 @@ router.post(
   shipOrder
 );
 
-// Mark order as delivered (Admin only) - with audit logging
+// Mark order as delivered (Admin only) - with audit logging (SECURITY: CSRF protected)
 router.post(
   '/:id/deliver',
+  csrfProtection,
   requireRole([UserRole.OWNER, UserRole.ADMIN]),
   [
     param('id').isString().withMessage('Valid order ID required'),
@@ -114,9 +125,10 @@ router.post(
   deliverOrder
 );
 
-// Cancel order (Admin only) - with audit logging
+// Cancel order (Admin only) - with audit logging (SECURITY: CSRF protected)
 router.post(
   '/:id/cancel',
+  csrfProtection,
   requireRole([UserRole.OWNER, UserRole.ADMIN]),
   [
     param('id').isString().withMessage('Valid order ID required'),
@@ -130,6 +142,7 @@ router.post(
 // Get payment proof file (with access control)
 router.get(
   '/:id/payment-proof',
+  requireRole([UserRole.OWNER, UserRole.ADMIN, UserRole.VENDOR, UserRole.CUSTOMER]), // All authenticated users can access their own orders
   [param('id').isString().withMessage('Valid order ID required')],
   validate,
   getPaymentProof

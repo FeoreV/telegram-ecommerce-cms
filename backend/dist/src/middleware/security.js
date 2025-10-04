@@ -4,13 +4,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.cleanupSecurityData = exports.adminSecurityBundle = exports.apiSecurityBundle = exports.securityMiddlewareBundle = exports.markSuspiciousIP = exports.ipReputationCheck = exports.helmetMiddleware = exports.corsMiddleware = exports.getSecurityStatus = exports.adminIPWhitelist = exports.sanitizeInput = exports.securityMonitoring = exports.bruteForce = exports.slowDownMiddleware = exports.adminRateLimit = exports.apiRateLimit = exports.uploadRateLimit = exports.authRateLimit = exports.globalRateLimit = void 0;
-const helmet_1 = __importDefault(require("helmet"));
 const cors_1 = __importDefault(require("cors"));
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const express_slow_down_1 = __importDefault(require("express-slow-down"));
-const logger_1 = require("../utils/logger");
-const security_1 = require("../config/security");
+const helmet_1 = __importDefault(require("helmet"));
 const redis_1 = require("redis");
+const security_1 = require("../config/security");
+const logger_1 = require("../utils/logger");
+const securityHeaders_1 = require("./securityHeaders");
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const ENABLE_IP_REPUTATION = process.env.ENABLE_IP_REPUTATION !== 'false';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
@@ -265,16 +266,24 @@ exports.bruteForce = {
         if (now - record.lastAttempt > 15 * 60 * 1000) {
             record.count = 0;
         }
-        if (record.count >= 5) {
-            logger_1.logger.warn('Brute force protection triggered', {
-                ip: clientIP,
-                userAgent: req.get('User-Agent'),
-                attempts: record.count
-            });
-            return res.status(429).json({
-                error: 'Too many failed attempts. Account temporarily locked.',
-                message: 'Please try again later or contact support if this continues.'
-            });
+        if (record.count >= 3) {
+            const blockDuration = Math.min(15 * 60 * 1000 * Math.pow(2, record.count - 3), 24 * 60 * 60 * 1000);
+            const timeSinceLastAttempt = now - record.lastAttempt;
+            if (timeSinceLastAttempt < blockDuration) {
+                const retryAfter = Math.ceil((blockDuration - timeSinceLastAttempt) / 1000);
+                logger_1.logger.warn('Brute force protection triggered', {
+                    ip: clientIP,
+                    userAgent: req.get('User-Agent'),
+                    attempts: record.count,
+                    blockDuration: Math.ceil(blockDuration / 1000 / 60) + ' minutes',
+                    retryAfter: retryAfter + ' seconds'
+                });
+                return res.status(429).json({
+                    error: 'Too many failed attempts',
+                    message: 'Account temporarily locked. Please try again later.',
+                    retryAfter: retryAfter
+                });
+            }
         }
         req.bruteForceKey = clientIP;
         next();
@@ -425,22 +434,24 @@ function sanitizeObject(obj, isQueryParam = false) {
 function sanitizeString(str, isKey = false) {
     if (typeof str !== 'string')
         return str;
-    let sanitized = str;
-    sanitized = sanitized.replace(/<script[^>]*>.*?<\/script>/gi, '');
-    sanitized = sanitized.replace(/<(script|object|embed|link|meta|style|iframe)[^>]*>/gi, '');
     if (isKey) {
-        sanitized = sanitized.replace(/[^a-zA-Z0-9_\-.]/g, '');
+        return str.replace(/[^a-zA-Z0-9_\-.]/g, '').trim();
     }
-    else {
-        sanitized = sanitized.replace(/<[^>]+>/g, '');
-        sanitized = sanitized
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .replace(/&quot;/g, '"')
-            .replace(/&#x27;/g, "'")
-            .replace(/&#x2F;/g, '/')
-            .replace(/&amp;/g, '&');
-    }
+    let sanitized = str;
+    sanitized = sanitized.replace(/<script[^>]*>.*?<\/script>/gis, '');
+    sanitized = sanitized.replace(/javascript:/gi, '');
+    sanitized = sanitized.replace(/data:text\/html/gi, '');
+    sanitized = sanitized.replace(/on\w+\s*=/gi, '');
+    sanitized = sanitized.replace(/<(script|object|embed|link|meta|style|iframe|frame|frameset|applet|base)[^>]*>/gi, '');
+    sanitized = sanitized
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#x27;')
+        .replace(/\//g, '&#x2F;');
+    sanitized = sanitized.replace(/\0/g, '');
+    sanitized = sanitized.normalize('NFKC');
     return sanitized.trim();
 }
 const adminIPWhitelist = (req, res, next) => {
@@ -549,6 +560,7 @@ exports.markSuspiciousIP = markSuspiciousIP;
 exports.securityMiddlewareBundle = [
     ...(NODE_ENV === 'development' || !ENABLE_IP_REPUTATION ? [] : [exports.ipReputationCheck]),
     exports.helmetMiddleware,
+    securityHeaders_1.customSecurityHeaders,
     exports.corsMiddleware,
     exports.securityMonitoring,
     exports.sanitizeInput,

@@ -1,49 +1,47 @@
-import React, { useState, useEffect } from 'react';
 import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Grid,
-  Chip,
-  IconButton,
-  Alert,
-  CircularProgress,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Tooltip,
-  Switch,
-  FormControlLabel,
-  Fab,
-} from '@mui/material';
-import {
-  Add as AddIcon,
-  Delete as DeleteIcon,
-  Settings as SettingsIcon,
-  RestartAlt as RestartIcon,
-  SmartToy as BotIcon,
-  Store as StoreIcon,
-  Timeline as StatsIcon,
-  CheckCircle as ActiveIcon,
-  Cancel as InactiveIcon,
-  Error as ErrorIcon,
-  Build as ConstructorIcon,
+    CheckCircle as ActiveIcon,
+    Add as AddIcon,
+    SmartToy as BotIcon,
+    Build as ConstructorIcon,
+    Delete as DeleteIcon,
+    Error as ErrorIcon,
+    Cancel as InactiveIcon,
+    RestartAlt as RestartIcon,
+    Settings as SettingsIcon,
+    Timeline as StatsIcon,
+    Store as StoreIcon,
 } from '@mui/icons-material';
+import {
+    Alert,
+    Box,
+    Button,
+    Card,
+    CardContent,
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    Fab,
+    Grid,
+    IconButton,
+    Paper,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    TextField,
+    Tooltip,
+    Typography
+} from '@mui/material';
+import React, { useEffect, useState } from 'react';
 import { useSocket } from '../../contexts/SocketContext';
 import { apiClient } from '../../services/apiClient';
-import BotConstructor from './BotConstructor';
+import { Store } from '../../types';
 import StoreDialog from '../stores/StoreDialog';
+import BotConstructor, { BotSettings } from './BotConstructor';
 
 interface Bot {
   storeId: string;
@@ -62,14 +60,6 @@ interface Bot {
   productCount: number;
 }
 
-interface BotSettings {
-  welcome_message?: string;
-  language?: string;
-  timezone?: string;
-  auto_responses?: boolean;
-  payment_methods?: string[];
-}
-
 interface BotStats {
   totalBots: number;
   activeBots: number;
@@ -85,11 +75,11 @@ interface CreateBotDialogProps {
   onBotCreated: () => void;
 }
 
-const CreateBotDialog: React.FC<CreateBotDialogProps> = ({ 
-  open, 
-  onClose, 
-  stores, 
-  onBotCreated 
+const CreateBotDialog: React.FC<CreateBotDialogProps> = ({
+  open,
+  onClose,
+  stores,
+  onBotCreated
 }) => {
   const [storeId, setStoreId] = useState('');
   const [botToken, setBotToken] = useState('');
@@ -144,8 +134,8 @@ const CreateBotDialog: React.FC<CreateBotDialogProps> = ({
         setBotToken('');
         setBotUsername('');
       }
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Ошибка создания бота';
+    } catch (error: unknown) {
+      const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Ошибка создания бота';
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -186,9 +176,17 @@ const CreateBotDialog: React.FC<CreateBotDialogProps> = ({
               <br />
               • Отправьте команду: <code>/newbot</code>
               <br />
-              • Введите имя для вашего бота (например: "Мой Магазин")
+              • Введите имя для вашего бота (например: &quot;Мой Магазин&quot;)
               <br />
-              • Введите username бота (должен заканчиваться на "bot")
+              • Введите username для вашего бота (например: &quot;MyStoreBot&quot;)
+              <br />
+              • Загрузите изображение для вашего бота (по желанию)
+              <br />
+              • Отключите режим приватности (privacy mode) для бота. Для этого отправьте команду: <code>/setprivacy</code>
+              <br />
+              • Выберите вашего бота
+              <br />
+              • Выберите &quot;Disable&quot;
               <br />
               <br />
               <strong>3. Получите токен</strong>
@@ -204,9 +202,9 @@ const CreateBotDialog: React.FC<CreateBotDialogProps> = ({
               <br />
               • Скопируйте весь токен целиком
               <br />
-              • Вставьте его в поле "Токен бота"
+              • Вставьте его в поле &quot;Токен бота&quot;
               <br />
-              • Нажмите "Создать бота"
+              • Нажмите &quot;Создать бота&quot;
             </Typography>
           </Alert>
 
@@ -242,11 +240,11 @@ const CreateBotDialog: React.FC<CreateBotDialogProps> = ({
           </TextField>
 
           {availableStores.length === 0 && (
-            <Alert severity="warning" 
+            <Alert severity="warning"
               action={
-                <Button 
-                  color="inherit" 
-                  size="small" 
+                <Button
+                  color="inherit"
+                  size="small"
                   startIcon={<StoreIcon />}
                   onClick={() => setShowStoreDialog(true)}
                 >
@@ -295,7 +293,7 @@ const CreateBotDialog: React.FC<CreateBotDialogProps> = ({
                 <Typography variant="caption">
                   Если не указано, будет получено автоматически
                   <br />
-                  <strong>Требования:</strong> должен заканчиваться на "bot"
+                  <strong>Требования:</strong> должен заканчиваться на &quot;bot&quot;
                   <br />
                   <strong>Пример:</strong> my_shop_bot, store_bot
                 </Typography>
@@ -309,13 +307,13 @@ const CreateBotDialog: React.FC<CreateBotDialogProps> = ({
         <Button onClick={onClose} disabled={loading}>
           Отмена
         </Button>
-        <Button 
-          onClick={handleSubmit} 
-          variant="contained" 
+        <Button
+          onClick={handleSubmit}
+          variant="contained"
           disabled={
-            loading || 
-            !storeId || 
-            !botToken || 
+            loading ||
+            !storeId ||
+            !botToken ||
             !isValidBotToken(botToken) ||
             (botUsername && !isValidBotUsername(botUsername))
           }
@@ -343,7 +341,7 @@ const BotManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [constructorOpen, setConstructorOpen] = useState(false);
-  const [editBot, setEditBot] = useState<{ storeId: string; settings: any } | null>(null);
+  const [editBot, setEditBot] = useState<{ storeId: string; settings: BotSettings } | null>(null);
   const { socket } = useSocket();
 
   const loadBots = async () => {
@@ -360,14 +358,14 @@ const BotManagement: React.FC = () => {
       }
 
       if (storesResponse.data.items) {
-        const storeList = storesResponse.data.items.map((store: any) => ({
+        const storeList = storesResponse.data.items.map((store: Store) => ({
           id: store.id,
           name: store.name,
           hasBot: botsResponse.data.bots?.some((bot: Bot) => bot.storeId === store.id && bot.hasToken) || false
         }));
         setStores(storeList);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error loading bots:', error);
     } finally {
       setLoading(false);
@@ -382,9 +380,12 @@ const BotManagement: React.FC = () => {
     try {
       const response = await apiClient.delete(`/bots/${storeId}`);
       if (response.data.success) {
+        alert(response.data.message || 'Бот успешно удален');
         await loadBots();
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      const errorMessage = (error as any).response?.data?.message || 'Ошибка при удалении бота';
+      alert(`Ошибка: ${errorMessage}`);
       console.error('Error removing bot:', error);
     }
   };
@@ -399,7 +400,7 @@ const BotManagement: React.FC = () => {
       if (response.data.success) {
         await loadBots();
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error restarting bot:', error);
     }
   };
@@ -415,12 +416,40 @@ const BotManagement: React.FC = () => {
         });
         setConstructorOpen(true);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error loading bot settings:', error);
       // Если не удается загрузить настройки, открываем конструктор с базовыми настройками
       setEditBot({
         storeId: storeId,
-        settings: {} // Пустые настройки, конструктор использует defaults
+        settings: {
+          welcomeMessage: 'Welcome!',
+          language: 'ru',
+          currency: 'USD',
+          timezone: 'Europe/Moscow',
+          theme: 'light' as const,
+          primaryColor: '#1976d2',
+          accentColor: '#dc004e',
+          catalogStyle: 'grid' as const,
+          showPrices: true,
+          showStock: true,
+          enableSearch: true,
+          categoriesPerPage: 10,
+          productsPerPage: 10,
+          autoResponses: { enabled: false, responses: [] },
+          notifications: {
+            newOrder: true,
+            lowStock: true,
+            paymentConfirmation: true,
+            orderStatusUpdate: true,
+            customNotifications: []
+          },
+          paymentMethods: [],
+          paymentInstructions: '',
+          enableAnalytics: false,
+          enableReferralSystem: false,
+          enableReviews: false,
+          customCommands: []
+        }
       });
       setConstructorOpen(true);
     }
@@ -428,7 +457,7 @@ const BotManagement: React.FC = () => {
 
   const getStatusIcon = (status: string, isActive: boolean) => {
     if (!isActive && status !== 'INACTIVE') return <ErrorIcon color="error" />;
-    
+
     switch (status) {
       case 'ACTIVE':
         return isActive ? <ActiveIcon color="success" /> : <InactiveIcon color="warning" />;
@@ -443,7 +472,7 @@ const BotManagement: React.FC = () => {
 
   const getStatusText = (status: string, isActive: boolean) => {
     if (!isActive && status !== 'INACTIVE') return 'Ошибка подключения';
-    
+
     switch (status) {
       case 'ACTIVE':
         return isActive ? 'Активен' : 'Неактивен';
@@ -469,19 +498,19 @@ const BotManagement: React.FC = () => {
   // Listen for bot-related socket events
   useEffect(() => {
     if (socket) {
-      const handleBotNotification = (data: any) => {
+      const handleBotNotification = (data: { type: string }) => {
         if (data.type?.includes('BOT_')) {
           loadBots(); // Refresh bots when bot-related events occur
         }
       };
 
       socket.on('notification', handleBotNotification);
-      
+
       return () => {
         socket.off('notification', handleBotNotification);
       };
     }
-  }, [socket]);
+  }, [socket, loadBots]);
 
   if (loading) {
     return (
@@ -585,7 +614,7 @@ const BotManagement: React.FC = () => {
           <Typography variant="h6" gutterBottom>
             Список ботов
           </Typography>
-          
+
           {bots.length === 0 ? (
             <Box textAlign="center" py={4}>
               <BotIcon sx={{ fontSize: 64, color: 'grey.400', mb: 2 }} />
@@ -682,35 +711,33 @@ const BotManagement: React.FC = () => {
                       <TableCell>
                         <Box display="flex" gap={1}>
                           {bot.hasToken && (
-                            <>
-                              <Tooltip title="Перезапустить бота">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleRestartBot(bot.storeId, bot.storeName)}
-                                  disabled={!bot.isActive}
-                                >
-                                  <RestartIcon />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Настройки бота">
-                                <IconButton 
-                                  size="small"
-                                  onClick={() => handleEditBot(bot.storeId)}
-                                >
-                                  <SettingsIcon />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Удалить бота">
-                                <IconButton
-                                  size="small"
-                                  color="error"
-                                  onClick={() => handleRemoveBot(bot.storeId, bot.storeName)}
-                                >
-                                  <DeleteIcon />
-                                </IconButton>
-                              </Tooltip>
-                            </>
+                            <Tooltip title="Перезапустить бота">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleRestartBot(bot.storeId, bot.storeName)}
+                                disabled={!bot.isActive}
+                              >
+                                <RestartIcon />
+                              </IconButton>
+                            </Tooltip>
                           )}
+                          <Tooltip title="Настройки бота">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleEditBot(bot.storeId)}
+                            >
+                              <SettingsIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Удалить бота">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleRemoveBot(bot.storeId, bot.storeName)}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Tooltip>
                         </Box>
                       </TableCell>
                     </TableRow>

@@ -1,15 +1,16 @@
-import { Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/auth';
-import { prisma } from '../lib/prisma';
-import { AppError, asyncHandler } from '../middleware/errorHandler';
-import { logger, toLogMetadata } from '../utils/logger';
-import { NotificationService, NotificationPriority, NotificationType, NotificationChannel } from '../services/notificationService';
-import { telegramNotificationService } from '../services/telegramNotificationService';
-import { getIO } from '../lib/socket';
-import { uploadPaymentProof, validateUploadedFile } from '../middleware/uploadPaymentProof';
-import * as path from 'path';
-import * as fs from 'fs/promises';
 import { Prisma } from '@prisma/client';
+import { Response } from 'express';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { prisma } from '../lib/prisma';
+import { getIO } from '../lib/socket';
+import { AuthenticatedRequest } from '../middleware/auth';
+import { AppError, asyncHandler } from '../middleware/errorHandler';
+import { uploadPaymentProof, validateUploadedFile } from '../middleware/uploadPaymentProof';
+import { NotificationChannel, NotificationPriority, NotificationService, NotificationType } from '../services/notificationService';
+import { telegramNotificationService } from '../services/telegramNotificationService';
+import { logger, toLogMetadata } from '../utils/logger';
+import { sanitizeForLog } from '../utils/sanitizer';
 
 type OrderWithRelations = Prisma.OrderGetPayload<{
   include: {
@@ -73,6 +74,7 @@ export const getOrders = asyncHandler(async (req: AuthenticatedRequest, res: Res
     page = 1,
     limit = 20,
     status,
+    statuses,
     storeId,
     customerId,
     search,
@@ -87,7 +89,7 @@ export const getOrders = asyncHandler(async (req: AuthenticatedRequest, res: Res
   }
 
   const skip = (Number(page) - 1) * Number(limit);
-  
+
   // Build where clause based on role and permissions
   const whereClause: Prisma.OrderWhereInput = {};
 
@@ -103,14 +105,18 @@ export const getOrders = asyncHandler(async (req: AuthenticatedRequest, res: Res
   }
 
   // Additional filters
-  if (status) {
+  if (statuses) {
+    // Support multiple statuses
+    const statusArray = Array.isArray(statuses) ? statuses : [statuses];
+    whereClause.status = { in: statusArray as string[] };
+  } else if (status) {
     whereClause.status = status as string;
   }
 
   if (storeId) {
     whereClause.storeId = storeId as string;
   }
-  
+
   if (customerId) {
     whereClause.customerId = customerId as string;
   }
@@ -208,8 +214,16 @@ export const getOrders = asyncHandler(async (req: AuthenticatedRequest, res: Res
       take: Number(limit),
     });
 
+    // Transform paymentProof paths to URLs (without /api prefix - apiClient adds it)
+    const ordersWithUrls = orders.map(order => ({
+      ...order,
+      paymentProof: order.paymentProof 
+        ? `/orders/${order.id}/payment-proof`
+        : null
+    }));
+
     res.json({
-      items: orders,
+      items: ordersWithUrls,
       pagination: {
         page: Number(page),
         limit: Number(limit),
@@ -229,7 +243,7 @@ export const createOrder = asyncHandler(async (req: AuthenticatedRequest, res: R
     items,
     customerInfo,
     notes,
-    clientRequestId 
+    clientRequestId
   } = req.body;
 
   if (!req.user) {
@@ -302,7 +316,7 @@ export const createOrder = asyncHandler(async (req: AuthenticatedRequest, res: R
     // Check variant if specified
     let variant = null;
     let itemPrice = price || product.price;
-    
+
     if (variantId) {
       variant = product.variants.find(v => v.id === variantId);
       if (!variant) {
@@ -332,19 +346,19 @@ export const createOrder = asyncHandler(async (req: AuthenticatedRequest, res: R
     const existingOrder = await prisma.order.findUnique({
       where: { clientRequestId }
     });
-    
+
     if (existingOrder) {
-      return res.status(200).json({ 
+      return res.status(200).json({
         order: existingOrder,
         message: 'Order already exists'
       });
     }
   }
-   
+
   // Generate order number
   const orderDate = new Date();
   const orderPrefix = `${(orderDate.getMonth() + 1).toString().padStart(2, '0')}${orderDate.getFullYear().toString().slice(-2)}`;
-  
+
   // Get next order number for this month/year
   const lastOrder = await prisma.order.findFirst({
     where: {
@@ -411,7 +425,7 @@ export const createOrder = asyncHandler(async (req: AuthenticatedRequest, res: R
             where: { id: item.variantId },
             select: { stock: true }
           });
-          
+
           if (variant && variant.stock !== null) {
             await tx.productVariant.update({
               where: { id: item.variantId },
@@ -423,7 +437,7 @@ export const createOrder = asyncHandler(async (req: AuthenticatedRequest, res: R
             where: { id: item.productId },
             select: { stock: true }
           });
-          
+
           if (product && product.stock !== null) {
             await tx.product.update({
               where: { id: item.productId },
@@ -482,7 +496,7 @@ export const createOrder = asyncHandler(async (req: AuthenticatedRequest, res: R
       itemCount: validatedItems.length,
     });
 
-    logger.info(`Order created: ${order.orderNumber} by user ${req.user.id}`);
+    logger.info('Order created', { orderNumber: sanitizeForLog(order.orderNumber), userId: sanitizeForLog(req.user.id) });
 
     res.status(201).json({ order });
   } catch (error: unknown) {
@@ -578,7 +592,7 @@ export const confirmPayment = asyncHandler(async (req: AuthenticatedRequest, res
     currency: order.currency
   });
 
-  logger.info(`Payment confirmed for order ${id} by admin ${req.user.id}`);
+  logger.info('Payment confirmed', { orderId: sanitizeForLog(id), adminId: sanitizeForLog(req.user.id) });
 
   res.json({ order: updatedOrder, message: 'Payment confirmed successfully' });
 });
@@ -700,7 +714,7 @@ export const rejectOrder = asyncHandler(async (req: AuthenticatedRequest, res: R
     reason,
   });
 
-  logger.info(`Order ${id} rejected by admin ${req.user.id}. Reason: ${reason}`);
+  logger.info('Order rejected', { orderId: sanitizeForLog(id), adminId: sanitizeForLog(req.user.id), reason: sanitizeForLog(reason) });
 
   res.json({ order: updatedOrder, message: 'Order rejected successfully' });
 });
@@ -711,7 +725,7 @@ async function notifyCustomerPaymentConfirmed(order: OrderWithRelations) {
     // Send notification through Telegram bot
     const { telegramNotificationService } = await import('../services/telegramNotificationService.js');
     await telegramNotificationService.notifyCustomerPaymentConfirmed(order);
-    
+
     // Also send through general notification system (for socket/email)
     await NotificationService.send({
       title: 'Оплата подтверждена',
@@ -736,7 +750,7 @@ async function notifyCustomerOrderRejected(order: OrderWithRelations, reason: st
     // Send notification through Telegram bot
     const { telegramNotificationService } = await import('../services/telegramNotificationService.js');
     await telegramNotificationService.notifyCustomerOrderRejected(order, reason);
-    
+
     // Also send through general notification system (for socket/email)
     await NotificationService.send({
       title: 'Заказ отклонен',
@@ -761,7 +775,7 @@ async function notifyCustomerOrderShipped(order: OrderWithRelations, trackingNum
   try {
     // Send notification through Telegram bot
     await telegramNotificationService.notifyCustomerOrderShipped(order, trackingNumber, carrier);
-    
+
     // Also send through general notification system (for socket/email)
     await NotificationService.send({
       title: 'Заказ отправлен',
@@ -787,7 +801,7 @@ async function notifyCustomerOrderDelivered(order: OrderWithRelations) {
   try {
     // Send notification through Telegram bot
     await telegramNotificationService.notifyCustomerOrderDelivered(order);
-    
+
     // Also send through general notification system (for socket/email)
     await NotificationService.send({
       title: 'Заказ доставлен',
@@ -811,7 +825,7 @@ async function notifyCustomerOrderCancelled(order: OrderWithRelations, reason: s
   try {
     // Send notification through Telegram bot
     await telegramNotificationService.notifyCustomerOrderCancelled(order, reason);
-    
+
     // Also send through general notification system (for socket/email)
     await NotificationService.send({
       title: 'Заказ отменен',
@@ -895,7 +909,7 @@ export const getOrder = asyncHandler(async (req: AuthenticatedRequest, res: Resp
           },
         },
       });
-      
+
   if (!order) {
     throw new AppError('Order not found', 404);
   }
@@ -903,7 +917,7 @@ export const getOrder = asyncHandler(async (req: AuthenticatedRequest, res: Resp
   // Role-based access control
   if (req.user.role !== 'OWNER') {
     // Check if user is customer or has access to the store
-    const hasAccess = order.customerId === req.user.id || 
+    const hasAccess = order.customerId === req.user.id ||
       await prisma.store.findFirst({
         where: {
           id: order.storeId,
@@ -919,7 +933,15 @@ export const getOrder = asyncHandler(async (req: AuthenticatedRequest, res: Resp
     }
   }
 
-  res.json({ order });
+  // Transform paymentProof path to URL (without /api prefix - apiClient adds it)
+  const orderResponse = {
+    ...order,
+    paymentProof: order.paymentProof 
+      ? `/orders/${order.id}/payment-proof`
+      : null
+  };
+
+  res.json({ order: orderResponse });
 });
 
 export const shipOrder = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
@@ -1010,7 +1032,7 @@ export const shipOrder = asyncHandler(async (req: AuthenticatedRequest, res: Res
     carrier,
   });
 
-  logger.info(`Order ${id} shipped by admin ${req.user.id}`);
+  logger.info('Order shipped', { orderId: sanitizeForLog(id), adminId: sanitizeForLog(req.user.id) });
 
   res.json({ order: updatedOrder, message: 'Order shipped successfully' });
 });
@@ -1099,7 +1121,7 @@ export const deliverOrder = asyncHandler(async (req: AuthenticatedRequest, res: 
     adminId: req.user.id,
   });
 
-  logger.info(`Order ${id} delivered by admin ${req.user.id}`);
+  logger.info('Order delivered', { orderId: sanitizeForLog(id), adminId: sanitizeForLog(req.user.id) });
 
   res.json({ order: updatedOrder, message: 'Order delivered successfully' });
 });
@@ -1216,7 +1238,7 @@ export const cancelOrder = asyncHandler(async (req: AuthenticatedRequest, res: R
     adminId: req.user.id,
   });
 
-  logger.info(`Order ${id} cancelled by admin ${req.user.id}, reason: ${reason}`);
+  logger.info('Order cancelled', { orderId: sanitizeForLog(id), adminId: sanitizeForLog(req.user.id), reason: sanitizeForLog(reason) });
 
   res.json({ order: updatedOrder, message: 'Order cancelled successfully' });
 });
@@ -1323,7 +1345,7 @@ export const uploadOrderPaymentProof = (req: AuthenticatedRequest, res: Response
         customerId: req.user.id,
       });
 
-      logger.info(`Payment proof uploaded for order ${orderId} by user ${req.user.id}: ${file.filename}`);
+      logger.info('Payment proof uploaded', { orderId: sanitizeForLog(orderId), userId: sanitizeForLog(req.user.id), filename: sanitizeForLog(file.filename) });
 
       res.json({
         order: updatedOrder,
@@ -1333,7 +1355,7 @@ export const uploadOrderPaymentProof = (req: AuthenticatedRequest, res: Response
 
     } catch (error: unknown) {
       logger.error('Payment proof upload error:', { error: error instanceof Error ? error.message : String(error) });
-      
+
       // Clean up uploaded file if database update fails
       try {
         const file = req.file as Express.Multer.File;
@@ -1343,7 +1365,7 @@ export const uploadOrderPaymentProof = (req: AuthenticatedRequest, res: Response
       } catch (cleanupError: unknown) {
         logger.error('Failed to cleanup uploaded file:', { error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError) });
       }
-      
+
       res.status(500).json({ error: 'Internal server error during file upload' });
     }
   });
@@ -1351,8 +1373,6 @@ export const uploadOrderPaymentProof = (req: AuthenticatedRequest, res: Response
 
 async function notifyAdminsPaymentProofUploaded(order: OrderWithRelations) {
   try {
-    const customerName = `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim() || 'Неизвестный покупатель';
-    
     // Use notification service to notify about payment proof upload
     await NotificationService.send({
       title: 'Payment Proof Uploaded',
@@ -1404,7 +1424,7 @@ export const getPaymentProof = asyncHandler(async (req: AuthenticatedRequest, re
   }
 
   // Check access permissions
-  const hasAccess = 
+  const hasAccess =
     // Customer can access their own payment proof
     order.customerId === req.user.id ||
     // Store owner can access payment proofs for their store
@@ -1419,28 +1439,46 @@ export const getPaymentProof = asyncHandler(async (req: AuthenticatedRequest, re
   }
 
   // Construct file path (stored as relative path)
-  const filePath = path.isAbsolute(order.paymentProof) 
-    ? order.paymentProof 
+  const filePath = path.isAbsolute(order.paymentProof)
+    ? order.paymentProof
     : path.join(process.cwd(), order.paymentProof);
 
   try {
     // Check if file exists
     await fs.access(filePath);
-    
+
     // Get file stats for content length
     const stats = await fs.stat(filePath);
-    
+
+    // Determine content type based on file extension
+    const ext = path.extname(filePath).toLowerCase();
+    const contentTypeMap: Record<string, string> = {
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.gif': 'image/gif',
+      '.webp': 'image/webp',
+      '.pdf': 'application/pdf'
+    };
+    const contentType = contentTypeMap[ext] || 'application/octet-stream';
+
     // Set appropriate headers
-    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Length', stats.size);
-    res.setHeader('Content-Disposition', `attachment; filename="payment_proof_${orderId.slice(-8)}.${path.extname(filePath).slice(1)}"`);
-    
+    // Use inline disposition for images so they display in browser
+    if (contentType.startsWith('image/')) {
+      res.setHeader('Content-Disposition', `inline; filename="payment_proof_${orderId.slice(-8)}${ext}"`);
+    } else {
+      res.setHeader('Content-Disposition', `attachment; filename="payment_proof_${orderId.slice(-8)}${ext}"`);
+    }
+
     // Log access for audit
     logger.info('Payment proof accessed', {
       orderId,
       userId: req.user.id,
       userRole: req.user.role,
       fileSize: stats.size,
+      contentType,
       ip: req.ip
     });
 
@@ -1550,4 +1588,149 @@ export const getOrderStats = asyncHandler(async (req: AuthenticatedRequest, res:
     totalRevenue: revenueStats._sum.totalAmount || 0,
     period: period as string,
   });
+});
+
+// Export orders to CSV
+export const exportOrders = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const {
+    status,
+    statuses,
+    storeId,
+    dateFrom,
+    dateTo,
+  } = req.query;
+
+  if (!req.user) {
+    throw new AppError('Authentication required', 401);
+  }
+
+  // Build where clause based on role and permissions
+  const whereClause: Prisma.OrderWhereInput = {};
+
+  // Role-based filtering
+  if (req.user.role !== 'OWNER') {
+    whereClause.store = {
+      OR: [
+        { ownerId: req.user.id },
+        { admins: { some: { userId: req.user.id } } }
+      ]
+    };
+  }
+
+  // Additional filters
+  if (statuses) {
+    const statusArray = Array.isArray(statuses) ? statuses : [statuses];
+    whereClause.status = { in: statusArray as string[] };
+  } else if (status) {
+    whereClause.status = status as string;
+  }
+
+  if (storeId) {
+    whereClause.storeId = storeId as string;
+  }
+
+  if (dateFrom || dateTo) {
+    whereClause.createdAt = {};
+    if (dateFrom) {
+      whereClause.createdAt.gte = new Date(dateFrom as string);
+    }
+    if (dateTo) {
+      const endDate = new Date(dateTo as string);
+      endDate.setHours(23, 59, 59, 999);
+      whereClause.createdAt.lte = endDate;
+    }
+  }
+
+  try {
+    // Get orders for export
+    const orders = await prisma.order.findMany({
+      where: whereClause,
+      include: {
+        customer: {
+          select: {
+            firstName: true,
+            lastName: true,
+            username: true,
+            telegramId: true,
+          }
+        },
+        store: {
+          select: {
+            name: true,
+            currency: true,
+          }
+        },
+        items: {
+          include: {
+            product: {
+              select: {
+                name: true,
+                sku: true,
+              }
+            },
+            variant: {
+              select: {
+                name: true,
+                value: true,
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    // Generate CSV
+    const csvHeader = 'Номер заказа,Дата,Статус,Клиент,Telegram ID,Магазин,Товары,Сумма,Валюта,Примечания\n';
+    const csvRows = orders.map(order => {
+      const customerName = order.customer
+        ? `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim() || order.customer.username || 'Неизвестно'
+        : 'Неизвестно';
+
+      const items = order.items.map(item => {
+        const variantInfo = item.variant ? ` (${item.variant.name}: ${item.variant.value})` : '';
+        return `${item.product.name}${variantInfo} x${item.quantity}`;
+      }).join('; ');
+
+      const statusLabels: Record<string, string> = {
+        PENDING_ADMIN: 'Ожидает подтверждения',
+        PAID: 'Оплачен',
+        SHIPPED: 'Отправлен',
+        DELIVERED: 'Доставлен',
+        REJECTED: 'Отклонен',
+        CANCELLED: 'Отменен',
+      };
+
+      return [
+        `"${order.orderNumber}"`,
+        `"${new Date(order.createdAt).toLocaleString('ru-RU')}"`,
+        `"${statusLabels[order.status] || order.status}"`,
+        `"${customerName.replace(/"/g, '""')}"`,
+        `"${order.customer?.telegramId || ''}"`,
+        `"${order.store.name.replace(/"/g, '""')}"`,
+        `"${items.replace(/"/g, '""')}"`,
+        order.totalAmount.toFixed(2),
+        `"${order.store.currency}"`,
+        `"${(order.notes || '').replace(/"/g, '""')}"`,
+      ].join(',');
+    }).join('\n');
+
+    const csvContent = '\uFEFF' + csvHeader + csvRows; // Add BOM for Excel UTF-8 support
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="orders-${new Date().toISOString().split('T')[0]}.csv"`);
+
+    logger.info('Orders exported', {
+      userId: req.user.id,
+      count: orders.length,
+      filters: { status: statuses || status, storeId, dateFrom, dateTo }
+    });
+
+    res.send(csvContent);
+  } catch (error: unknown) {
+    logger.error('Error exporting orders:', toLogMetadata(error));
+    throw new AppError('Failed to export orders', 500);
+  }
 });

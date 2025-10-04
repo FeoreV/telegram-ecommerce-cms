@@ -1,7 +1,7 @@
-import { Request, Response, NextFunction } from 'express';
-import { ZodError, ZodSchema } from 'zod';
+import { NextFunction, Request, Response } from 'express';
 import DOMPurify from 'isomorphic-dompurify';
 import validator from 'validator';
+import { ZodError, ZodSchema } from 'zod';
 import { logger } from '../utils/logger';
 
 export interface ValidationConfig {
@@ -176,7 +176,7 @@ export class InputValidationService {
         result.threats?.push('oversized_array');
         return false;
       }
-      
+
       // Recursively check array elements
       for (const item of data) {
         if (!this.checkStructuralLimits(item, result, depth + 1)) {
@@ -197,10 +197,27 @@ export class InputValidationService {
 
   /**
    * Detect security threats in data
+   * SECURITY: Implements ReDoS protection (CWE-1333, CWE-400)
    */
   private detectThreats(data: any, result: ValidationResult): void {
     this.traverseData(data, (value: string) => {
       if (typeof value !== 'string') return;
+
+      // SECURITY: ReDoS Protection - Limit string length before regex operations (CWE-1333)
+      // Maximum 10KB to prevent Regular Expression Denial of Service attacks
+      const MAX_REGEX_INPUT_LENGTH = 10 * 1024; // 10KB
+
+      if (value.length > MAX_REGEX_INPUT_LENGTH) {
+        logger.warn('String too long for regex validation, rejecting', {
+          length: value.length,
+          maxLength: MAX_REGEX_INPUT_LENGTH,
+          truncated: value.substring(0, 100) + '...'
+        });
+        result.threats?.push('oversized_input_redos_risk');
+        result.isValid = false;
+        result.errors.push(`Input too large for safe regex validation (max ${MAX_REGEX_INPUT_LENGTH} bytes)`);
+        return; // Skip regex checks for oversized input
+      }
 
       // Check SQL injection patterns
       if (this.config.enableSQLInjectionProtection) {
@@ -258,23 +275,23 @@ export class InputValidationService {
 
   /**
    * Sanitize individual string
+   * CRITICAL: Order is normalization → removal → escaping (CWE-176, CWE-79)
    */
   private sanitizeString(str: string): string {
     if (typeof str !== 'string') return str;
 
     let sanitized = str;
 
+    // PHASE 1: NORMALIZATION - Must happen FIRST
+    // Normalize Unicode to prevent bypass attacks with lookalike characters
+    sanitized = sanitized.normalize('NFKC');
+
+    // PHASE 2: REMOVAL - After normalization
     // Remove null bytes and control characters
     // eslint-disable-next-line no-control-regex
     sanitized = sanitized.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
 
-    // Normalize Unicode
-    sanitized = sanitized.normalize('NFKC');
-
-    // HTML encode dangerous characters
-    sanitized = validator.escape(sanitized);
-
-    // Use DOMPurify for additional XSS protection
+    // Use DOMPurify for XSS content removal
     if (this.config.enableXSSProtection) {
       sanitized = DOMPurify.sanitize(sanitized, {
         ALLOWED_TAGS: [],
@@ -282,6 +299,10 @@ export class InputValidationService {
         KEEP_CONTENT: true
       });
     }
+
+    // PHASE 3: ESCAPING - Must happen LAST
+    // HTML encode dangerous characters after removal
+    sanitized = validator.escape(sanitized);
 
     return sanitized;
   }
@@ -306,7 +327,7 @@ export class InputValidationService {
     if (obj === null || typeof obj !== 'object') return obj;
     if (obj instanceof Date) return new Date(obj.getTime());
     if (obj instanceof Array) return obj.map(item => this.deepClone(item));
-    
+
     const cloned: any = {};
     for (const key in obj) {
       if (Object.prototype.hasOwnProperty.call(obj, key)) {
@@ -352,9 +373,20 @@ export class InputValidationService {
 
   /**
    * Check if string contains security threats
+   * SECURITY: Implements ReDoS protection (CWE-1333)
    */
   private containsThreats(str: string): boolean {
     if (typeof str !== 'string') return false;
+
+    // SECURITY: ReDoS Protection - Limit string length before regex operations
+    const MAX_REGEX_INPUT_LENGTH = 10 * 1024; // 10KB
+    if (str.length > MAX_REGEX_INPUT_LENGTH) {
+      logger.warn('String too long for threat detection regex', {
+        length: str.length,
+        maxLength: MAX_REGEX_INPUT_LENGTH
+      });
+      return true; // Treat oversized input as threat
+    }
 
     // Check all threat patterns
     const allPatterns = [
@@ -492,7 +524,7 @@ export const validateFileUpload = (allowedTypes?: string[], maxSize?: number) =>
 
         // Check if file is array (skip arrays)
         if (Array.isArray(file)) continue;
-        
+
         // Check file size
         const sizeLimit = maxSize || config.maxFileSize;
         if ((file as any).size > sizeLimit) {
@@ -506,7 +538,7 @@ export const validateFileUpload = (allowedTypes?: string[], maxSize?: number) =>
         // Check file type
         const allowedFileTypes = allowedTypes || config.allowedFileTypes;
         const fileExtension = (file as any).originalname.split('.').pop()?.toLowerCase();
-        
+
         if (!fileExtension || !allowedFileTypes.includes(fileExtension)) {
           return res.status(400).json({
             error: 'Invalid file type',

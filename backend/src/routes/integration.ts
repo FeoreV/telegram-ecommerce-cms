@@ -1,9 +1,11 @@
 import { Router } from 'express';
-import { upsertMapping, getMapping } from '../controllers/integrationController';
+import { getMapping, upsertMapping } from '../controllers/integrationController';
+import { csrfProtection } from '../middleware/csrfProtection';
 
 const router = Router();
 
-router.post('/mappings', upsertMapping);
+// SECURITY: CSRF protected state-changing endpoint
+router.post('/mappings', csrfProtection, upsertMapping);
 router.get('/mappings', getMapping);
 
 export default router;

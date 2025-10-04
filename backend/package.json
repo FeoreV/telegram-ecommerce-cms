@@ -5,24 +5,16 @@
   "main": "dist/src/index.js",
   "scripts": {
     "dev": "cross-env ADMIN_JS_SKIP_BUNDLE=true tsx watch src/index.ts",
-    "dev:admin": "cross-env ENABLE_ADMINJS=true ADMIN_JS_SKIP_BUNDLE=true tsx watch src/index.ts",
-    "dev:noadmin": "cross-env ENABLE_ADMINJS=false tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/src/index.js",
     "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "db:generate": "npx prisma generate",
     "db:migrate": "npx prisma migrate dev",
     "db:reset": "npx prisma migrate reset",
     "db:seed": "ts-node prisma/seed.ts",
-    "db:studio": "npx prisma studio",
-    "db:push": "npx prisma db push",
-    "db:pull": "npx prisma db pull",
-    "vault:setup": "bash ../tools/vault/setup-vault-secrets.sh",
-    "vault:dev": "docker-compose -f ../config/vault/docker-compose.vault.yml up -d"
+    "db:studio": "npx prisma studio"
   },
   "dependencies": {
     "@adminjs/express": "^6.1.1",
@@ -38,12 +30,12 @@
     "axios": "^1.6.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "csrf-csrf": "^4.0.3",
     "csv-parser": "^3.2.0",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
-    "express-brute": "^1.0.1",
-    "express-brute-redis": "^0.0.1",
     "express-formidable": "^1.2.0",
     "express-rate-limit": "^7.5.1",
     "express-session": "^1.18.2",
@@ -97,6 +89,12 @@
     "ts-node": "^10.9.1",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2"
+  },
+  "overrides": {
+    "form-data": "^4.0.1",
+    "tough-cookie": "^5.0.0",
+    "tinymce": "^7.8.0",
+    "request": "npm:@cypress/request@^3.0.6"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

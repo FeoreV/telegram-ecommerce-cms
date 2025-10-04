@@ -1,10 +1,11 @@
-import { Response } from 'express';
 import { Prisma } from '@prisma/client';
+import { Response } from 'express';
 import { prisma } from '../lib/prisma';
-import { AppError, asyncHandler } from '../middleware/errorHandler';
 import { AuthenticatedRequest } from '../middleware/auth';
+import { AppError, asyncHandler } from '../middleware/errorHandler';
+import { NotificationChannel, NotificationPriority, NotificationType } from '../services/notificationService';
 import { logger, toLogMetadata } from '../utils/logger';
-import { NotificationPriority, NotificationChannel, NotificationType } from '../services/notificationService';
+import { sanitizeForLog } from '../utils/sanitizer';
 
 type ContactInfoPayload = {
   phone?: string;
@@ -72,7 +73,7 @@ const normalizeJsonField = (value: unknown): string | null => {
         return null;
       }
       return JSON.stringify(cleaned);
-    } catch (error) {
+    } catch {
       return trimmed;
     }
   }
@@ -133,7 +134,7 @@ const parseJsonField = (value: unknown): unknown => {
 
     try {
       return JSON.parse(trimmed);
-    } catch (error) {
+    } catch (_error) {
       return trimmed;
     }
   }
@@ -307,7 +308,7 @@ export const createStore = asyncHandler(async (req: AuthenticatedRequest, res: R
     throw new AppError('Authentication required', 401);
   }
 
-  // Only OWNER and ADMIN can create stores  
+  // Only OWNER and ADMIN can create stores
   if (!['OWNER', 'ADMIN'].includes(req.user.role)) {
     throw new AppError('Insufficient permissions to create stores', 403);
   }
@@ -339,7 +340,7 @@ export const createStore = asyncHandler(async (req: AuthenticatedRequest, res: R
 
   // Check if name is unique (case-insensitive)
   const existingStoreByName = await prisma.store.findFirst({
-    where: { 
+    where: {
       name: {
         equals: name
         // Note: Case insensitive search not supported in SQLite
@@ -421,9 +422,9 @@ export const createStore = asyncHandler(async (req: AuthenticatedRequest, res: R
       }
     });
 
-    logger.info(`Store created: ${store.id} (${store.name}) by user ${req.user.id}`);
+    logger.info('Store created', { storeId: sanitizeForLog(store.id), storeName: sanitizeForLog(store.name), userId: sanitizeForLog(req.user.id) });
 
-    res.status(201).json({ 
+    res.status(201).json({
       success: true,
       store: transformStore(store),
       message: 'Store created successfully'
@@ -431,7 +432,7 @@ export const createStore = asyncHandler(async (req: AuthenticatedRequest, res: R
 
   } catch (error: unknown) {
     logger.error('Error creating store:', toLogMetadata(error));
-    
+
     // Handle specific database errors
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       const field = Array.isArray(error.meta?.target) ? error.meta?.target[0] : undefined;
@@ -441,7 +442,7 @@ export const createStore = asyncHandler(async (req: AuthenticatedRequest, res: R
         throw new AppError('Store with this name already exists', 400);
       }
     }
-    
+
     throw new AppError('Failed to create store', 500);
   }
 });
@@ -479,9 +480,9 @@ export const checkSlugAvailability = asyncHandler(async (req: AuthenticatedReque
       : { slug },
   });
 
-  res.json({ 
+  res.json({
     available: !existingStore,
-    slug 
+    slug
   });
 });
 
@@ -582,7 +583,7 @@ export const updateStore = asyncHandler(async (req: AuthenticatedRequest, res: R
     },
   });
 
-  logger.info(`Store updated: ${store.id} by user ${req.user?.id}`);
+  logger.info('Store updated', { storeId: sanitizeForLog(store.id), userId: sanitizeForLog(req.user?.id) });
 
   res.json({ store: transformStore(store) });
 });
@@ -594,7 +595,7 @@ export const deleteStore = asyncHandler(async (req: AuthenticatedRequest, res: R
     where: { id },
   });
 
-  logger.info(`Store deleted: ${id} by user ${req.user?.id}`);
+  logger.info('Store deleted', { storeId: sanitizeForLog(id), userId: sanitizeForLog(req.user?.id) });
 
   res.json({ message: 'Store deleted successfully' });
 });
@@ -633,7 +634,7 @@ export const addStoreAdmin = asyncHandler(async (req: AuthenticatedRequest, res:
     },
   });
 
-  logger.info(`Admin added to store: ${id}, user: ${userId} by ${req.user?.id}`);
+  logger.info('Admin added to store', { storeId: sanitizeForLog(id), userId: sanitizeForLog(userId), by: sanitizeForLog(req.user?.id) });
 
   res.json({ message: 'Admin added successfully' });
 });
@@ -650,7 +651,7 @@ export const removeStoreAdmin = asyncHandler(async (req: AuthenticatedRequest, r
     },
   });
 
-  logger.info(`Admin removed from store: ${id}, user: ${userId} by ${req.user?.id}`);
+  logger.info('Admin removed from store', { storeId: sanitizeForLog(id), userId: sanitizeForLog(userId), by: sanitizeForLog(req.user?.id) });
 
   res.json({ message: 'Admin removed successfully' });
 });
@@ -740,5 +741,5 @@ export const getUserStores = asyncHandler(async (req: AuthenticatedRequest, res:
     total: storesWithBotInfo.length
   });
 
-  logger.info(`User stores retrieved: ${storesWithBotInfo.length} stores for user ${req.user.id}`);
+  logger.info('User stores retrieved', { count: storesWithBotInfo.length, userId: sanitizeForLog(req.user.id) });
 });

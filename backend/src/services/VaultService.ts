@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import { logger } from '../utils/logger';
+import { sanitizeForLog } from '../utils/sanitizer';
 
 export interface VaultConfig {
   address: string;
@@ -28,7 +29,48 @@ export class VaultService {
   private tokenExpiry: Date | null = null;
   private config: VaultConfig;
 
+  /**
+   * SECURITY FIX (CWE-918): Validate Vault address to prevent SSRF
+   */
+  private validateVaultAddress(address: string): void {
+    try {
+      const url = new URL(address);
+
+      // Only allow HTTPS for Vault (security best practice)
+      if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+        throw new Error('SECURITY: Only HTTP/HTTPS protocols allowed for Vault');
+      }
+
+      // Block internal/private IPs in production
+      if (process.env.NODE_ENV === 'production') {
+        const hostname = url.hostname;
+        const blockedPatterns = [
+          /^127\./,
+          /^10\./,
+          /^172\.(1[6-9]|2\d|3[01])\./,
+          /^192\.168\./,
+          /^169\.254\./,
+          /^localhost$/i,
+        ];
+
+        for (const pattern of blockedPatterns) {
+          if (pattern.test(hostname)) {
+            throw new Error('SECURITY: Internal/private IPs not allowed in production');
+          }
+        }
+      }
+
+      logger.info(`Vault address validated: ${sanitizeForLog(url.origin)}`);
+    } catch (error) {
+      logger.error('Invalid Vault address:', { address: sanitizeForLog(address) } as any);
+      throw new Error(`Invalid Vault address: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
   constructor(config: VaultConfig) {
+    // SECURITY FIX (CWE-918): Validate Vault address to prevent SSRF
+    this.validateVaultAddress(config.address);
+
     this.config = config;
     this.client = axios.create({
       baseURL: config.address,
@@ -73,7 +115,7 @@ export class VaultService {
 
       this.token = response.data.auth.client_token;
       const leaseDuration = response.data.auth.lease_duration;
-      
+
       // Set expiry to 90% of lease duration to allow for refresh
       this.tokenExpiry = new Date(Date.now() + (leaseDuration * 900));
 
@@ -101,8 +143,8 @@ export class VaultService {
       const response = await this.client.get<VaultSecret>(`/v1/kv/data/${path}`);
       return response.data.data.data;
     } catch (error) {
-      logger.error(`Failed to get secret from path: ${path}`, error);
-      throw new Error(`Failed to retrieve secret: ${path}`);
+      logger.error(`Failed to get secret from path: ${sanitizeForLog(path)}`, error);
+      throw new Error(`Failed to retrieve secret: ${sanitizeForLog(path)}`);
     }
   }
 
@@ -112,10 +154,10 @@ export class VaultService {
   async putSecret(path: string, data: SecretData): Promise<void> {
     try {
       await this.client.post(`/v1/kv/data/${path}`, { data });
-      logger.info(`Secret stored successfully at path: ${path}`);
+      logger.info(`Secret stored successfully at path: ${sanitizeForLog(path)}`);
     } catch (error) {
-      logger.error(`Failed to store secret at path: ${path}`, error);
-      throw new Error(`Failed to store secret: ${path}`);
+      logger.error(`Failed to store secret at path: ${sanitizeForLog(path)}`, error);
+      throw new Error(`Failed to store secret: ${sanitizeForLog(path)}`);
     }
   }
 
@@ -125,10 +167,10 @@ export class VaultService {
   async deleteSecret(path: string): Promise<void> {
     try {
       await this.client.delete(`/v1/kv/data/${path}`);
-      logger.info(`Secret deleted successfully from path: ${path}`);
+      logger.info(`Secret deleted successfully from path: ${sanitizeForLog(path)}`);
     } catch (error) {
-      logger.error(`Failed to delete secret from path: ${path}`, error);
-      throw new Error(`Failed to delete secret: ${path}`);
+      logger.error(`Failed to delete secret from path: ${sanitizeForLog(path)}`, error);
+      throw new Error(`Failed to delete secret: ${sanitizeForLog(path)}`);
     }
   }
 
@@ -140,8 +182,8 @@ export class VaultService {
       const response = await this.client.get(`/v1/kv/metadata/${path}?list=true`);
       return response.data.data.keys || [];
     } catch (error) {
-      logger.error(`Failed to list secrets at path: ${path}`, error);
-      throw new Error(`Failed to list secrets: ${path}`);
+      logger.error(`Failed to list secrets at path: ${sanitizeForLog(path)}`, error);
+      throw new Error(`Failed to list secrets: ${sanitizeForLog(path)}`);
     }
   }
 
@@ -156,8 +198,8 @@ export class VaultService {
         password: response.data.data.password,
       };
     } catch (error) {
-      logger.error(`Failed to get database credentials for role: ${role}`, error);
-      throw new Error(`Failed to get database credentials: ${role}`);
+      logger.error(`Failed to get database credentials for role: ${sanitizeForLog(role)}`, error);
+      throw new Error(`Failed to get database credentials: ${sanitizeForLog(role)}`);
     }
   }
 
@@ -172,8 +214,8 @@ export class VaultService {
       });
       return response.data.data.ciphertext;
     } catch (error) {
-      logger.error(`Failed to encrypt data with key: ${keyName}`, error);
-      throw new Error(`Failed to encrypt data: ${keyName}`);
+      logger.error(`Failed to encrypt data with key: ${sanitizeForLog(keyName)}`, error);
+      throw new Error(`Failed to encrypt data: ${sanitizeForLog(keyName)}`);
     }
   }
 
@@ -187,8 +229,8 @@ export class VaultService {
       });
       return Buffer.from(response.data.data.plaintext, 'base64').toString();
     } catch (error) {
-      logger.error(`Failed to decrypt data with key: ${keyName}`, error);
-      throw new Error(`Failed to decrypt data: ${keyName}`);
+      logger.error(`Failed to decrypt data with key: ${sanitizeForLog(keyName)}`, error);
+      throw new Error(`Failed to decrypt data: ${sanitizeForLog(keyName)}`);
     }
   }
 

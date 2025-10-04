@@ -3,9 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.bulkUserActions = exports.unbanUser = exports.banUser = exports.getUserDetailed = exports.getUserActivity = exports.deleteUser = exports.getRoleStatistics = exports.removeUserFromStore = exports.assignUserToStore = exports.toggleUserStatus = exports.updateUserRole = exports.getUser = exports.getUsers = void 0;
 const prisma_1 = require("../lib/prisma");
 const errorHandler_1 = require("../middleware/errorHandler");
-const logger_1 = require("../utils/logger");
-const jwt_1 = require("../utils/jwt");
 const notificationService_1 = require("../services/notificationService");
+const jwt_1 = require("../utils/jwt");
+const logger_1 = require("../utils/logger");
+const sanitizer_1 = require("../utils/sanitizer");
 exports.getUsers = (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { page = 1, limit = 20, role, search, storeId } = req.query;
     if (!req.user) {
@@ -246,7 +247,7 @@ exports.updateUserRole = (0, errorHandler_1.asyncHandler)(async (req, res) => {
             }
             return updated;
         });
-        logger_1.logger.info(`User role updated: ${id} changed from ${user.role} to ${role} by ${req.user.id}`);
+        logger_1.logger.info(`User role updated: ${(0, sanitizer_1.sanitizeForLog)(id)} changed from ${(0, sanitizer_1.sanitizeForLog)(user.role)} to ${(0, sanitizer_1.sanitizeForLog)(role)} by ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
         notificationService_1.NotificationService.send({
             title: 'Роль изменена',
             message: `Ваша роль в системе изменена на ${role}`,
@@ -296,7 +297,7 @@ exports.toggleUserStatus = (0, errorHandler_1.asyncHandler)(async (req, res) => 
             isActive: !user.isActive
         }
     });
-    logger_1.logger.info(`User status toggled: ${id} ${user.isActive ? 'deactivated' : 'activated'} by ${req.user.id}`);
+    logger_1.logger.info(`User status toggled: ${(0, sanitizer_1.sanitizeForLog)(id)} ${user.isActive ? 'deactivated' : 'activated'} by ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
     if (updatedUser.isActive) {
         notificationService_1.NotificationService.send({
             title: 'Аккаунт активирован',
@@ -399,7 +400,7 @@ exports.assignUserToStore = (0, errorHandler_1.asyncHandler)(async (req, res) =>
                 }
             });
         }
-        logger_1.logger.info(`User ${userId} assigned as ${role} to store ${storeId} by ${req.user.id}`);
+        logger_1.logger.info(`User ${(0, sanitizer_1.sanitizeForLog)(userId)} assigned as ${(0, sanitizer_1.sanitizeForLog)(role)} to store ${(0, sanitizer_1.sanitizeForLog)(storeId)} by ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
         notificationService_1.NotificationService.send({
             title: 'Новое назначение',
             message: `Вы назначены как ${role === 'ADMIN' ? 'администратор' : 'продавец'} магазина "${store.name}"`,
@@ -455,22 +456,24 @@ exports.removeUserFromStore = (0, errorHandler_1.asyncHandler)(async (req, res) 
         if (!removed) {
             throw new errorHandler_1.AppError('Assignment not found', 404);
         }
-        logger_1.logger.info(`User ${userId} removed as ${role} from store ${storeId} by ${req.user.id}`);
+        logger_1.logger.info(`User ${(0, sanitizer_1.sanitizeForLog)(userId)} removed as ${(0, sanitizer_1.sanitizeForLog)(role)} from store ${(0, sanitizer_1.sanitizeForLog)(storeId)} by ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
         const store = await prisma_1.prisma.store.findUnique({
             where: { id: storeId },
             select: { name: true }
         });
         if (store) {
+            const safeStoreName = (0, sanitizer_1.sanitizeHtml)(store.name);
+            const safeRole = role === 'ADMIN' ? 'администратор' : 'продавец';
             notificationService_1.NotificationService.send({
                 title: 'Доступ к магазину отозван',
-                message: `Ваш доступ к магазину "${store.name}" как ${role === 'ADMIN' ? 'администратор' : 'продавец'} был отозван`,
+                message: `Ваш доступ к магазину "${safeStoreName}" как ${safeRole} был отозван`,
                 type: notificationService_1.NotificationType.USER_REGISTERED,
                 priority: notificationService_1.NotificationPriority.MEDIUM,
                 recipients: [userId],
                 channels: [notificationService_1.NotificationChannel.TELEGRAM, notificationService_1.NotificationChannel.SOCKET],
                 data: {
                     storeId,
-                    storeName: store.name,
+                    storeName: safeStoreName,
                     role,
                     removedBy: req.user.id
                 }
@@ -565,7 +568,7 @@ exports.deleteUser = (0, errorHandler_1.asyncHandler)(async (req, res) => {
         await prisma_1.prisma.user.delete({
             where: { id }
         });
-        logger_1.logger.info(`User deleted: ${id} by ${req.user.id}`);
+        logger_1.logger.info(`User deleted: ${(0, sanitizer_1.sanitizeForLog)(id)} by ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
         res.json({ message: 'User deleted successfully' });
     }
     catch (error) {
@@ -839,7 +842,7 @@ exports.banUser = (0, errorHandler_1.asyncHandler)(async (req, res) => {
             });
             return banned;
         });
-        logger_1.logger.info(`User banned: ${id} by ${req.user.id}, reason: ${reason || 'No reason'}`);
+        logger_1.logger.info(`User banned: ${(0, sanitizer_1.sanitizeForLog)(id)} by ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}, reason: ${(0, sanitizer_1.sanitizeForLog)(reason || 'No reason')}`);
         notificationService_1.NotificationService.send({
             title: 'Аккаунт заблокирован',
             message: `Ваш аккаунт был заблокирован администратором. ${reason ? `Причина: ${reason}` : ''}`,
@@ -897,7 +900,7 @@ exports.unbanUser = (0, errorHandler_1.asyncHandler)(async (req, res) => {
             });
             return unbanned;
         });
-        logger_1.logger.info(`User unbanned: ${id} by ${req.user.id}`);
+        logger_1.logger.info(`User unbanned: ${(0, sanitizer_1.sanitizeForLog)(id)} by ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
         notificationService_1.NotificationService.send({
             title: 'Аккаунт разблокирован',
             message: 'Ваш аккаунт был разблокирован администратором. Теперь вы можете снова пользоваться системой.',
@@ -975,7 +978,7 @@ exports.bulkUserActions = (0, errorHandler_1.asyncHandler)(async (req, res) => {
                     data: { role: data.role }
                 });
                 break;
-            case 'delete':
+            case 'delete': {
                 const usersWithStores = await prisma_1.prisma.user.findMany({
                     where: {
                         id: { in: userIds },
@@ -995,12 +998,13 @@ exports.bulkUserActions = (0, errorHandler_1.asyncHandler)(async (req, res) => {
                     }
                 });
                 break;
+            }
             default:
                 throw new errorHandler_1.AppError('Invalid action', 400);
         }
-        logger_1.logger.info(`Bulk action ${action} performed on ${userIds.length} users by ${req.user.id}`);
+        logger_1.logger.info(`Bulk action ${(0, sanitizer_1.sanitizeForLog)(action)} performed on ${userIds.length} users by ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
         res.json({
-            message: `Bulk action ${action} completed successfully`,
+            message: `Bulk action ${(0, sanitizer_1.sanitizeHtml)(action)} completed successfully`,
             affectedCount: result.count
         });
     }

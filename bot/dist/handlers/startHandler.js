@@ -56,6 +56,9 @@ async function handleStart(bot, msg) {
                     { text: '🏪 Просмотр магазинов', callback_data: 'store_list' }
                 ],
                 [
+                    { text: '💳 Пополнить баланс', callback_data: 'balance_topup' }
+                ],
+                [
                     { text: '👤 Профиль', callback_data: 'profile_menu' },
                     { text: '❓ Помощь и контакты', callback_data: 'help' }
                 ]

@@ -34,9 +34,9 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.secretManager = exports.SecretManager = void 0;
+const crypto = __importStar(require("crypto"));
 const VaultService_1 = require("../services/VaultService");
 const logger_1 = require("./logger");
-const crypto = __importStar(require("crypto"));
 class SecretManager {
     constructor() {
         this.secrets = null;
@@ -130,9 +130,18 @@ class SecretManager {
                 webhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET,
             },
             admin: {
-                defaultPassword: process.env.ADMIN_DEFAULT_PASSWORD || 'admin123',
-                cookieSecret: process.env.ADMIN_COOKIE_SECRET || 'default-cookie-secret',
-                sessionSecret: process.env.ADMIN_SESSION_SECRET || 'default-session-secret',
+                defaultPassword: process.env.ADMIN_DEFAULT_PASSWORD || (() => {
+                    logger_1.logger.warn('SECURITY WARNING: ADMIN_DEFAULT_PASSWORD not set - admin authentication will fail');
+                    return '';
+                })(),
+                cookieSecret: process.env.ADMIN_COOKIE_SECRET || (() => {
+                    logger_1.logger.warn('SECURITY WARNING: ADMIN_COOKIE_SECRET not set - generating random secret');
+                    return crypto.randomBytes(32).toString('hex');
+                })(),
+                sessionSecret: process.env.ADMIN_SESSION_SECRET || (() => {
+                    logger_1.logger.warn('SECURITY WARNING: ADMIN_SESSION_SECRET not set - generating random secret');
+                    return crypto.randomBytes(32).toString('hex');
+                })(),
             },
             smtp: {
                 host: process.env.SMTP_HOST,

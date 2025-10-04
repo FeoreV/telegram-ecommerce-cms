@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.cmsWebhookService = exports.CMSWebhookService = void 0;
 const logger_1 = require("../utils/logger");
+const sanitizer_1 = require("../utils/sanitizer");
 const apiService_1 = require("./apiService");
 class CMSWebhookService {
     static getInstance() {
@@ -12,7 +13,7 @@ class CMSWebhookService {
     }
     async processWebhook(webhookData) {
         try {
-            logger_1.logger.info(`Processing CMS webhook: ${webhookData.type}`, {
+            logger_1.logger.info(`Processing CMS webhook: ${(0, sanitizer_1.sanitizeForLog)(webhookData.type)}`, {
                 eventId: webhookData.id,
                 source: webhookData.source,
                 timestamp: webhookData.timestamp
@@ -40,9 +41,9 @@ class CMSWebhookService {
                     await this.handleOrderCancelled(webhookData.data);
                     break;
                 default:
-                    logger_1.logger.warn(`Unknown webhook type: ${webhookData.type}`);
+                    logger_1.logger.warn(`Unknown webhook type: ${(0, sanitizer_1.sanitizeForLog)(webhookData.type)}`);
             }
-            logger_1.logger.info(`Successfully processed webhook: ${webhookData.type}`, {
+            logger_1.logger.info(`Successfully processed webhook: ${(0, sanitizer_1.sanitizeForLog)(webhookData.type)}`, {
                 eventId: webhookData.id
             });
         }
@@ -56,7 +57,7 @@ class CMSWebhookService {
     }
     async handleProductCreated(productData) {
         try {
-            logger_1.logger.info(`Product created in CMS: ${productData.title} (${productData.id})`);
+            logger_1.logger.info(`Product created in CMS: ${(0, sanitizer_1.sanitizeForLog)(productData.title)} (${productData.id})`);
             await this.notifyAdminsProductUpdate('NEW_PRODUCT', productData);
             logger_1.logger.info(`Product mapping created for CMS product: ${productData.id}`);
         }
@@ -67,7 +68,7 @@ class CMSWebhookService {
     }
     async handleProductUpdated(productData) {
         try {
-            logger_1.logger.info(`Product updated in CMS: ${productData.title} (${productData.id})`);
+            logger_1.logger.info(`Product updated in CMS: ${(0, sanitizer_1.sanitizeForLog)(productData.title)} (${productData.id})`);
             await this.notifyCustomersProductUpdate(productData);
             logger_1.logger.info(`Product mapping updated for CMS product: ${productData.id}`);
         }
@@ -88,7 +89,7 @@ class CMSWebhookService {
     }
     async handleInventoryUpdated(stockData) {
         try {
-            logger_1.logger.info(`Stock updated for product ${stockData.productId}: ${stockData.newStock}`);
+            logger_1.logger.info(`Stock updated for product ${(0, sanitizer_1.sanitizeForLog)(stockData.productId)}: ${stockData.newStock}`);
             if (stockData.threshold && stockData.newStock <= stockData.threshold) {
                 await this.triggerLowStockAlert(stockData);
             }
@@ -108,8 +109,8 @@ class CMSWebhookService {
     }
     async handleOrderCreated(orderData) {
         try {
-            logger_1.logger.info(`Order created/updated in CMS: ${orderData.cmsOrderId}`);
-            logger_1.logger.info(`Order synced from CMS: ${orderData.cmsOrderId}`);
+            logger_1.logger.info(`Order created/updated in CMS: ${(0, sanitizer_1.sanitizeForLog)(orderData.cmsOrderId)}`);
+            logger_1.logger.info(`Order synced from CMS: ${(0, sanitizer_1.sanitizeForLog)(orderData.cmsOrderId)}`);
         }
         catch (error) {
             logger_1.logger.error('Failed to handle CMS order creation:', error);
@@ -118,8 +119,8 @@ class CMSWebhookService {
     }
     async handleOrderUpdated(orderData) {
         try {
-            logger_1.logger.info(`Order status updated in CMS: ${orderData.cmsOrderId} -> ${orderData.status}`);
-            logger_1.logger.info(`Order status updated from CMS: ${orderData.cmsOrderId} -> ${orderData.status}`);
+            logger_1.logger.info(`Order status updated in CMS: ${(0, sanitizer_1.sanitizeForLog)(orderData.cmsOrderId)} -> ${(0, sanitizer_1.sanitizeForLog)(orderData.status)}`);
+            logger_1.logger.info(`Order status updated from CMS: ${(0, sanitizer_1.sanitizeForLog)(orderData.cmsOrderId)} -> ${(0, sanitizer_1.sanitizeForLog)(orderData.status)}`);
         }
         catch (error) {
             logger_1.logger.error('Failed to handle CMS order update:', error);
@@ -130,12 +131,12 @@ class CMSWebhookService {
         try {
             const integrationMapping = await this.findIntegrationMapping('CMS', 'order', orderData.cmsOrderId);
             if (!integrationMapping) {
-                logger_1.logger.warn(`No local order found for CMS order ID: ${orderData.cmsOrderId}`);
+                logger_1.logger.warn(`No local order found for CMS order ID: ${(0, sanitizer_1.sanitizeForLog)(orderData.cmsOrderId)}`);
                 return;
             }
             const localOrder = await this.getOrderWithDetails(integrationMapping.localId);
             if (!localOrder) {
-                logger_1.logger.error(`Local order ${integrationMapping.localId} not found for CMS ID: ${orderData.cmsOrderId}`);
+                logger_1.logger.error(`Local order ${integrationMapping.localId} not found for CMS ID: ${(0, sanitizer_1.sanitizeForLog)(orderData.cmsOrderId)}`);
                 return;
             }
             const adminToken = await this.getAdminToken();
@@ -157,7 +158,7 @@ class CMSWebhookService {
         try {
             const productMapping = await this.findIntegrationMapping('CMS', 'product', stockData.productId);
             if (!productMapping) {
-                logger_1.logger.warn(`No local product found for CMS product ID: ${stockData.productId}`);
+                logger_1.logger.warn(`No local product found for CMS product ID: ${(0, sanitizer_1.sanitizeForLog)(stockData.productId)}`);
                 return;
             }
             const adminToken = await this.getAdminToken();
@@ -177,8 +178,8 @@ class CMSWebhookService {
                     : `Low stock: ${stockData.newStock} remaining`,
                 source: 'CMS_WEBHOOK'
             };
-            logger_1.logger.warn(`🚨 INVENTORY ALERT: Product ${productMapping.localId} - Stock: ${stockData.newStock}, Threshold: ${stockData.threshold}`);
-            logger_1.logger.info(`Low stock alert processed for product: ${productMapping.localId}`);
+            logger_1.logger.warn(`🚨 INVENTORY ALERT: Product ${(0, sanitizer_1.sanitizeForLog)(productMapping.localId)} - Stock: ${stockData.newStock}, Threshold: ${stockData.threshold}`);
+            logger_1.logger.info(`Low stock alert processed for product: ${(0, sanitizer_1.sanitizeForLog)(productMapping.localId)}`);
         }
         catch (error) {
             logger_1.logger.error('Failed to create low stock alert:', error);
@@ -186,7 +187,7 @@ class CMSWebhookService {
     }
     async notifyCustomersRestock(stockData) {
         try {
-            logger_1.logger.info(`Product restocked: ${stockData.productId} (${stockData.newStock} units)`);
+            logger_1.logger.info(`Product restocked: ${(0, sanitizer_1.sanitizeForLog)(stockData.productId)} (${stockData.newStock} units)`);
         }
         catch (error) {
             logger_1.logger.error('Failed to send restock notifications:', error);
@@ -194,8 +195,8 @@ class CMSWebhookService {
     }
     async notifyAdminsProductUpdate(type, productData) {
         try {
-            logger_1.logger.info(`Admin notification: Product updated ${productData.title}`);
-            logger_1.logger.info(`Admin notification sent for product update: ${type}`);
+            logger_1.logger.info(`Admin notification: Product updated ${(0, sanitizer_1.sanitizeForLog)(productData.title)}`);
+            logger_1.logger.info(`Admin notification sent for product update: ${(0, sanitizer_1.sanitizeForLog)(type)}`);
         }
         catch (error) {
             logger_1.logger.error('Failed to notify admins:', error);
@@ -203,7 +204,7 @@ class CMSWebhookService {
     }
     async notifyCustomersProductUpdate(productData) {
         try {
-            logger_1.logger.info(`Favorite product update notification: ${productData.title}`);
+            logger_1.logger.info(`Favorite product update notification: ${(0, sanitizer_1.sanitizeForLog)(productData.title)}`);
             logger_1.logger.info(`Customer notifications sent for product update: ${productData.id}`);
         }
         catch (error) {
@@ -212,8 +213,8 @@ class CMSWebhookService {
     }
     async notifyCustomerStatusChange(order, newStatus) {
         try {
-            logger_1.logger.info(`Order status notification: ${order.orderNumber} -> ${newStatus}`);
-            logger_1.logger.info(`Status change notification sent for order: ${order.id}`);
+            logger_1.logger.info(`Order status notification: ${(0, sanitizer_1.sanitizeForLog)(order.orderNumber)} -> ${(0, sanitizer_1.sanitizeForLog)(newStatus)}`);
+            logger_1.logger.info(`Status change notification sent for order: ${(0, sanitizer_1.sanitizeForLog)(order.id)}`);
         }
         catch (error) {
             logger_1.logger.error('Failed to send status notification:', error);
@@ -221,8 +222,8 @@ class CMSWebhookService {
     }
     async notifyCustomerCancellation(order, reason) {
         try {
-            logger_1.logger.info(`Order cancellation notification: ${order.orderNumber}`);
-            logger_1.logger.info(`Cancellation notification sent for order: ${order.id}`);
+            logger_1.logger.info(`Order cancellation notification: ${(0, sanitizer_1.sanitizeForLog)(order.orderNumber)}`);
+            logger_1.logger.info(`Cancellation notification sent for order: ${(0, sanitizer_1.sanitizeForLog)(order.id)}`);
         }
         catch (error) {
             logger_1.logger.error('Failed to send cancellation notification:', error);
@@ -272,7 +273,7 @@ class CMSWebhookService {
             return response.mapping ?? response;
         }
         catch (error) {
-            logger_1.logger.warn(`Integration mapping not found: ${source}/${entityType}/${externalId}`);
+            logger_1.logger.warn(`Integration mapping not found: ${(0, sanitizer_1.sanitizeForLog)(source)}/${(0, sanitizer_1.sanitizeForLog)(entityType)}/${(0, sanitizer_1.sanitizeForLog)(externalId)}`);
             return null;
         }
     }
@@ -304,7 +305,7 @@ class CMSWebhookService {
             return variantMapping?.localId || null;
         }
         catch (error) {
-            logger_1.logger.error(`Error mapping variant ID ${cmsVariantId}:`, error);
+            logger_1.logger.error(`Error mapping variant ID ${(0, sanitizer_1.sanitizeForLog)(cmsVariantId)}:`, error);
             return null;
         }
     }

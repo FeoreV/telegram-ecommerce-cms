@@ -1,20 +1,20 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
-  Alert,
-  Box,
-  Button,
-  Chip,
-  CircularProgress,
-  List,
-  ListItem,
-  ListItemText,
-  Paper,
-  Typography,
-} from '@mui/material'
 import { CheckCircle, Error as ErrorIcon, ExpandMore, Warning } from '@mui/icons-material'
+import {
+    Accordion,
+    AccordionDetails,
+    AccordionSummary,
+    Alert,
+    Box,
+    Button,
+    Chip,
+    CircularProgress,
+    List,
+    ListItem,
+    ListItemText,
+    Paper,
+    Typography,
+} from '@mui/material'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -81,7 +81,7 @@ const PageDebugger: React.FC<PageDebuggerProps> = ({ pageName, children }) => {
   const [forceDebug, setForceDebug] = useState(false)
 
   const healthCheckUrl = useMemo(() => {
-    const rawBase = (import.meta as any).env?.VITE_API_URL ?? 'http://localhost:3001'
+    const rawBase = (import.meta as ImportMeta).env?.VITE_API_URL ?? 'http://localhost:3001'
     const normalized = String(rawBase).replace(/\/$/, '')
     const apiBase = normalized.endsWith('/api') ? normalized.slice(0, -4) : normalized
     return `${apiBase}/health`
@@ -124,16 +124,16 @@ const PageDebugger: React.FC<PageDebuggerProps> = ({ pageName, children }) => {
         } else {
           throw new Error(`HTTP ${response.status}`)
         }
-      } catch (error: any) {
-        const message = error?.message ?? 'Неизвестная ошибка'
+      } catch (error: unknown) {
+        const message = (error as Error)?.message ?? 'Неизвестная ошибка'
         result.api = {
           status: 'error',
           message: `API ошибка: ${message}. Убедитесь, что backend запущен по адресу ${healthCheckUrl}.`,
           details: {
             baseURL: healthCheckUrl,
             message,
-            code: error?.code,
-            status: error?.response?.status,
+            code: (error as any)?.code,
+            status: (error as any)?.response?.status,
           },
         }
       }
@@ -143,10 +143,10 @@ const PageDebugger: React.FC<PageDebuggerProps> = ({ pageName, children }) => {
         userRole: user?.role,
         canAccess: checkPagePermissions(pageName, user?.role),
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       result.error = {
-        message: error?.message ?? 'Неизвестная ошибка',
-        stack: error?.stack,
+        message: (error as Error)?.message ?? 'Неизвестная ошибка',
+        stack: (error as Error)?.stack,
       }
     }
 

@@ -1,10 +1,10 @@
 import { Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/auth';
-import { EmployeeService } from '../services/employeeService';
-import { AppError, asyncHandler } from '../middleware/errorHandler';
-import { logger } from '../utils/logger';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
+import { AuthenticatedRequest } from '../middleware/auth';
+import { AppError, asyncHandler } from '../middleware/errorHandler';
+import { EmployeeService } from '../services/employeeService';
+import { logger } from '../utils/logger';
 
 const AcceptInvitationSchema = z.object({
   token: z.string().min(1, 'Токен приглашения обязателен'),
@@ -24,7 +24,7 @@ export const acceptInvitation = asyncHandler(async (req: AuthenticatedRequest, r
 
   try {
     await EmployeeService.acceptInvitation(token, telegramId);
-    
+
     res.json({
       success: true,
       message: 'Приглашение принято! Добро пожаловать в команду!'
@@ -43,7 +43,7 @@ export const rejectInvitation = asyncHandler(async (req: AuthenticatedRequest, r
 
   try {
     await EmployeeService.rejectInvitation(token, reason);
-    
+
     res.json({
       success: true,
       message: 'Приглашение отклонено'
@@ -93,6 +93,22 @@ export const getInvitationInfo = asyncHandler(async (req: AuthenticatedRequest, 
     throw new AppError('Срок действия приглашения истек', 400);
   }
 
+  // SECURITY FIX: Safely parse permissions data (CWE-79)
+  let permissions: string[] = [];
+  try {
+    if (invitation.permissions) {
+      const parsed = JSON.parse(invitation.permissions);
+      if (Array.isArray(parsed)) {
+        permissions = parsed.filter((p: any) => typeof p === 'string');
+      }
+    }
+  } catch (error) {
+    logger.error('Failed to parse invitation permissions', {
+      invitationId: invitation.id,
+      error
+    });
+  }
+
   res.json({
     invitation: {
       id: invitation.id,
@@ -101,7 +117,7 @@ export const getInvitationInfo = asyncHandler(async (req: AuthenticatedRequest, 
       expiresAt: invitation.expiresAt,
       store: invitation.store,
       inviter: invitation.inviter,
-      permissions: invitation.permissions ? JSON.parse(invitation.permissions) : []
+      permissions
     }
   });
 });
@@ -140,7 +156,7 @@ export const getEmployeeActivity = asyncHandler(async (req: AuthenticatedRequest
 async function checkStoreAccess(userId: string, storeId: string, role: string): Promise<boolean> {
   if (role === 'OWNER') return true;
 
-  const { prisma } = await import('../lib/prisma');
+  const { prisma } = await import('../lib/prisma.js');
   const store = await prisma.store.findFirst({
     where: {
       id: storeId,

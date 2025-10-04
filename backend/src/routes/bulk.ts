@@ -1,16 +1,17 @@
 import { Router } from 'express';
 import { body, query } from 'express-validator';
-import { authMiddleware } from '../middleware/auth';
-import { validate } from '../middleware/validation';
-import { requirePermission, Permission } from '../middleware/permissions';
 import {
-  upload,
-  importProducts,
-  exportProducts,
-  bulkUpdateProducts,
-  bulkDeleteProducts,
-  getBulkTemplate,
+    bulkDeleteProducts,
+    bulkUpdateProducts,
+    exportProducts,
+    getBulkTemplate,
+    importProducts,
+    upload,
 } from '../controllers/bulkController';
+import { authMiddleware } from '../middleware/auth';
+import { csrfProtection } from '../middleware/csrfProtection';
+import { Permission, requirePermission } from '../middleware/permissions';
+import { validate } from '../middleware/validation';
 
 const router = Router();
 
@@ -25,9 +26,10 @@ router.get(
   getBulkTemplate
 );
 
-// Import products from CSV
+// Import products from CSV (SECURITY: CSRF protected)
 router.post(
   '/import/products',
+  csrfProtection,
   requirePermission(Permission.PRODUCT_CREATE),
   upload.single('csv'),
   [
@@ -50,9 +52,10 @@ router.get(
   exportProducts
 );
 
-// Bulk update products
+// Bulk update products (SECURITY: CSRF protected)
 router.patch(
   '/update/products',
+  csrfProtection,
   requirePermission(Permission.PRODUCT_UPDATE),
   [
     body('storeId').isString().withMessage('Store ID is required'),
@@ -64,9 +67,10 @@ router.patch(
   bulkUpdateProducts
 );
 
-// Bulk delete products
+// Bulk delete products (SECURITY: CSRF protected)
 router.delete(
   '/delete/products',
+  csrfProtection,
   requirePermission(Permission.PRODUCT_DELETE),
   [
     body('storeId').isString().withMessage('Store ID is required'),

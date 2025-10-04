@@ -1,15 +1,14 @@
+import { Box, Card, CardContent, Skeleton, Typography } from '@mui/material'
 import React, { useMemo } from 'react'
-import { Box, Typography, Card, CardContent, Skeleton } from '@mui/material'
 import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  Cell,
+    Bar,
+    BarChart,
+    CartesianGrid,
+    Cell,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
 } from 'recharts'
 import { useChartColors } from '../../utils/chartTheme'
 
@@ -50,7 +49,7 @@ const ProductPerformanceChart: React.FC<ProductPerformanceChartProps> = ({
         shortName: item.name.length > 20 ? `${item.name.substring(0, 20)}...` : item.name,
         rank: index + 1,
       }))
-    
+
     return sorted
   }, [data, sortBy, maxItems])
 
@@ -70,7 +69,7 @@ const ProductPerformanceChart: React.FC<ProductPerformanceChartProps> = ({
     return chartColors.chartPalette[index % chartColors.chartPalette.length]
   }
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label: _label }: { active?: boolean; payload?: any[]; label?: string }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload
       return (
@@ -114,12 +113,12 @@ const ProductPerformanceChart: React.FC<ProductPerformanceChartProps> = ({
       <Card>
         <CardContent>
           <Typography variant="h6" gutterBottom>{title}</Typography>
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             height: height,
-            color: 'text.secondary' 
+            color: 'text.secondary'
           }}>
             <Typography>Нет данных для отображения</Typography>
           </Box>
@@ -144,28 +143,28 @@ const ProductPerformanceChart: React.FC<ProductPerformanceChartProps> = ({
             margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
             layout="horizontal"
           >
-            <CartesianGrid 
-              strokeDasharray="3 3" 
-              stroke={chartColors.gridColor} 
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke={chartColors.gridColor}
             />
-            
-            <XAxis 
+
+            <XAxis
               type="number"
               tick={{ fill: chartColors.textColor, fontSize: 12 }}
               axisLine={{ stroke: chartColors.gridColor }}
               tickFormatter={sortBy === 'revenue' ? formatCurrency : (value) => `${value}`}
             />
-            
-            <YAxis 
+
+            <YAxis
               type="category"
               dataKey="shortName"
               tick={{ fill: chartColors.textColor, fontSize: 11 }}
               axisLine={{ stroke: chartColors.gridColor }}
               width={120}
             />
-            
+
             <Tooltip content={<CustomTooltip />} />
-            
+
             <Bar
               dataKey={sortBy}
               radius={[0, 4, 4, 0]}

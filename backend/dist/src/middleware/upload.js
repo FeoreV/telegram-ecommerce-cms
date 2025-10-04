@@ -12,10 +12,22 @@ const storage = multer_1.default.diskStorage({
         cb(null, 'uploads/payment-proofs');
     },
     filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
         const extension = path_1.default.extname(file.originalname);
         const basename = path_1.default.basename(file.originalname, extension);
-        cb(null, `${basename}-${uniqueSuffix}${extension}`);
+        const sanitizedBasename = basename.replace(/[^a-zA-Z0-9-_]/g, '_');
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const secureFilename = `${sanitizedBasename}-${uniqueSuffix}${extension}`;
+        if (secureFilename.includes('/') || secureFilename.includes('\\') || secureFilename.includes('..')) {
+            const err = new Error('SECURITY: Invalid filename detected');
+            return cb(err, secureFilename);
+        }
+        const uploadDir = path_1.default.resolve(process.cwd(), 'uploads/payment-proofs');
+        const finalPath = path_1.default.resolve(uploadDir, secureFilename);
+        if (!finalPath.startsWith(uploadDir)) {
+            const err = new Error('SECURITY: Path traversal attempt detected');
+            return cb(err, secureFilename);
+        }
+        cb(null, secureFilename);
     }
 });
 const fileFilter = (req, file, cb) => {

@@ -1,7 +1,7 @@
 import TelegramBot from 'node-telegram-bot-api';
 import { apiService } from '../services/apiService';
-import { userSessions } from '../utils/sessionManager';
 import { logger } from '../utils/logger';
+import { userSessions } from '../utils/sessionManager';
 
 export async function handleBotCreationCallback(bot: TelegramBot, chatId: number, callbackData: string) {
   const userId = chatId.toString();
@@ -60,7 +60,7 @@ async function startBotCreation(bot: TelegramBot, chatId: number, session: any) 
     // Get user's stores without bots
     const storesResponse = await apiService.getUserStores(session.token);
     const stores = (storesResponse?.stores ?? []) as any[];
-    
+
     // Filter stores without bots
     const storesWithoutBots = stores.filter((store: any) => !store.botUsername);
 
@@ -92,7 +92,7 @@ async function startBotCreation(bot: TelegramBot, chatId: number, session: any) 
     text += `Выберите магазин, для которого хотите создать бота:\n\n`;
 
     const keyboard = [];
-    
+
     for (const store of storesWithoutBots) {
       keyboard.push([{
         text: `🏪 ${store.name}`,
@@ -180,7 +180,7 @@ export async function handleBotCreationMessage(bot: TelegramBot, msg: TelegramBo
   if (!userId || !text) return;
 
   const session = userSessions.getSession(userId);
-  
+
   if (!session.botCreation) return;
 
   try {
@@ -355,9 +355,9 @@ https://t.me/${response.bot.botUsername}
 
   } catch (error: any) {
     logger.error('Error creating bot:', error);
-    
+
     const errorMessage = error.response?.data?.message || 'Не удалось создать бота';
-    
+
     await bot.editMessageText(`
 ❌ *Ошибка создания бота*
 
@@ -412,7 +412,7 @@ async function showBotList(bot: TelegramBot, chatId: number, session: any) {
     let text = `🤖 *Ваши боты (${bots.length})*\n\n`;
 
     const keyboard = [];
-    
+
     for (const botData of bots) {
       const statusIcon = botData.isActive ? '✅' : '❌';
       const status = botData.botStatus === 'ACTIVE' ? 'Активен' : 'Неактивен';
@@ -450,6 +450,18 @@ async function handleBotManagement(bot: TelegramBot, chatId: number, callbackDat
   if (callbackData.startsWith('bot_manage_')) {
     const storeId = callbackData.replace('bot_manage_', '');
     await showBotManagementMenu(bot, chatId, session, storeId);
+    return true;
+  }
+
+  if (callbackData.startsWith('bot_settings_')) {
+    const storeId = callbackData.replace('bot_settings_', '');
+    await showBotSettings(bot, chatId, session, storeId);
+    return true;
+  }
+
+  if (callbackData.startsWith('bot_stats_')) {
+    const storeId = callbackData.replace('bot_stats_', '');
+    await showBotStats(bot, chatId, session, storeId);
     return true;
   }
 
@@ -514,6 +526,135 @@ ${statusIcon} *@${botData.botUsername}*
   }
 }
 
+async function showBotSettings(bot: TelegramBot, chatId: number, session: any, storeId: string) {
+  try {
+    // Get bot data
+    const response = await apiService.getUserBots(session.token);
+    const bots = response.bots || [];
+    const botData = bots.find((b: any) => b.storeId === storeId);
+
+    if (!botData) {
+      await bot.sendMessage(chatId, '❌ Бот не найден.');
+      return;
+    }
+
+    // Get bot settings from API
+    let settingsData: any = {};
+    try {
+      settingsData = await apiService.getBotSettings(storeId, session.token);
+    } catch (error) {
+      logger.warn('Could not fetch bot settings, using defaults:', error);
+    }
+
+    const statusIcon = botData.isActive ? '✅' : '❌';
+    const status = botData.botStatus === 'ACTIVE' ? 'Активен' : 'Неактивен';
+
+    const text = `
+⚙️ *Настройки бота*
+
+🤖 *@${botData.botUsername}*
+🏪 Магазин: *${botData.storeName}*
+📊 Статус: ${status}
+
+*Текущие настройки:*
+💬 Приветственное сообщение: ${settingsData.welcomeMessage ? '✅ Настроено' : '❌ Не настроено'}
+📝 Описание: ${settingsData.description ? '✅ Настроено' : '❌ Не настроено'}
+🔔 Уведомления: ${settingsData.notificationsEnabled !== false ? '✅ Включены' : '❌ Выключены'}
+
+*Доступные действия:*
+    `;
+
+    const keyboard = [
+      [{ text: '🔗 Открыть бота', url: `https://t.me/${botData.botUsername}` }],
+      [{ text: '📊 Статистика бота', callback_data: `bot_stats_${storeId}` }],
+      [{ text: '🔄 Перезапустить', callback_data: `bot_restart_${storeId}` }],
+      [{ text: '🗑️ Удалить бота', callback_data: `bot_delete_${storeId}` }],
+      [{ text: '🔙 К списку ботов', callback_data: 'bot_list' }]
+    ];
+
+    await bot.sendMessage(chatId, text, {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: keyboard
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error showing bot settings:', error);
+    await bot.sendMessage(chatId, '❌ Ошибка при загрузке настроек бота.');
+  }
+}
+
+async function showBotStats(bot: TelegramBot, chatId: number, session: any, storeId: string) {
+  const loadingMsg = await bot.sendMessage(chatId, '📊 Загружаю статистику...');
+
+  try {
+    // Get bot data first
+    const botsResponse = await apiService.getUserBots(session.token);
+    const bots = botsResponse.bots || [];
+    const botData = bots.find((b: any) => b.storeId === storeId);
+
+    if (!botData) {
+      await bot.editMessageText('❌ Бот не найден.', {
+        chat_id: chatId,
+        message_id: loadingMsg.message_id,
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '🔙 К списку ботов', callback_data: 'bot_list' }]
+          ]
+        }
+      });
+      return;
+    }
+
+    // Get bot stats from API
+    const statsResponse = await apiService.getBotStats(storeId, session.token);
+    const stats = statsResponse.stats;
+
+    const text = `
+📊 *Статистика бота*
+
+🏪 Магазин: *${botData.storeName || 'Неизвестно'}*
+🤖 Бот: *@${botData.botUsername || 'Неизвестно'}*
+
+*Активность:*
+👥 Всего пользователей: ${stats.totalUsers || 0}
+👤 Активных пользователей: ${stats.activeUsers || 0}
+💬 Сообщений обработано: ${stats.messagesSent || 0}
+
+📅 *Данные обновлены:*
+${new Date().toLocaleString('ru-RU')}
+    `;
+
+    await bot.editMessageText(text, {
+      chat_id: chatId,
+      message_id: loadingMsg.message_id,
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '⚙️ Настройки', callback_data: `bot_settings_${storeId}` }],
+          [{ text: '🔙 К списку ботов', callback_data: 'bot_list' }]
+        ]
+      }
+    });
+
+  } catch (error: any) {
+    logger.error('Error showing bot stats:', error);
+
+    const errorMessage = error.response?.data?.message || 'Не удалось загрузить статистику';
+
+    await bot.editMessageText(`❌ ${errorMessage}`, {
+      chat_id: chatId,
+      message_id: loadingMsg.message_id,
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '🔙 Назад', callback_data: `bot_settings_${storeId}` }]
+        ]
+      }
+    });
+  }
+}
+
 async function restartBot(bot: TelegramBot, chatId: number, session: any, storeId: string) {
   const loadingMsg = await bot.sendMessage(chatId, '🔄 Перезапускаю бота...');
 
@@ -532,9 +673,9 @@ async function restartBot(bot: TelegramBot, chatId: number, session: any, storeI
 
   } catch (error: any) {
     logger.error('Error restarting bot:', error);
-    
+
     const errorMessage = error.response?.data?.message || 'Не удалось перезапустить бота';
-    
+
     await bot.editMessageText(`❌ ${errorMessage}`, {
       chat_id: chatId,
       message_id: loadingMsg.message_id,
@@ -565,9 +706,9 @@ async function deleteBot(bot: TelegramBot, chatId: number, session: any, storeId
 
   } catch (error: any) {
     logger.error('Error deleting bot:', error);
-    
+
     const errorMessage = error.response?.data?.message || 'Не удалось удалить бота';
-    
+
     await bot.editMessageText(`❌ ${errorMessage}`, {
       chat_id: chatId,
       message_id: loadingMsg.message_id,

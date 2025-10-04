@@ -1,7 +1,11 @@
 #!/bin/bash
 
 # Production Deployment Script
-set -e
+# SECURITY FIX: Enhanced error handling (CWE-754)
+set -euo pipefail
+
+# Error handler
+trap 'echo "❌ Error occurred at line $LINENO. Deployment failed." >&2' ERR
 
 echo "🚀 Starting production deployment..."
 
@@ -13,7 +17,10 @@ if [ ! -f .env.prod ]; then
 fi
 
 # Load production environment
-export $(cat .env.prod | grep -v '^#' | xargs)
+# SECURITY FIX: Safer environment loading
+set -a
+source .env.prod
+set +a
 
 echo "📦 Building and pulling latest images..."
 docker-compose -f docker-compose.prod.yml pull

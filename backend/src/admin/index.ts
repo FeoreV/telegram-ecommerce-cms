@@ -1,17 +1,18 @@
-import AdminJS from 'adminjs';
 import AdminJSExpress from '@adminjs/express';
 import { Database, Resource } from '@adminjs/prisma';
 import { PrismaClient } from '@prisma/client';
-import express, { Request, Response, Express } from 'express';
-import { logger } from '../utils/logger';
-import { verifyToken } from '../utils/jwt';
-import { AuditLogService, AuditAction } from '../middleware/auditLog';
+import AdminJS from 'adminjs';
+import { Express, Request, Response } from 'express';
+import { AuditAction, AuditLogService } from '../middleware/auditLog';
 import {
-  NotificationService,
-  NotificationChannel,
-  NotificationPriority,
-  NotificationType
+    NotificationChannel,
+    NotificationPriority,
+    NotificationService,
+    NotificationType
 } from '../services/notificationService';
+import { verifyToken } from '../utils/jwt';
+import { logger } from '../utils/logger';
+import { sanitizeForLog } from '../utils/sanitizer';
 
 interface CurrentAdmin {
   id: string;
@@ -39,8 +40,8 @@ let adapterRegistered = false;
 
 const authenticate = async (email: string, password: string): Promise<CurrentAdmin | null> => {
   try {
-    logger.info(`Admin login attempt for: ${email}`);
-    
+    logger.info(`Admin login attempt for: ${sanitizeForLog(email)}`);
+
     // Find user by email or telegram ID
     const user = await prisma.user.findFirst({
       where: {
@@ -54,21 +55,26 @@ const authenticate = async (email: string, password: string): Promise<CurrentAdm
     });
 
     if (!user) {
-      logger.warn(`Admin login failed - user not found: ${email}`);
+      logger.warn(`Admin login failed - user not found: ${sanitizeForLog(email)}`);
       return null;
     }
 
     // For security: require a proper admin password system
     // If no email set, this is a telegram-only user - they can't use AdminJS
     if (!user.email) {
-      logger.warn(`Admin login failed - telegram-only user attempted AdminJS access: ${user.telegramId}`);
+      logger.warn(`Admin login failed - telegram-only user attempted AdminJS access: ${sanitizeForLog(user.telegramId || '')}`);
       return null;
     }
 
     // ENHANCED AUTH: Support multiple authentication methods
     // Method 1: Default password (for emergency access)
-    const ADMIN_DEFAULT_PASSWORD = process.env.ADMIN_DEFAULT_PASSWORD || 'ChangeMe123!';
-    
+    const ADMIN_DEFAULT_PASSWORD = process.env.ADMIN_DEFAULT_PASSWORD;
+
+    if (!ADMIN_DEFAULT_PASSWORD) {
+      logger.error('SECURITY: ADMIN_DEFAULT_PASSWORD environment variable not set');
+      return null;
+    }
+
     // Method 2: JWT token authentication (preferred method)
     let isValidAuth = false;
 
@@ -84,20 +90,31 @@ const authenticate = async (email: string, password: string): Promise<CurrentAdm
         logger.warn('Invalid JWT token provided for admin login:', err as Record<string, unknown>);
       }
     }
-    
-    // Fallback to default password
-    if (!isValidAuth && password === ADMIN_DEFAULT_PASSWORD) {
-      isValidAuth = true;
-      logger.info(`Admin login via default password for user: ${user.id}`);
+
+    // Fallback to default password - use timing-safe comparison to prevent timing attacks (CWE-208)
+    if (!isValidAuth && ADMIN_DEFAULT_PASSWORD) {
+      const crypto = await import('crypto');
+      try {
+        isValidAuth = crypto.timingSafeEqual(
+          Buffer.from(password),
+          Buffer.from(ADMIN_DEFAULT_PASSWORD)
+        );
+        if (isValidAuth) {
+          logger.info(`Admin login via default password for user: ${user.id}`);
+        }
+      } catch {
+        // Lengths don't match, not equal
+        isValidAuth = false;
+      }
     }
-    
+
     if (!isValidAuth) {
-      logger.warn(`Admin login failed - invalid credentials for: ${email}`);
+      logger.warn('Admin login failed - invalid credentials', { email: sanitizeForLog(email) });
       return null;
     }
 
-    logger.info(`Admin login successful for user: ${user.id} (${user.role})`);
-    
+    logger.info('Admin login successful', { userId: user.id, role: user.role });
+
     // Audit log the AdminJS login
     setImmediate(() => {
       AuditLogService.log(user.id, {
@@ -110,7 +127,7 @@ const authenticate = async (email: string, password: string): Promise<CurrentAdm
         }
       });
     });
-    
+
     return {
       id: user.id,
       email: user.email,
@@ -128,7 +145,7 @@ export const setupAdminJS = async (app: Express) => {
   try {
     logger.info('🚀 STARTING AdminJS setup function...');
     logger.info('🔧 Environment ENABLE_ADMINJS:', { value: process.env.ENABLE_ADMINJS });
-    
+
     if (!adapterRegistered) {
       try {
         if (!Database || !Resource) {
@@ -153,7 +170,7 @@ export const setupAdminJS = async (app: Express) => {
 
     // Try minimal AdminJS configuration first
     logger.info('🧪 Trying minimal AdminJS configuration first...');
-    
+
     try {
       adminJsInstance = new AdminJS({
         branding: {
@@ -162,7 +179,7 @@ export const setupAdminJS = async (app: Express) => {
           theme: {
             colors: {
               primary100: '#3b82f6',
-              primary80: '#3b82f6', 
+              primary80: '#3b82f6',
               primary60: '#3b82f6',
               primary40: '#3b82f6',
               primary20: '#dbeafe',
@@ -180,7 +197,7 @@ export const setupAdminJS = async (app: Express) => {
               try {
                 const stats = {
                   users: await prisma.user.count(),
-                  stores: await prisma.store.count(), 
+                  stores: await prisma.store.count(),
                   products: await prisma.product.count(),
                   orders: await prisma.order.count(),
                   categories: await prisma.category.count(),
@@ -198,7 +215,7 @@ export const setupAdminJS = async (app: Express) => {
                     data: { adminId: context.currentAdmin.id, email: context.currentAdmin.email }
                   });
                 }
-                
+
                 return {
                   ...context,
                   stats,
@@ -233,7 +250,7 @@ export const setupAdminJS = async (app: Express) => {
                     createdAt: true
                   }
                 });
-                
+
                 return {
                   ...context,
                   users,
@@ -265,7 +282,7 @@ export const setupAdminJS = async (app: Express) => {
                     createdAt: true
                   }
                 });
-                
+
                 return {
                   ...context,
                   stores,
@@ -288,7 +305,7 @@ export const setupAdminJS = async (app: Express) => {
                 const PrometheusService = (await import('../services/prometheusService')).default;
                 const prometheusService = PrometheusService.getInstance();
                 const metricsJSON = await prometheusService.getMetricsJSON();
-                
+
                 return {
                   ...context,
                   metrics: metricsJSON,
@@ -365,7 +382,7 @@ export const setupAdminJS = async (app: Express) => {
 
     logger.info(`✅ AdminJS successfully started on ${adminJsInstance.options.rootPath} with AUTHENTICATION ENABLED`);
     logger.warn(`⚠️  IMPORTANT: Set ADMIN_DEFAULT_PASSWORD, ADMIN_COOKIE_SECRET, ADMIN_SESSION_SECRET in environment`);
-    
+
     return adminJsInstance;
   } catch (error: unknown) {
     logger.error('❌ Failed to setup AdminJS:', error as Record<string, unknown>);

@@ -1,12 +1,13 @@
-import { Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/auth';
-import { prisma } from '../lib/prisma';
-import { AppError, asyncHandler } from '../middleware/errorHandler';
-import { AuditLogService, AuditAction } from '../middleware/auditLog';
-import { logger, toLogMetadata } from '../utils/logger';
-import multer from 'multer';
 import csv from 'csv-parser';
+import { Response } from 'express';
 import { createReadStream, unlinkSync } from 'fs';
+import multer from 'multer';
+import * as path from 'path';
+import { prisma } from '../lib/prisma';
+import { AuditAction, AuditLogService } from '../middleware/auditLog';
+import { AuthenticatedRequest } from '../middleware/auth';
+import { AppError, asyncHandler } from '../middleware/errorHandler';
+import { logger, toLogMetadata } from '../utils/logger';
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -14,7 +15,9 @@ const storage = multer.diskStorage({
     cb(null, 'uploads/');
   },
   filename: (req, file, cb) => {
-    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1E9)}-${file.originalname}`;
+    // SECURITY FIX: Sanitize originalname to prevent path traversal (CWE-22)
+    const safeName = path.basename(file.originalname).replace(/[^a-zA-Z0-9._-]/g, '_');
+    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1E9)}-${safeName}`;
     cb(null, uniqueName);
   }
 });
@@ -92,10 +95,10 @@ export const importProducts = asyncHandler(async (req: AuthenticatedRequest, res
       })
       .on('end', async () => {
         if (errors.length > 0) {
-          return res.status(400).json({ 
-            error: 'CSV validation failed', 
+          return res.status(400).json({
+            error: 'CSV validation failed',
             errors,
-            processed: 0 
+            processed: 0
           });
         }
 
@@ -119,7 +122,7 @@ export const importProducts = asyncHandler(async (req: AuthenticatedRequest, res
                     .toLowerCase()
                     .replace(/[^a-z0-9]+/g, '-')
                     .replace(/^-+|-+$/g, '');
-                  
+
                   category = await prisma.category.create({
                     data: {
                       name: productData.categoryName,
@@ -201,9 +204,9 @@ export const importProducts = asyncHandler(async (req: AuthenticatedRequest, res
       });
 
   } catch (error) {
-    logger.error('Import error:', error);
+    logger.error('Import error:', toLogMetadata(error));
     throw new AppError('Failed to import products', 500);
-  } finally {
+  } finally{
     // Clean up uploaded file
     try {
       unlinkSync(csvPath);
@@ -253,7 +256,7 @@ export const exportProducts = asyncHandler(async (req: AuthenticatedRequest, res
     // Export as JSON
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', `attachment; filename="products-${store.name}-${Date.now()}.json"`);
-    
+
     // Audit log
     await AuditLogService.log(req.user.id, {
       action: AuditAction.BULK_EXPORT,
@@ -334,7 +337,7 @@ export const bulkUpdateProducts = asyncHandler(async (req: AuthenticatedRequest,
   // Validate update fields
   const allowedFields = ['price', 'stock', 'isActive', 'description'];
   const updateData: any = {};
-  
+
   Object.keys(updates).forEach(key => {
     if (allowedFields.includes(key)) {
       updateData[key] = updates[key];
@@ -423,7 +426,7 @@ export const bulkDeleteProducts = asyncHandler(async (req: AuthenticatedRequest,
     });
 
     // Delete products without orders
-    const productsToDelete = productIds.filter(id => 
+    const productsToDelete = productIds.filter(id =>
       !productsWithOrders.some(p => p.id === id)
     );
 

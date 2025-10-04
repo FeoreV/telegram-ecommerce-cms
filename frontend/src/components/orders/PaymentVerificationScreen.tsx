@@ -65,6 +65,7 @@ import { Order } from '../../types'
 import { orderService, OrderFilters } from '../../services/orderService'
 import { toast } from 'react-toastify'
 import { useAuth } from '../../contexts/AuthContext'
+import { SecureImage } from '../common/SecureImage'
 
 interface PaymentVerificationScreenProps {
   orders: Order[]
@@ -111,9 +112,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ open, onClose, imageUrl, orde
       }}
     >
       <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h6">
-          Чек к заказу #{orderNumber}
-        </Typography>
+        Чек к заказу #{orderNumber}
         <Box display="flex" gap={1}>
           <Tooltip title="Увеличить">
             <IconButton onClick={handleZoomIn} disabled={zoom >= 3}>
@@ -154,7 +153,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ open, onClose, imageUrl, orde
             background: 'rgba(0,0,0,0.9)',
           }}
         >
-          <img
+          <SecureImage
             src={imageUrl}
             alt={`Чек заказа ${orderNumber}`}
             style={{
@@ -163,9 +162,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({ open, onClose, imageUrl, orde
               transform: `scale(${zoom}) rotate(${rotation}deg)`,
               transition: 'transform 0.2s ease-in-out',
             }}
-            onError={(e) => {
-              const target = e.target as HTMLImageElement
-              target.style.display = 'none'
+            onError={() => {
               toast.error('Не удалось загрузить изображение чека')
             }}
           />

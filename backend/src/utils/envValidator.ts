@@ -1,5 +1,5 @@
-import { logger } from './loggerEnhanced';
 import { env } from './env';
+import { logger } from './loggerEnhanced';
 
 export interface ValidationResult {
   isValid: boolean;
@@ -63,7 +63,7 @@ export class EnvValidator {
       // Validate database URL format
       try {
         new URL(env.DATABASE_URL);
-      } catch (error) {
+      } catch (_error) {
         errors.push('DATABASE_URL must be a valid URL');
       }
     }
@@ -71,11 +71,11 @@ export class EnvValidator {
     // Check database provider consistency
     const dbUrl = env.DATABASE_URL || '';
     const provider = process.env.DATABASE_PROVIDER;
-    
+
     if (provider === 'mysql' && !dbUrl.startsWith('mysql://')) {
       errors.push('DATABASE_PROVIDER is mysql but DATABASE_URL does not start with mysql://');
     }
-    
+
     if (provider === 'sqlite' && !dbUrl.startsWith('file:')) {
       errors.push('DATABASE_PROVIDER is sqlite but DATABASE_URL does not start with file:');
     }
@@ -116,7 +116,7 @@ export class EnvValidator {
       for (const origin of origins) {
         try {
           new URL(origin);
-        } catch (error) {
+        } catch (_error) {
           warnings.push(`Invalid CORS origin: ${origin}`);
         }
       }
@@ -156,7 +156,7 @@ export class EnvValidator {
         'change-me',
         'default-secret'
       ];
-      
+
       if (defaultSecrets.includes(env.JWT_SECRET)) {
         errors.push('Default JWT_SECRET detected in production environment');
       }
@@ -189,13 +189,14 @@ export class EnvValidator {
       errors.push('TELEGRAM_BOT_TOKEN is required in production');
     }
 
-    // Super admin telegram ID validation
+    // SECURITY: SUPER_ADMIN_TELEGRAM_ID removed for security reasons
+    // OWNER users must be created manually via admin tools
+    // See SECURITY_OWNER_CREATION.md for details
     if (env.SUPER_ADMIN_TELEGRAM_ID) {
-      if (!env.SUPER_ADMIN_TELEGRAM_ID.match(/^\d+$/)) {
-        errors.push('SUPER_ADMIN_TELEGRAM_ID must be a numeric Telegram user ID');
-      }
-    } else {
-      warnings.push('SUPER_ADMIN_TELEGRAM_ID should be set to ensure proper admin access');
+      warnings.push('⚠️  SUPER_ADMIN_TELEGRAM_ID is DEPRECATED and IGNORED for security');
+      warnings.push('✅ Automatic OWNER creation is DISABLED - all new users are CUSTOMER by default');
+      warnings.push('📝 To create OWNER users, use: node backend/tools/admin/promote_user.js <telegram-id> OWNER');
+      warnings.push('📖 See SECURITY_OWNER_CREATION.md for details');
     }
   }
 
@@ -243,7 +244,7 @@ export class EnvValidator {
     // Basic IP/CIDR validation (could be more comprehensive)
     const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/;
     const ipv6Regex = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}(\/\d{1,3})?$/;
-    
+
     return ipv4Regex.test(ip) || ipv6Regex.test(ip);
   }
 
@@ -268,7 +269,7 @@ export class EnvValidator {
         if (env.NODE_ENV === 'production' && url.protocol !== 'https:') {
           warnings.push('FRONTEND_URL should use https:// in production');
         }
-      } catch (error) {
+      } catch (_error) {
         warnings.push('FRONTEND_URL is not a valid URL');
       }
     }
@@ -309,7 +310,7 @@ export class EnvValidator {
       // SSL certificate paths
       const sslKey = process.env.SSL_KEY_PATH;
       const sslCert = process.env.SSL_CERT_PATH;
-      
+
       if (httpsEnabled && (!sslKey || !sslCert)) {
         errors.push('SSL_KEY_PATH and SSL_CERT_PATH must be provided when HTTPS is enabled');
       }
@@ -338,15 +339,15 @@ export class EnvValidator {
     const emailUser = process.env.EMAIL_USER;
     const emailPass = process.env.EMAIL_PASS;
     const emailHost = process.env.EMAIL_HOST;
-    
+
     if (emailUser && !emailPass) {
       warnings.push('EMAIL_PASS is required when EMAIL_USER is set');
     }
-    
+
     if (emailPass && !emailUser) {
       warnings.push('EMAIL_USER is required when EMAIL_PASS is set');
     }
-    
+
     if ((emailUser || emailPass) && !emailHost) {
       warnings.push('EMAIL_HOST is required for email notifications');
     }
@@ -376,7 +377,7 @@ export class EnvValidator {
       frontendUrl: env.FRONTEND_URL,
       logLevel: env.LOG_LEVEL || 'info',
       adminJsEnabled: false, // AdminJS completely disabled
-      superAdminSet: !!env.SUPER_ADMIN_TELEGRAM_ID,
+      superAdminSet: false, // DEPRECATED: SUPER_ADMIN_TELEGRAM_ID removed for security
       httpsEnabled: process.env.USE_HTTPS === 'true' || process.env.HTTPS === 'true',
       securityHeadersEnabled: process.env.ENABLE_SECURITY_HEADERS !== 'false',
       bruteForceProtection: process.env.ENABLE_BRUTE_FORCE_PROTECTION !== 'false',
@@ -392,13 +393,13 @@ export class EnvValidator {
     };
 
     logger.info('🚀 Environment Configuration Summary', summary);
-    
+
     // Additional security summary for production
     if (env.NODE_ENV === 'production') {
       const securityScore = this.calculateSecurityScore();
       logger.info('🔒 Production Security Score', securityScore);
     }
-    
+
     return summary;
   }
 
@@ -472,7 +473,7 @@ export class EnvValidator {
       'change-me',
       'default-secret'
     ].some(secret => env.JWT_SECRET?.includes(secret));
-    
+
     if (!hasDefaultSecrets) score++;
     else recommendations.push('Replace default secrets with production values');
 
@@ -484,30 +485,30 @@ export class EnvValidator {
    */
   static validateOrExit(): void {
     const result = this.validate();
-    
+
     if (!result.isValid) {
       logger.error('❌ Environment validation failed. Application cannot start safely.', {
         errors: result.errors,
         warnings: result.warnings
       });
-      
+
       console.error('\n🚨 CRITICAL ENVIRONMENT ERRORS:');
       result.errors.forEach(error => console.error(`  ❌ ${error}`));
-      
+
       if (result.warnings.length > 0) {
         console.warn('\n⚠️  ENVIRONMENT WARNINGS:');
         result.warnings.forEach(warning => console.warn(`  ⚠️  ${warning}`));
       }
-      
+
       console.error('\n🛑 Please fix the above errors and restart the application.\n');
       process.exit(1);
     }
-    
+
     if (result.warnings.length > 0) {
       logger.warn('⚠️ Environment validation passed with warnings', {
         warnings: result.warnings
       });
-      
+
       if (env.NODE_ENV !== 'production') {
         console.warn('\n⚠️  ENVIRONMENT WARNINGS:');
         result.warnings.forEach(warning => console.warn(`  ⚠️  ${warning}`));
@@ -527,33 +528,33 @@ export class EnvValidator {
   } {
     const result = this.validate();
     const checks: Record<string, { status: string; message?: string; }> = {};
-    
+
     // Database check
     checks.database = {
       status: env.DATABASE_URL ? 'pass' : 'fail',
       message: env.DATABASE_URL ? undefined : 'DATABASE_URL not configured'
     };
-    
+
     // JWT check
     checks.jwt = {
       status: env.JWT_SECRET && env.JWT_SECRET.length >= 32 ? 'pass' : 'fail',
       message: !env.JWT_SECRET ? 'JWT_SECRET not configured' : env.JWT_SECRET.length < 32 ? 'JWT_SECRET too short' : undefined
     };
-    
+
     // Redis check
     checks.redis = {
       status: env.REDIS_URL ? 'pass' : env.NODE_ENV === 'production' ? 'warn' : 'pass',
       message: !env.REDIS_URL && env.NODE_ENV === 'production' ? 'Redis recommended for production' : undefined
     };
-    
+
     // HTTPS check
     checks.https = {
       status: env.NODE_ENV === 'production' && process.env.USE_HTTPS !== 'true' ? 'warn' : 'pass',
       message: env.NODE_ENV === 'production' && process.env.USE_HTTPS !== 'true' ? 'HTTPS recommended for production' : undefined
     };
-    
+
     const status = result.errors.length > 0 ? 'critical' : result.warnings.length > 0 ? 'warning' : 'healthy';
-    
+
     return {
       status,
       timestamp: new Date().toISOString(),

@@ -1,17 +1,18 @@
 import { Router } from 'express';
 import { body, param } from 'express-validator';
+import {
+    createBackup,
+    deleteBackup,
+    downloadBackup,
+    getBackupStatus,
+    listBackups,
+    restoreBackup,
+    scheduleBackups,
+} from '../controllers/backupController';
 import { authMiddleware, requireRole } from '../middleware/auth';
+import { csrfProtection } from '../middleware/csrfProtection';
 import { validate } from '../middleware/validation';
 import { UserRole } from '../utils/jwt';
-import {
-  createBackup,
-  listBackups,
-  downloadBackup,
-  restoreBackup,
-  deleteBackup,
-  getBackupStatus,
-  scheduleBackups,
-} from '../controllers/backupController';
 
 const router = Router();
 
@@ -24,9 +25,10 @@ router.get('/status', requireRole([UserRole.OWNER, UserRole.ADMIN]), getBackupSt
 // List all backups
 router.get('/', requireRole([UserRole.OWNER, UserRole.ADMIN]), listBackups);
 
-// Create new backup
+// Create new backup (SECURITY: CSRF protected)
 router.post(
   '/',
+  csrfProtection,
   requireRole([UserRole.OWNER]),
   [
     body('includeUploads').optional().isBoolean().withMessage('includeUploads must be boolean'),
@@ -48,9 +50,10 @@ router.get(
   downloadBackup
 );
 
-// Restore from backup (DANGEROUS - OWNER only)
+// Restore from backup (DANGEROUS - OWNER only) (SECURITY: CSRF protected)
 router.post(
   '/restore/:filename',
+  csrfProtection,
   requireRole([UserRole.OWNER]),
   [
     param('filename').isString().notEmpty().withMessage('Filename is required'),
@@ -67,9 +70,10 @@ router.post(
   restoreBackup
 );
 
-// Delete backup
+// Delete backup (SECURITY: CSRF protected)
 router.delete(
   '/:filename',
+  csrfProtection,
   requireRole([UserRole.OWNER]),
   [
     param('filename').isString().notEmpty().withMessage('Filename is required'),
@@ -78,9 +82,10 @@ router.delete(
   deleteBackup
 );
 
-// Schedule automatic backups
+// Schedule automatic backups (SECURITY: CSRF protected)
 router.put(
   '/schedule',
+  csrfProtection,
   requireRole([UserRole.OWNER]),
   [
     body('enabled').isBoolean().withMessage('enabled must be boolean'),

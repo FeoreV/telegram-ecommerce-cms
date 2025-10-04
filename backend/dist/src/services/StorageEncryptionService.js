@@ -4,12 +4,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.storageEncryptionService = exports.StorageEncryptionService = void 0;
+const crypto_1 = __importDefault(require("crypto"));
 const promises_1 = __importDefault(require("fs/promises"));
 const path_1 = __importDefault(require("path"));
-const crypto_1 = __importDefault(require("crypto"));
+const logger_1 = require("../utils/logger");
 const EncryptionService_1 = require("./EncryptionService");
 const VaultService_1 = require("./VaultService");
-const logger_1 = require("../utils/logger");
 class StorageEncryptionService {
     constructor() {
         this.config = {
@@ -361,7 +361,7 @@ class StorageEncryptionService {
             const stats = await promises_1.default.stat(dirPath);
             return stats.isDirectory();
         }
-        catch (error) {
+        catch (_error) {
             return false;
         }
     }

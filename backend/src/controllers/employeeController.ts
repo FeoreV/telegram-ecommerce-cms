@@ -1,16 +1,16 @@
-import { Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/auth';
-import { prisma } from '../lib/prisma';
-import { AppError, asyncHandler } from '../middleware/errorHandler';
-import { logger } from '../utils/logger';
-import {
-  EmployeeInviteSchema,
-  UpdateEmployeeRoleSchema,
-  EmployeeSearchSchema
-} from '../schemas/employeeSchemas';
-import { NotificationService, NotificationPriority, NotificationType, NotificationChannel } from '../services/notificationService';
-import { randomBytes } from 'crypto';
 import { Prisma } from '@prisma/client';
+import { randomBytes } from 'crypto';
+import { Response } from 'express';
+import { prisma } from '../lib/prisma';
+import { AuthenticatedRequest } from '../middleware/auth';
+import { AppError, asyncHandler } from '../middleware/errorHandler';
+import {
+    EmployeeInviteSchema,
+    EmployeeSearchSchema,
+    UpdateEmployeeRoleSchema
+} from '../schemas/employeeSchemas';
+import { NotificationChannel, NotificationPriority, NotificationService, NotificationType } from '../services/notificationService';
+import { logger } from '../utils/logger';
 
 /**
  * Получить список сотрудников магазина
@@ -34,7 +34,7 @@ export const getStoreEmployees = asyncHandler(async (req: AuthenticatedRequest, 
 
   // Построение условий поиска
   const employeeWhere: Prisma.StoreAdminWhereInput & Prisma.StoreVendorWhereInput = {};
-  
+
   if (search) {
     employeeWhere.user = {
       OR: [
@@ -49,7 +49,7 @@ export const getStoreEmployees = asyncHandler(async (req: AuthenticatedRequest, 
   // Получение администраторов и продавцов
   const [admins, vendors, totalAdmins, totalVendors] = await Promise.all([
     // Администраторы
-    role === 'ALL' || role === 'ADMIN' 
+    role === 'ALL' || role === 'ADMIN'
       ? prisma.storeAdmin.findMany({
           where: {
             storeId,
@@ -120,14 +120,14 @@ export const getStoreEmployees = asyncHandler(async (req: AuthenticatedRequest, 
     role === 'ALL' || role === 'ADMIN'
       ? prisma.storeAdmin.count({ where: { storeId, ...employeeWhere } })
       : 0,
-    
+
     role === 'ALL' || role === 'VENDOR'
-      ? prisma.storeVendor.count({ 
-          where: { 
-            storeId, 
+      ? prisma.storeVendor.count({
+          where: {
+            storeId,
             ...(status !== 'ALL' && { isActive: status === 'ACTIVE' }),
-            ...employeeWhere 
-          } 
+            ...employeeWhere
+          }
         })
       : 0
   ]);
@@ -234,8 +234,8 @@ export const inviteEmployee = asyncHandler(async (req: AuthenticatedRequest, res
       type: NotificationType.EMPLOYEE_INVITATION,
       priority: NotificationPriority.HIGH,
           title: 'Приглашение в команду',
-          message: customRoleId 
-            ? `Вас пригласили работать в роли ${await getCustomRoleName(customRoleId)}` 
+          message: customRoleId
+            ? `Вас пригласили работать в роли ${await getCustomRoleName(customRoleId)}`
             : `Вас пригласили работать в роли ${role === 'ADMIN' ? 'администратора' : 'продавца'}`,
       channels: [NotificationChannel.EMAIL],
       recipients: [user.id],
@@ -328,7 +328,12 @@ export const updateEmployeeRole = asyncHandler(async (req: AuthenticatedRequest,
     });
   });
 
-  logger.info(`Employee role updated: user ${userId} -> ${role} in store ${storeId} by ${req.user.id}`);
+  // Sanitize log data to prevent log injection
+  const sanitizedUserId = String(userId).replace(/[\r\n]/g, ' ');
+  const sanitizedRole = String(role).replace(/[\r\n]/g, ' ');
+  const sanitizedStoreId = String(storeId).replace(/[\r\n]/g, ' ');
+  const sanitizedAdminId = String(req.user.id).replace(/[\r\n]/g, ' ');
+  logger.info(`Employee role updated: user ${sanitizedUserId} -> ${sanitizedRole} in store ${sanitizedStoreId} by ${sanitizedAdminId}`);
 
   res.json({
     success: true,

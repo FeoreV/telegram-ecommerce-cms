@@ -1,8 +1,11 @@
+import crypto from 'crypto';
 import TelegramBot from 'node-telegram-bot-api';
 import { prisma } from '../lib/prisma.js';
 import { logger, toLogMetadata } from '../utils/logger.js';
-import { NotificationService, NotificationPriority, NotificationChannel, NotificationType } from './notificationService.js';
+import { sanitizeForLog } from '../utils/sanitizer.js';
 import BotHandlerService from './botHandlerService.js';
+import { encryptionService } from './EncryptionService.js';
+import { NotificationChannel, NotificationPriority, NotificationService, NotificationType } from './notificationService.js';
 
 interface BotConfig {
   token: string;
@@ -96,18 +99,29 @@ class BotFactoryService {
         }
       });
 
-      logger.info(`Found ${activeBotStores.length} active bots to restore`);
+      logger.info('Found active bots to restore', { count: activeBotStores.length });
 
       // Restore each bot
       for (const store of activeBotStores) {
         if (store.botToken && store.botUsername) {
-          const sanitized = this.sanitizeAndValidateToken(store.botToken);
-          if (!sanitized) {
-            logger.error(`❌ Invalid bot token format for store ${store.id}. Suspending bot to avoid polling errors.`);
-            await this.updateBotStatus(store.id, 'SUSPENDED');
-            continue;
-          }
           try {
+            // SECURITY: Decrypt bot token from database (CWE-312)
+            let decryptedToken: string;
+            try {
+              decryptedToken = await encryptionService.decryptData(store.botToken);
+            } catch (error) {
+              // If decryption fails, token might not be encrypted (legacy data)
+              logger.warn('Failed to decrypt token, trying as plaintext', { storeId: sanitizeForLog(store.id) });
+              decryptedToken = store.botToken;
+            }
+
+            const sanitized = this.sanitizeAndValidateToken(decryptedToken);
+            if (!sanitized) {
+              logger.error('Invalid bot token format, suspending bot', { storeId: sanitizeForLog(store.id) });
+              await this.updateBotStatus(store.id, 'SUSPENDED');
+              continue;
+            }
+
             await this.createBotInstance({
               token: sanitized,
               username: store.botUsername,
@@ -116,10 +130,10 @@ class BotFactoryService {
               settings: store.botSettings ? JSON.parse(store.botSettings) : undefined
             });
 
-            logger.info(`✅ Restored bot for store: ${store.name} (@${store.botUsername})`);
+            logger.info('Restored bot for store', { storeName: sanitizeForLog(store.name), botUsername: sanitizeForLog(store.botUsername || '') });
           } catch (error) {
-            logger.error(`❌ Failed to restore bot for store ${store.name}:`, error);
-            
+            logger.error('Failed to restore bot', { storeName: sanitizeForLog(store.name), error });
+
             // Mark bot as inactive in database
             await this.updateBotStatus(store.id, 'INACTIVE');
           }
@@ -127,7 +141,7 @@ class BotFactoryService {
       }
 
       this.isInitialized = true;
-      logger.info(`🚀 Bot Factory Service initialized with ${this.activeBots.size} active bots`);
+      logger.info('Bot Factory Service initialized', { activeBotsCount: this.activeBots.size });
 
     } catch (error) {
       logger.error('❌ Failed to initialize Bot Factory Service:', error);
@@ -140,7 +154,7 @@ class BotFactoryService {
    */
   async createBot(storeId: string, botToken: string, botUsername?: string): Promise<{ success: boolean; error?: string; bot?: ActiveBot }> {
     try {
-      logger.info(`🤖 Creating new bot for store: ${storeId}`);
+      logger.info('Creating new bot for store', { storeId: sanitizeForLog(storeId) });
 
       // Sanitize & validate token
       const sanitizedToken = this.sanitizeAndValidateToken(botToken);
@@ -150,7 +164,7 @@ class BotFactoryService {
 
       // Validate bot token by calling getMe
       const testBot = new TelegramBot(sanitizedToken, { polling: false, webHook: false });
-      
+
       let botInfo;
       try {
         botInfo = await testBot.getMe();
@@ -164,23 +178,45 @@ class BotFactoryService {
         return { success: false, error: 'Не удалось получить имя пользователя бота' };
       }
 
+      // SECURITY: Encrypt bot token before storing in database (CWE-312)
+      const encryptedToken = await encryptionService.encryptData(sanitizedToken);
+
+      // Create hash for duplicate detection
+      const tokenHash = crypto.createHash('sha256').update(sanitizedToken).digest('hex');
+
       // Check if bot token is already used by another store
-      const existingStore = await prisma.store.findFirst({
+      // We can't directly search encrypted tokens, so we'll check all stores and decrypt
+      const allStores = await prisma.store.findMany({
         where: {
-          botToken: sanitizedToken,
-          id: { not: storeId }
-        }
+          id: { not: storeId },
+          botToken: { not: null }
+        },
+        select: { id: true, botToken: true }
       });
 
-      if (existingStore) {
-        return { success: false, error: 'Этот бот уже используется другим магазином' };
+      for (const store of allStores) {
+        try {
+          if (store.botToken) {
+            const decryptedToken = await encryptionService.decryptData(store.botToken);
+            // SECURITY FIX: CWE-208 - Use timing-safe comparison for tokens
+            if (crypto.timingSafeEqual(
+              Buffer.from(decryptedToken, 'utf8'),
+              Buffer.from(sanitizedToken, 'utf8')
+            )) {
+              return { success: false, error: 'Этот бот уже используется другим магазином' };
+            }
+          }
+        } catch (error) {
+          // Skip if decryption fails (might be old unencrypted token)
+          logger.warn('Failed to decrypt token', { storeId: sanitizeForLog(store.id) });
+        }
       }
 
       // Update store with bot information
       await prisma.store.update({
         where: { id: storeId },
         data: {
-          botToken: sanitizedToken,
+          botToken: encryptedToken,
           botUsername: resolvedUsername,
           botStatus: 'ACTIVE',
           botCreatedAt: new Date(),
@@ -200,12 +236,12 @@ class BotFactoryService {
       // Send notification about successful bot creation
       await this.notifyBotCreated(storeId, resolvedUsername);
 
-      logger.info(`✅ Successfully created bot @${resolvedUsername} for store ${storeId}`);
-      
+      logger.info('Successfully created bot', { botUsername: sanitizeForLog(resolvedUsername), storeId: sanitizeForLog(storeId) });
+
       return { success: true, bot: activeBot };
 
     } catch (error) {
-      logger.error(`❌ Failed to create bot for store ${storeId}:`, error);
+      logger.error('Failed to create bot', { storeId: sanitizeForLog(storeId), error });
       return { success: false, error: 'Произошла ошибка при создании бота' };
     }
   }
@@ -216,7 +252,7 @@ class BotFactoryService {
   async removeBot(storeId: string): Promise<{ success: boolean; error?: string }> {
     try {
       const activeBot = this.activeBots.get(storeId);
-      
+
       if (activeBot) {
         // Stop bot polling/webhook
         try {
@@ -245,11 +281,11 @@ class BotFactoryService {
         }
       });
 
-      logger.info(`🗑️ Successfully removed bot for store ${storeId}`);
+      logger.info('Successfully removed bot', { storeId: sanitizeForLog(storeId) });
       return { success: true };
 
     } catch (error) {
-      logger.error(`❌ Failed to remove bot for store ${storeId}:`, error);
+      logger.error('Failed to remove bot', { storeId: sanitizeForLog(storeId), error });
       return { success: false, error: 'Произошла ошибка при удалении бота' };
     }
   }
@@ -288,7 +324,7 @@ class BotFactoryService {
       const activeBot = this.activeBots.get(storeId);
       if (activeBot) {
         activeBot.status = status;
-        
+
         if (status === 'SUSPENDED' || status === 'INACTIVE') {
           try {
             await activeBot.bot.stopPolling();
@@ -298,9 +334,9 @@ class BotFactoryService {
         }
       }
 
-      logger.info(`📊 Updated bot status for store ${storeId} to ${status}`);
+      logger.info('Updated bot status', { storeId: sanitizeForLog(storeId), status: sanitizeForLog(status) });
     } catch (error) {
-      logger.error(`Failed to update bot status for store ${storeId}:`, error);
+      logger.error('Failed to update bot status', { storeId: sanitizeForLog(storeId), error });
     }
   }
 
@@ -338,11 +374,11 @@ class BotFactoryService {
     totalMessages: number;
   } {
     const bots = this.getActiveBots();
-    
+
     return {
       totalBots: bots.length,
       activeBots: bots.filter(bot => bot.status === 'ACTIVE').length,
-      inactiveBots: bots.filter(bot => bot.status === 'INACTIVE').length, 
+      inactiveBots: bots.filter(bot => bot.status === 'INACTIVE').length,
       suspendedBots: bots.filter(bot => bot.status === 'SUSPENDED').length,
       totalMessages: bots.reduce((sum, bot) => sum + bot.messageCount, 0)
     };
@@ -408,11 +444,21 @@ class BotFactoryService {
     bot.on('message', async (msg: any) => {
       try {
         await this.updateBotActivity(storeId);
-        
+
         // Use isolated handler for this store
         await handler.handleMessage(bot, msg);
       } catch (error) {
-        logger.error(`Error handling message for store ${storeId}:`, error);
+        logger.error('Error handling message', { storeId: sanitizeForLog(storeId), error });
+
+        // If store doesn't exist, stop the bot
+        if (error instanceof Error && error.message.startsWith('STORE_NOT_FOUND')) {
+          logger.error(`⛔ Stopping orphaned bot for deleted store ${sanitizeForLog(storeId)}`);
+          try {
+            await this.removeBot(storeId);
+          } catch (stopError) {
+            logger.error(`Error stopping orphaned bot for store ${sanitizeForLog(storeId)}:`, stopError);
+          }
+        }
       }
     });
 
@@ -420,28 +466,38 @@ class BotFactoryService {
     bot.on('callback_query', async (query: unknown) => {
       try {
         await this.updateBotActivity(storeId);
-        
+
         // Use isolated handler for this store
         await handler.handleCallbackQuery(bot, query);
       } catch (error) {
-        logger.error(`Error handling callback query for store ${storeId}:`, error);
+        logger.error(`Error handling callback query for store ${sanitizeForLog(storeId)}:`, error);
+
+        // If store doesn't exist, stop the bot
+        if (error instanceof Error && error.message.startsWith('STORE_NOT_FOUND')) {
+          logger.error(`⛔ Stopping orphaned bot for deleted store ${sanitizeForLog(storeId)}`);
+          try {
+            await this.removeBot(storeId);
+          } catch (stopError) {
+            logger.error(`Error stopping orphaned bot for store ${sanitizeForLog(storeId)}:`, stopError);
+          }
+        }
       }
     });
 
     // Error handlers
     bot.on('error', (error: unknown) => {
-      logger.error(`Bot error for store ${storeId}:`, toLogMetadata(error));
+      logger.error('Bot error', { storeId: sanitizeForLog(storeId), error: toLogMetadata(error) });
     });
 
     bot.on('polling_error', async (error: unknown) => {
-      logger.error(`Bot polling error for store ${storeId}:`, toLogMetadata(error));
+      logger.error('Bot polling error', { storeId: sanitizeForLog(storeId), error: toLogMetadata(error) });
       const errorObj = error as any;
       const message = (errorObj && (errorObj.message || errorObj.code)) || '';
       if (typeof message === 'string' && (message.includes('ERR_INVALID_URL') || message.includes('Invalid URL'))) {
         // Suspend bot to prevent tight error loops and notify
         try {
           await this.updateBotStatus(storeId, 'SUSPENDED');
-          logger.error(`⛔ Suspended bot for store ${storeId} due to invalid Telegram API URL or malformed token.`);
+          logger.error('Suspended bot due to invalid Telegram API URL or malformed token', { storeId: sanitizeForLog(storeId) });
         } catch (e) {
           logger.error('Failed to update bot status after invalid URL error:', e);
         }
@@ -505,9 +561,9 @@ class BotFactoryService {
         try {
           await activeBot.bot.stopPolling();
           activeBot.handler.cleanup();
-          logger.info(`✅ Stopped bot for store: ${activeBot.storeId}`);
+          logger.info('Stopped bot', { storeId: sanitizeForLog(activeBot.storeId) });
         } catch (error) {
-          logger.error(`❌ Error stopping bot for store ${activeBot.storeId}:`, error);
+          logger.error('Error stopping bot', { storeId: sanitizeForLog(activeBot.storeId), error });
         }
       });
 
@@ -518,7 +574,60 @@ class BotFactoryService {
     process.on('SIGTERM', gracefulShutdown);
     process.on('SIGINT', gracefulShutdown);
   }
+
+  /**
+   * Reload bot settings without full restart
+   * Useful for applying configuration changes on-the-fly
+   */
+  async reloadBotSettings(storeId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const activeBot = this.activeBots.get(storeId);
+
+      if (!activeBot) {
+        return { success: false, error: 'Bot not active for this store' };
+      }
+
+      // Fetch updated settings from database
+      const store = await prisma.store.findUnique({
+        where: { id: storeId },
+        select: {
+          botSettings: true,
+          name: true
+        }
+      });
+
+      if (!store) {
+        return { success: false, error: 'Store not found' };
+      }
+
+      // Update bot config with new settings
+      const newSettings = store.botSettings ? JSON.parse(store.botSettings) : undefined;
+      activeBot.config.settings = newSettings;
+
+      // Reinitialize handler to apply language and other settings
+      activeBot.handler = new BotHandlerService(storeId);
+
+      logger.info('Successfully reloaded settings', { storeName: sanitizeForLog(store.name) });
+
+      return { success: true };
+    } catch (error) {
+      logger.error('Failed to reload bot settings', { storeId: sanitizeForLog(storeId), error });
+      return { success: false, error: 'Failed to reload bot settings' };
+    }
+  }
+
+  /**
+   * Get all active bots info (simplified)
+   */
+  getActiveBotsInfo(): Array<{ storeId: string; username: string; status: string }> {
+    return Array.from(this.activeBots.entries()).map(([storeId, bot]) => ({
+      storeId,
+      username: bot.config.username,
+      status: 'ACTIVE'
+    }));
+  }
 }
 
 export const botFactoryService = new BotFactoryService();
-export { BotConfig, BotSettings, ActiveBot };
+export { ActiveBot, BotConfig, BotSettings };
+

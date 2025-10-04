@@ -1,6 +1,7 @@
-import { Request, Response, NextFunction } from 'express';
-import { logger } from '../utils/logger';
+import { NextFunction, Request, Response } from 'express';
 import { UserRole } from '../utils/jwt';
+import { logger } from '../utils/logger';
+import { sanitizeObjectForLog } from '../utils/sanitizer';
 
 interface NotFoundRequest extends Request {
   user?: {
@@ -30,11 +31,11 @@ export const apiNotFoundHandler = (req: NotFoundRequest, res: Response, _next: N
   };
 
   // Log the 404 attempt
-  logger.warn('API endpoint not found', requestInfo);
+  logger.warn('API endpoint not found', sanitizeObjectForLog(requestInfo));
 
   // Determine response format based on Accept header
   const acceptsJson = req.accepts(['json', 'html']) === 'json';
-  
+
   if (acceptsJson || req.originalUrl.startsWith('/api/')) {
     // API endpoints should return JSON
     return res.status(404).json({
@@ -93,11 +94,11 @@ const getAvailableEndpoints = (userRole?: string): Record<string, string[]> => {
 
   if (userRole) {
     endpoints.authenticated = authenticatedEndpoints;
-    
+
     if (userRole === 'ADMIN' || userRole === 'OWNER') {
       endpoints.admin = adminEndpoints;
     }
-    
+
     if (userRole === 'OWNER') {
       endpoints.owner = ownerEndpoints;
     }
@@ -135,7 +136,7 @@ export const secureNotFoundHandler = (req: NotFoundRequest, res: Response, next:
     /\.sql$/i,
   ];
 
-  const isSuspicious = suspiciousPatterns.some(pattern => 
+  const isSuspicious = suspiciousPatterns.some(pattern =>
     pattern.test(req.originalUrl) || pattern.test(req.url)
   );
 

@@ -1,45 +1,40 @@
-import React, { useState, useEffect } from 'react'
 import {
-  Box,
-  AppBar,
-  Toolbar,
-  Typography,
-  IconButton,
-  BottomNavigation,
-  BottomNavigationAction,
-  Drawer,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Avatar,
-  Badge,
-  SwipeableDrawer,
-  useTheme,
-  useMediaQuery,
-  Fab,
-  SpeedDial,
-  SpeedDialAction,
-  SpeedDialIcon,
-} from '@mui/material'
-import {
-  Menu as MenuIcon,
-  Dashboard,
-  Store,
-  Inventory,
-  Receipt,
-  People,
-  Notifications,
-  Settings,
-  Add,
-  Search,
-  MoreVert,
-  Close,
-  Payment,
-  Assessment,
-  SmartToy,
+    Add,
+    Assessment,
+    Dashboard,
+    Inventory,
+    Menu as MenuIcon,
+    Notifications,
+    Payment,
+    People,
+    Receipt,
+    Settings,
+    SmartToy,
+    Store
 } from '@mui/icons-material'
-import { useNavigate, useLocation } from 'react-router-dom'
+import {
+    AppBar,
+    Avatar,
+    Badge,
+    BottomNavigation,
+    BottomNavigationAction,
+    Box,
+    IconButton,
+    List,
+    ListItem,
+    ListItemIcon,
+    ListItemText,
+    SpeedDial,
+    SpeedDialAction,
+    SpeedDialIcon,
+    SwipeableDrawer,
+    Toolbar,
+    Typography,
+    useMediaQuery,
+    useTheme
+} from '@mui/material'
+import React, { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useThemeMode } from '../../contexts/ThemeModeContext'
 import ConnectionStatus from '../notifications/ConnectionStatus'
@@ -55,7 +50,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
   const location = useLocation()
   const { user } = useAuth()
   const { mode, toggleMode } = useThemeMode()
-  
+
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [speedDialOpen, setSpeedDialOpen] = useState(false)
   const [bottomNavValue, setBottomNavValue] = useState(0)
@@ -72,12 +67,12 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
   const drawerItems = [
     { text: 'Верификация оплат', icon: <Payment />, path: '/payments' },
     { text: 'Отчеты', icon: <Assessment />, path: '/reports' },
-    ...(user?.role === 'OWNER' || user?.role === 'ADMIN' 
-      ? [{ text: 'Телеграм боты', icon: <SmartToy />, path: '/bots' }] 
+    ...(user?.role === 'OWNER' || user?.role === 'ADMIN'
+      ? [{ text: 'Телеграм боты', icon: <SmartToy />, path: '/bots' }]
       : []
     ),
-    ...(user?.role === 'OWNER' 
-      ? [{ text: 'Пользователи', icon: <People />, path: '/users' }] 
+    ...(user?.role === 'OWNER'
+      ? [{ text: 'Пользователи', icon: <People />, path: '/users' }]
       : []
     ),
   ]
@@ -95,7 +90,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
     if (currentItem) {
       setBottomNavValue(currentItem.value)
     }
-  }, [location.pathname])
+  }, [location.pathname, bottomNavItems])
 
   const handleBottomNavChange = (event: React.SyntheticEvent, newValue: number) => {
     setBottomNavValue(newValue)
@@ -124,9 +119,9 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       {/* Mobile App Bar */}
-      <AppBar 
-        position="fixed" 
-        sx={{ 
+      <AppBar
+        position="fixed"
+        sx={{
           zIndex: theme.zIndex.drawer + 1,
           backgroundColor: 'background.paper',
           color: 'text.primary',
@@ -142,21 +137,21 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
           >
             <MenuIcon />
           </IconButton>
-          
+
           <Typography variant="h6" sx={{ flexGrow: 1, fontSize: '1.1rem' }}>
             {bottomNavItems.find(item => item.value === bottomNavValue)?.label || 'BotRT'}
           </Typography>
-          
+
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <ConnectionStatus />
-            
+
             <IconButton size="small">
               <Badge badgeContent={3} color="error">
                 <Notifications />
               </Badge>
             </IconButton>
-            
-            <Avatar 
+
+            <Avatar
               sx={{ width: 32, height: 32, ml: 1 }}
               onClick={toggleDrawer(true)}
             >
@@ -182,7 +177,21 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
       >
         <Box sx={{ pt: 7 }}>
           {/* User Profile Section */}
-          <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+          <Box
+            sx={{
+              p: 2,
+              borderBottom: 1,
+              borderColor: 'divider',
+              cursor: 'pointer',
+              '&:hover': {
+                bgcolor: 'action.hover',
+              }
+            }}
+            onClick={() => {
+              navigate('/profile')
+              setDrawerOpen(false)
+            }}
+          >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Avatar sx={{ width: 48, height: 48 }}>
                 {user?.firstName?.[0] || 'U'}
@@ -192,8 +201,8 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
                   {user?.firstName || user?.username || 'Пользователь'}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  {user?.role === 'OWNER' ? 'Владелец' : 
-                   user?.role === 'ADMIN' ? 'Администратор' : 
+                  {user?.role === 'OWNER' ? 'Владелец' :
+                   user?.role === 'ADMIN' ? 'Администратор' :
                    user?.role === 'VENDOR' ? 'Продавец' : 'Пользователь'}
                 </Typography>
               </Box>
@@ -333,9 +342,9 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
       {/* Speed Dial for Quick Actions */}
       <SpeedDial
         ariaLabel="Быстрые действия"
-        sx={{ 
-          position: 'fixed', 
-          bottom: 80, 
+        sx={{
+          position: 'fixed',
+          bottom: 80,
           right: 16,
           '& .MuiFab-primary': {
             width: 48,

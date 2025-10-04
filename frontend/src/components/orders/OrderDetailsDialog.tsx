@@ -68,6 +68,8 @@ import { ru } from 'date-fns/locale'
 import { Order, AdminLog } from '../../types'
 import { orderService } from '../../services/orderService'
 import { toast } from 'react-toastify'
+import { SecureImage } from '../common/SecureImage'
+import { apiClient } from '../../services/apiClient'
 import OrderNotesManager from './OrderNotesManager'
 
 interface OrderDetailsDialogProps {
@@ -426,8 +428,7 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({
                           Чек об оплате:
                         </Typography>
                         <Card sx={{ maxWidth: 400 }}>
-                          <Box
-                            component="img"
+                          <SecureImage
                             src={order.paymentProof}
                             alt="Чек об оплате"
                             sx={{
@@ -438,20 +439,33 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({
                               cursor: 'pointer',
                             }}
                             onClick={() => {
-                              // Open in full screen
-                              window.open(order.paymentProof, '_blank');
+                              // Download and open in new tab
+                              apiClient.get(order.paymentProof!, { responseType: 'blob' })
+                                .then(response => {
+                                  const url = URL.createObjectURL(response.data);
+                                  window.open(url, '_blank');
+                                  setTimeout(() => URL.revokeObjectURL(url), 100);
+                                })
+                                .catch(() => toast.error('Не удалось открыть изображение'));
                             }}
                             onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.style.display = 'none';
                               console.error('Error loading payment proof image');
+                              toast.error('Не удалось загрузить изображение чека');
                             }}
                           />
                           <Box p={1} display="flex" justifyContent="center">
                             <Button
                               size="small"
                               startIcon={<Visibility />}
-                              onClick={() => window.open(order.paymentProof, '_blank')}
+                              onClick={() => {
+                                apiClient.get(order.paymentProof!, { responseType: 'blob' })
+                                  .then(response => {
+                                    const url = URL.createObjectURL(response.data);
+                                    window.open(url, '_blank');
+                                    setTimeout(() => URL.revokeObjectURL(url), 100);
+                                  })
+                                  .catch(() => toast.error('Не удалось открыть изображение'));
+                              }}
                             >
                               Открыть в полном размере
                             </Button>

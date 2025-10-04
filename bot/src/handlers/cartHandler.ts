@@ -251,20 +251,32 @@ async function checkoutCart(bot: TelegramBot, chatId: number, session: any) {
     successText += `💳 *Инструкции по оплате:*\n`;
     successText += `1️⃣ Переведите точную сумму на реквизиты магазина\n`;
     successText += `2️⃣ Сделайте скриншот чека или подтверждения\n`;
-    successText += `3️⃣ Загрузите чек для каждого заказа\n`;
+    successText += `3️⃣ Загрузите чек для каждого заказа (кнопки ниже)\n`;
     successText += `4️⃣ Дождитесь подтверждения от администратора\n\n`;
     successText += `📋 Все заказы доступны в разделе "Профиль" → "Мои заказы"`;
 
+    // Create keyboard with upload buttons for each order
+    const keyboardButtons: any[] = [];
+    
+    // Add upload buttons for each order
+    orders.forEach((order: any) => {
+      const orderNumber = order.orderNumber ? `#${order.orderNumber}` : `ID: ${order.id.slice(-8)}`;
+      keyboardButtons.push([
+        { text: `📸 Загрузить чек ${orderNumber}`, callback_data: `upload_proof_${order.id}` }
+      ]);
+    });
+
+    // Add navigation buttons
+    keyboardButtons.push([
+      { text: '📋 Мои заказы', callback_data: 'order_list' }
+    ]);
+    keyboardButtons.push([
+      { text: '🏪 Магазины', callback_data: 'store_list' },
+      { text: '🏠 Главное меню', callback_data: 'main_menu' }
+    ]);
+
     const keyboard = {
-      inline_keyboard: [
-        [
-          { text: '📋 Мои заказы', callback_data: 'order_list' }
-        ],
-        [
-          { text: '🏪 Магазины', callback_data: 'store_list' },
-          { text: '🏠 Главное меню', callback_data: 'main_menu' }
-        ]
-      ]
+      inline_keyboard: keyboardButtons
     };
 
     await bot.sendMessage(chatId, successText, {

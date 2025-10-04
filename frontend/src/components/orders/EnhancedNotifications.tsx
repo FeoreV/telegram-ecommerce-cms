@@ -1,30 +1,25 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import {
-  Snackbar,
-  Alert,
-  Box,
-  Typography,
-  IconButton,
-  Chip,
-  Avatar,
-  Button,
-  Badge,
-  Fade,
-  Slide,
-} from '@mui/material'
-import {
-  Close,
-  ShoppingCart,
-  AttachMoney,
-  LocalShipping,
-  CheckCircle,
-  Cancel,
-  Warning,
-  PriorityHigh,
-  Notifications,
-  NotificationImportant,
+    AttachMoney,
+    Cancel,
+    CheckCircle,
+    Close,
+    LocalShipping,
+    Notifications,
+    ShoppingCart,
+    Warning
 } from '@mui/icons-material'
+import {
+    Alert,
+    Box,
+    Button,
+    Chip,
+    IconButton,
+    Slide,
+    Snackbar,
+    Typography
+} from '@mui/material'
 import { TransitionProps } from '@mui/material/transitions'
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
 
 interface NotificationData {
   id: string
@@ -88,11 +83,11 @@ export const EnhancedNotificationsProvider: React.FC<EnhancedNotificationsProvid
     // Загрузка настроек из localStorage
     const savedSettings = localStorage.getItem('notificationSettings')
     const savedRules = localStorage.getItem('notificationRules')
-    
+
     if (savedSettings) {
       setSettings(JSON.parse(savedSettings))
     }
-    
+
     if (savedRules) {
       setRules(JSON.parse(savedRules))
     }
@@ -100,12 +95,12 @@ export const EnhancedNotificationsProvider: React.FC<EnhancedNotificationsProvid
 
   const isInDoNotDisturbTime = useCallback(() => {
     if (!settings.doNotDisturbEnabled) return false
-    
+
     const now = new Date()
     const currentTime = now.getHours() * 100 + now.getMinutes()
     const startTime = parseInt(settings.doNotDisturbStart.replace(':', ''))
     const endTime = parseInt(settings.doNotDisturbEnd.replace(':', ''))
-    
+
     if (startTime > endTime) {
       // Через полночь (например, 22:00 - 08:00)
       return currentTime >= startTime || currentTime <= endTime
@@ -141,8 +136,14 @@ export const EnhancedNotificationsProvider: React.FC<EnhancedNotificationsProvid
     if (!settings.browserNotificationsEnabled || !('Notification' in window)) return
 
     if (Notification.permission === 'granted') {
-      const browserNotif = new Notification(notification.title, {
-        body: notification.message,
+      // SECURITY FIX: Sanitize notification data to prevent XSS (CWE-79)
+      const sanitizeText = (text: string) => {
+        // Remove any HTML tags and limit length
+        return text.replace(/<[^>]*>/g, '').substring(0, 200)
+      }
+
+      const browserNotif = new Notification(sanitizeText(notification.title), {
+        body: sanitizeText(notification.message),
         icon: '/favicon.ico',
         tag: notification.id,
         requireInteraction: notification.priority === 'urgent',
@@ -241,7 +242,7 @@ export const EnhancedNotificationsProvider: React.FC<EnhancedNotificationsProvid
       unreadCount,
     }}>
       {children}
-      
+
       {/* Enhanced Toast Notification */}
       {currentNotification && (
         <Snackbar
@@ -290,7 +291,7 @@ export const EnhancedNotificationsProvider: React.FC<EnhancedNotificationsProvid
               <Typography variant="body2">
                 {currentNotification.message}
               </Typography>
-              
+
               {currentNotification.order && (
                 <Box display="flex" alignItems="center" gap={2} mt={1}>
                   <Typography variant="caption">
@@ -306,7 +307,7 @@ export const EnhancedNotificationsProvider: React.FC<EnhancedNotificationsProvid
                   )}
                 </Box>
               )}
-              
+
               {currentNotification.actions && (
                 <Box display="flex" gap={1} mt={1}>
                   {currentNotification.actions.map((action, index) => (

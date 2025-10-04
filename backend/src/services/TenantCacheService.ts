@@ -1,7 +1,7 @@
-import { redisService } from '../lib/redis';
-import { logger } from '../utils/logger';
 import crypto from 'crypto';
 import * as zlib from 'zlib';
+import { redisService } from '../lib/redis';
+import { logger } from '../utils/logger';
 
 export interface CacheOptions {
   ttl?: number; // Time to live in seconds
@@ -51,13 +51,13 @@ export class TenantCacheService {
   ): string {
     const baseNamespace = namespace || 'default';
     const tenantKey = `${this.config.namespacePrefix}:${storeId}:${baseNamespace}:${key}`;
-    
+
     if (tenantKey.length > this.config.maxKeyLength) {
       // Hash long keys to prevent Redis key length issues
       const hash = crypto.createHash('sha256').update(tenantKey).digest('hex').substring(0, 16);
       return `${this.config.namespacePrefix}:${storeId}:hashed:${hash}`;
     }
-    
+
     return tenantKey;
   }
 
@@ -68,11 +68,11 @@ export class TenantCacheService {
     if (!storeId || typeof storeId !== 'string') {
       throw new Error('Store ID is required and must be a string');
     }
-    
+
     if (!key || typeof key !== 'string') {
       throw new Error('Cache key is required and must be a string');
     }
-    
+
     if (storeId.includes(':') || key.includes(':')) {
       throw new Error('Store ID and key cannot contain colon characters');
     }
@@ -93,19 +93,19 @@ export class TenantCacheService {
       }
 
       this.validateKeyComponents(storeId, key);
-      
+
       let cacheKey = this.generateKey(storeId, key, options.namespace);
       const ttl = options.ttl || this.config.defaultTTL;
-      
+
       // Serialize value
       let serializedValue = JSON.stringify(value);
-      
+
       // Compress if value is large
       if (options.compression || serializedValue.length > this.config.compressionThreshold) {
         serializedValue = zlib.gzipSync(serializedValue).toString('base64');
         cacheKey += ':compressed';
       }
-      
+
       // Encrypt if enabled
       if (options.encryption || this.config.encryptionEnabled) {
         // Use Redis secure set method if available
@@ -114,7 +114,7 @@ export class TenantCacheService {
         const redis = redisService.getClient();
         await redis.setex(cacheKey, ttl, serializedValue);
       }
-      
+
       logger.debug('Cache set successful', {
         storeId,
         key,
@@ -144,26 +144,26 @@ export class TenantCacheService {
       }
 
       this.validateKeyComponents(storeId, key);
-      
+
       const cacheKey = this.generateKey(storeId, key, options.namespace);
       const ttl = options.ttl || this.config.defaultTTL;
-      
+
       // Serialize value
       let serializedValue = JSON.stringify(value);
-      
+
       // Compress if value is large (but don't modify cacheKey here)
       let finalCacheKey = cacheKey;
       if (options.compression || serializedValue.length > this.config.compressionThreshold) {
         serializedValue = zlib.gzipSync(serializedValue).toString('base64');
         finalCacheKey += ':compressed';
       }
-      
+
       // Use Redis SETNX command for atomic set-if-not-exists
       const redis = redisService.getClient();
       const result = await redis.set(finalCacheKey, serializedValue, 'EX', ttl, 'NX');
-      
+
       const success = result === 'OK';
-      
+
       if (success) {
         logger.debug('Cache setIfNotExists successful', {
           storeId,
@@ -173,7 +173,7 @@ export class TenantCacheService {
           valueSize: serializedValue.length
         });
       }
-      
+
       return success;
 
     } catch (error) {
@@ -196,17 +196,17 @@ export class TenantCacheService {
       }
 
       this.validateKeyComponents(storeId, key);
-      
+
       const cacheKey = this.generateKey(storeId, key, options.namespace);
-      
+
       // Try to get value (check both compressed and uncompressed versions)
       let serializedValue: string | null = null;
       let isCompressed = false;
-      
+
       if (options.encryption || this.config.encryptionEnabled) {
         // Try encrypted version first
         serializedValue = await redisService.getSecure<string>(cacheKey);
-        
+
         // Try compressed encrypted version
         if (!serializedValue) {
           serializedValue = await redisService.getSecure<string>(cacheKey + ':compressed');
@@ -215,27 +215,27 @@ export class TenantCacheService {
       } else {
         const redis = redisService.getClient();
         serializedValue = await redis.get(cacheKey);
-        
+
         // Try compressed version
         if (!serializedValue) {
           serializedValue = await redis.get(cacheKey + ':compressed');
           isCompressed = !!serializedValue;
         }
       }
-      
+
       if (!serializedValue) {
         return null;
       }
-      
+
       // Decompress if needed
       if (isCompressed) {
         const compressedBuffer = Buffer.from(serializedValue, 'base64');
         serializedValue = zlib.gunzipSync(compressedBuffer).toString();
       }
-      
+
       // Parse JSON
       const value = JSON.parse(serializedValue) as T;
-      
+
       logger.debug('Cache get successful', {
         storeId,
         key,
@@ -243,7 +243,7 @@ export class TenantCacheService {
         found: true,
         isCompressed
       });
-      
+
       return value;
 
     } catch (error) {
@@ -266,14 +266,14 @@ export class TenantCacheService {
       }
 
       this.validateKeyComponents(storeId, key);
-      
+
       const cacheKey = this.generateKey(storeId, key, options.namespace);
       const redis = redisService.getClient();
-      
+
       // Delete both compressed and uncompressed versions
       await redis.del(cacheKey);
       await redis.del(cacheKey + ':compressed');
-      
+
       logger.debug('Cache delete successful', {
         storeId,
         key,
@@ -300,10 +300,10 @@ export class TenantCacheService {
       }
 
       this.validateKeyComponents(storeId, key);
-      
+
       const cacheKey = this.generateKey(storeId, key, options.namespace);
       const redis = redisService.getClient();
-      
+
       const exists = await redis.exists(cacheKey) || await redis.exists(cacheKey + ':compressed');
       return exists > 0;
 
@@ -327,17 +327,17 @@ export class TenantCacheService {
       }
 
       this.validateKeyComponents(storeId, key);
-      
+
       const cacheKey = this.generateKey(storeId, key, options.namespace);
       const redis = redisService.getClient();
-      
+
       let ttl = await redis.ttl(cacheKey);
-      
+
       // Check compressed version if main key doesn't exist
       if (ttl === -2) {
         ttl = await redis.ttl(cacheKey + ':compressed');
       }
-      
+
       return ttl;
 
     } catch (error) {
@@ -361,10 +361,10 @@ export class TenantCacheService {
       }
 
       this.validateKeyComponents(storeId, key);
-      
+
       const cacheKey = this.generateKey(storeId, key, options.namespace);
       const redis = redisService.getClient();
-      
+
       // Set expiration for both versions
       await redis.expire(cacheKey, ttl);
       await redis.expire(cacheKey + ':compressed', ttl);
@@ -389,12 +389,12 @@ export class TenantCacheService {
 
       // Validate all keys
       keys.forEach(key => this.validateKeyComponents(storeId, key));
-      
+
       const cacheKeys = keys.map(key => this.generateKey(storeId, key, options.namespace));
-      
+
       const redis = redisService.getClient();
       const values = await redis.mget(...cacheKeys);
-      
+
       // Parse each value
       const results: (T | null)[] = [];
       for (let i = 0; i < values.length; i++) {
@@ -409,7 +409,7 @@ export class TenantCacheService {
           results.push(null);
         }
       }
-      
+
       return results;
 
     } catch (error) {
@@ -428,25 +428,25 @@ export class TenantCacheService {
       }
 
       this.validateKeyComponents(storeId, 'dummy');
-      
+
       const pattern = `${this.config.namespacePrefix}:${storeId}:*`;
       const redis = redisService.getClient();
-      
+
       // Get all keys matching pattern
       const keys = await redis.keys(pattern);
-      
+
       if (keys.length === 0) {
         return 0;
       }
-      
+
       // Delete all keys
       const deletedCount = await redis.del(...keys);
-      
+
       logger.info('Tenant cache cleared', {
         storeId,
         keysDeleted: deletedCount
       });
-      
+
       return deletedCount;
 
     } catch (error) {
@@ -476,29 +476,29 @@ export class TenantCacheService {
 
       const pattern = `${this.config.namespacePrefix}:${storeId}:*`;
       const redis = redisService.getClient();
-      
+
       // Get all keys for tenant
       const keys = await redis.keys(pattern);
-      
+
       // Calculate memory usage
       let memoryUsage = 0;
       const namespaces = new Set<string>();
-      
+
       for (const key of keys) {
         try {
           const keySize = await redis.memory('usage', key);
           memoryUsage += keySize || 0;
-          
+
           // Extract namespace from key
           const parts = key.split(':');
           if (parts.length >= 3) {
             namespaces.add(parts[2]);
           }
-        } catch (error) {
+        } catch (_error) {
           // Ignore individual key errors
         }
       }
-      
+
       return {
         totalKeys: keys.length,
         memoryUsage,
@@ -532,13 +532,13 @@ export class TenantCacheService {
       if (cached !== null) {
         return cached;
       }
-      
+
       // Execute callback to get fresh value
       const value = await callback();
-      
+
       // Store in cache
       await this.set(storeId, key, value, options);
-      
+
       return value;
 
     } catch (error) {
@@ -559,7 +559,7 @@ export class TenantCacheService {
   }> {
     try {
       const redisHealth = await redisService.healthCheck();
-      
+
       return {
         status: 'healthy',
         enabled: this.config.enabled,

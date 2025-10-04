@@ -1,9 +1,10 @@
 import { logger } from '../utils/logger';
+import { sanitizeForLog } from '../utils/sanitizer';
 import { apiService } from './apiService';
 
 interface WebhookEvent {
   id: string;
-  type: 'product.created' | 'product.updated' | 'product.deleted' | 
+  type: 'product.created' | 'product.updated' | 'product.deleted' |
         'inventory.updated' | 'order.created' | 'order.updated' | 'order.cancelled';
   data: any;
   timestamp: string;
@@ -52,7 +53,7 @@ export class CMSWebhookService {
    */
   async processWebhook(webhookData: WebhookEvent): Promise<void> {
     try {
-      logger.info(`Processing CMS webhook: ${webhookData.type}`, {
+      logger.info(`Processing CMS webhook: ${sanitizeForLog(webhookData.type)}`, {
         eventId: webhookData.id,
         source: webhookData.source,
         timestamp: webhookData.timestamp
@@ -81,10 +82,10 @@ export class CMSWebhookService {
           await this.handleOrderCancelled(webhookData.data);
           break;
         default:
-          logger.warn(`Unknown webhook type: ${webhookData.type}`);
+          logger.warn(`Unknown webhook type: ${sanitizeForLog(webhookData.type)}`);
       }
 
-      logger.info(`Successfully processed webhook: ${webhookData.type}`, {
+      logger.info(`Successfully processed webhook: ${sanitizeForLog(webhookData.type)}`, {
         eventId: webhookData.id
       });
 
@@ -115,7 +116,7 @@ export class CMSWebhookService {
       //     isActive: productData.status === 'active'
       //   }
       // });
-      logger.info(`Product created in CMS: ${productData.title} (${productData.id})`);
+      logger.info(`Product created in CMS: ${sanitizeForLog(productData.title)} (${productData.id})`);
 
       // Notify relevant store admins
       await this.notifyAdminsProductUpdate('NEW_PRODUCT', productData);
@@ -143,7 +144,7 @@ export class CMSWebhookService {
       //     isActive: productData.status === 'active'
       //   }
       // });
-      logger.info(`Product updated in CMS: ${productData.title} (${productData.id})`);
+      logger.info(`Product updated in CMS: ${sanitizeForLog(productData.title)} (${productData.id})`);
 
       // Notify customers who have this product in wishlist/notifications
       await this.notifyCustomersProductUpdate(productData);
@@ -167,7 +168,8 @@ export class CMSWebhookService {
 
       logger.info(`Product mapping deactivated for CMS product: ${productData.id}`);
     } catch (error) {
-      logger.error('Failed to handle product deletion:', error);
+      const sanitizedError = error instanceof Error ? error.message.replace(/[\r\n]/g, ' ') : String(error).replace(/[\r\n]/g, ' ');
+      logger.error('Failed to handle product deletion:', sanitizedError);
       throw error;
     }
   }
@@ -183,7 +185,7 @@ export class CMSWebhookService {
       //   newStock: stockData.newStock,
       //   source: 'CMS_WEBHOOK'
       // });
-      logger.info(`Stock updated for product ${stockData.productId}: ${stockData.newStock}`);
+      logger.info(`Stock updated for product ${sanitizeForLog(stockData.productId)}: ${stockData.newStock}`);
 
       // Check for low stock alerts
       if (stockData.threshold && stockData.newStock <= stockData.threshold) {
@@ -228,9 +230,9 @@ export class CMSWebhookService {
       //     status: 'PENDING_CMS_SYNC'
       //   });
       // }
-      logger.info(`Order created/updated in CMS: ${orderData.cmsOrderId}`);
+      logger.info(`Order created/updated in CMS: ${sanitizeForLog(orderData.cmsOrderId)}`);
 
-      logger.info(`Order synced from CMS: ${orderData.cmsOrderId}`);
+      logger.info(`Order synced from CMS: ${sanitizeForLog(orderData.cmsOrderId)}`);
     } catch (error) {
       logger.error('Failed to handle CMS order creation:', error);
       throw error;
@@ -252,12 +254,12 @@ export class CMSWebhookService {
       //     syncedAt: new Date()
       //   });
       // }
-      logger.info(`Order status updated in CMS: ${orderData.cmsOrderId} -> ${orderData.status}`);
+      logger.info(`Order status updated in CMS: ${sanitizeForLog(orderData.cmsOrderId)} -> ${sanitizeForLog(orderData.status)}`);
 
       // TODO: Notify customer about status change
       // await this.notifyCustomerStatusChange(localOrder, newStatus);
 
-      logger.info(`Order status updated from CMS: ${orderData.cmsOrderId} -> ${orderData.status}`);
+      logger.info(`Order status updated from CMS: ${sanitizeForLog(orderData.cmsOrderId)} -> ${sanitizeForLog(orderData.status)}`);
     } catch (error) {
       logger.error('Failed to handle CMS order update:', error);
       throw error;
@@ -271,26 +273,28 @@ export class CMSWebhookService {
     try {
       // Find local order by CMS ID using integration mapping
       const integrationMapping = await this.findIntegrationMapping('CMS', 'order', orderData.cmsOrderId);
-      
+
       if (!integrationMapping) {
-        logger.warn(`No local order found for CMS order ID: ${orderData.cmsOrderId}`);
+        logger.warn(`No local order found for CMS order ID: ${sanitizeForLog(orderData.cmsOrderId)}`);
         return;
       }
 
       // Get the local order
       const localOrder = await this.getOrderWithDetails(integrationMapping.localId);
-      
+
       if (!localOrder) {
-        logger.error(`Local order ${integrationMapping.localId} not found for CMS ID: ${orderData.cmsOrderId}`);
+        logger.error(`Local order ${integrationMapping.localId} not found for CMS ID: ${sanitizeForLog(orderData.cmsOrderId)}`);
         return;
       }
 
       // Cancel the local order using API service
       const adminToken = await this.getAdminToken();
-      
+
       if (adminToken) {
         await apiService.rejectOrder(localOrder.id, orderData.reason || 'Cancelled in CMS', adminToken);
-        logger.info(`Order ${localOrder.orderNumber} cancelled successfully from CMS webhook`);
+        // Sanitize order number to prevent log injection
+        const sanitizedOrderNumber = String(localOrder.orderNumber).replace(/[\r\n]/g, ' ');
+        logger.info(`Order ${sanitizedOrderNumber} cancelled successfully from CMS webhook`);
 
         // Notify customer about cancellation
         await this.notifyCustomerCancellation(localOrder, orderData.reason || 'Cancelled in CMS');
@@ -311,9 +315,9 @@ export class CMSWebhookService {
     try {
       // Find local product by CMS ID
       const productMapping = await this.findIntegrationMapping('CMS', 'product', stockData.productId);
-      
+
       if (!productMapping) {
-        logger.warn(`No local product found for CMS product ID: ${stockData.productId}`);
+        logger.warn(`No local product found for CMS product ID: ${sanitizeForLog(stockData.productId)}`);
         return;
       }
 
@@ -332,16 +336,16 @@ export class CMSWebhookService {
         variantId: stockData.variantId ? await this.mapVariantId(stockData.variantId) : null,
         currentStock: stockData.newStock,
         threshold: stockData.threshold,
-        message: stockData.newStock === 0 
-          ? `Product out of stock` 
+        message: stockData.newStock === 0
+          ? `Product out of stock`
           : `Low stock: ${stockData.newStock} remaining`,
         source: 'CMS_WEBHOOK'
       };
 
       // For now, log the alert since we need to implement the API endpoint
-      logger.warn(`🚨 INVENTORY ALERT: Product ${productMapping.localId} - Stock: ${stockData.newStock}, Threshold: ${stockData.threshold}`);
+      logger.warn(`🚨 INVENTORY ALERT: Product ${sanitizeForLog(productMapping.localId)} - Stock: ${stockData.newStock}, Threshold: ${stockData.threshold}`);
 
-      logger.info(`Low stock alert processed for product: ${productMapping.localId}`);
+      logger.info(`Low stock alert processed for product: ${sanitizeForLog(productMapping.localId)}`);
     } catch (error) {
       logger.error('Failed to create low stock alert:', error);
     }
@@ -354,7 +358,7 @@ export class CMSWebhookService {
     try {
       // TODO: Get customers waiting for restock notifications and notify them
       // const waitingCustomers = await apiService.getStockNotificationSubscribers(
-      //   stockData.productId, 
+      //   stockData.productId,
       //   stockData.variantId
       // );
       // for (const customer of waitingCustomers) {
@@ -364,7 +368,7 @@ export class CMSWebhookService {
       //     newStock: stockData.newStock
       //   });
       // }
-      logger.info(`Product restocked: ${stockData.productId} (${stockData.newStock} units)`);
+      logger.info(`Product restocked: ${sanitizeForLog(stockData.productId)} (${stockData.newStock} units)`);
     } catch (error) {
       logger.error('Failed to send restock notifications:', error);
     }
@@ -382,9 +386,9 @@ export class CMSWebhookService {
       //   productName: productData.title,
       //   status: productData.status
       // });
-      logger.info(`Admin notification: Product updated ${productData.title}`);
+      logger.info(`Admin notification: Product updated ${sanitizeForLog(productData.title)}`);
 
-      logger.info(`Admin notification sent for product update: ${type}`);
+      logger.info(`Admin notification sent for product update: ${sanitizeForLog(type)}`);
     } catch (error) {
       logger.error('Failed to notify admins:', error);
     }
@@ -401,7 +405,7 @@ export class CMSWebhookService {
       //   price: productData.price,
       //   status: productData.status
       // });
-      logger.info(`Favorite product update notification: ${productData.title}`);
+      logger.info(`Favorite product update notification: ${sanitizeForLog(productData.title)}`);
 
       logger.info(`Customer notifications sent for product update: ${productData.id}`);
     } catch (error) {
@@ -422,9 +426,9 @@ export class CMSWebhookService {
       //   totalAmount: order.totalAmount,
       //   currency: order.currency
       // });
-      logger.info(`Order status notification: ${order.orderNumber} -> ${newStatus}`);
+      logger.info(`Order status notification: ${sanitizeForLog(order.orderNumber)} -> ${sanitizeForLog(newStatus)}`);
 
-      logger.info(`Status change notification sent for order: ${order.id}`);
+      logger.info(`Status change notification sent for order: ${sanitizeForLog(order.id)}`);
     } catch (error) {
       logger.error('Failed to send status notification:', error);
     }
@@ -443,9 +447,9 @@ export class CMSWebhookService {
       //   totalAmount: order.totalAmount,
       //   currency: order.currency
       // });
-      logger.info(`Order cancellation notification: ${order.orderNumber}`);
+      logger.info(`Order cancellation notification: ${sanitizeForLog(order.orderNumber)}`);
 
-      logger.info(`Cancellation notification sent for order: ${order.id}`);
+      logger.info(`Cancellation notification sent for order: ${sanitizeForLog(order.id)}`);
     } catch (error) {
       logger.error('Failed to send cancellation notification:', error);
     }
@@ -513,7 +517,7 @@ export class CMSWebhookService {
       const response = await apiService.getIntegrationMapping({ source, entityType, externalId }, userToken);
       return response.mapping ?? response;
     } catch (error) {
-      logger.warn(`Integration mapping not found: ${source}/${entityType}/${externalId}`);
+      logger.warn(`Integration mapping not found: ${sanitizeForLog(source)}/${sanitizeForLog(entityType)}/${sanitizeForLog(externalId)}`);
       return null;
     }
   }
@@ -529,7 +533,10 @@ export class CMSWebhookService {
       const response = await apiService.getOrder(orderId, adminToken);
       return response.order;
     } catch (error) {
-      logger.error(`Error fetching order ${orderId}:`, error);
+      // Sanitize error and orderId to prevent log injection
+      const sanitizedOrderId = String(orderId).replace(/[\r\n]/g, ' ');
+      const sanitizedError = error instanceof Error ? error.message.replace(/[\r\n]/g, ' ') : String(error).replace(/[\r\n]/g, ' ');
+      logger.error(`Error fetching order ${sanitizedOrderId}:`, sanitizedError);
       return null;
     }
   }
@@ -555,7 +562,7 @@ export class CMSWebhookService {
       const variantMapping = await this.findIntegrationMapping('CMS', 'variant', cmsVariantId);
       return variantMapping?.localId || null;
     } catch (error) {
-      logger.error(`Error mapping variant ID ${cmsVariantId}:`, error);
+      logger.error(`Error mapping variant ID ${sanitizeForLog(cmsVariantId)}:`, error);
       return null;
     }
   }

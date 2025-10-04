@@ -105,5 +105,8 @@ EXPOSE 3001
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start the application
+# Start the application with graceful shutdown support
 CMD ["/usr/local/bin/docker-entrypoint.sh"]
+
+# Graceful shutdown signal
+STOPSIGNAL SIGTERM

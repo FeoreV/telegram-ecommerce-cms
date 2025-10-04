@@ -1,13 +1,13 @@
-import { ComponentType, LazyExoticComponent, lazy } from 'react'
-import DashboardIcon from '@mui/icons-material/Dashboard'
-import StoreIcon from '@mui/icons-material/Store'
-import InventoryIcon from '@mui/icons-material/Inventory'
-import ReceiptIcon from '@mui/icons-material/Receipt'
-import PaymentIcon from '@mui/icons-material/Payment'
 import AssessmentIcon from '@mui/icons-material/Assessment'
-import SmartToyIcon from '@mui/icons-material/SmartToy'
-import PeopleIcon from '@mui/icons-material/People'
+import DashboardIcon from '@mui/icons-material/Dashboard'
+import InventoryIcon from '@mui/icons-material/Inventory'
 import MonitorHeartIcon from '@mui/icons-material/MonitorHeart'
+import PaymentIcon from '@mui/icons-material/Payment'
+import PeopleIcon from '@mui/icons-material/People'
+import ReceiptIcon from '@mui/icons-material/Receipt'
+import SmartToyIcon from '@mui/icons-material/SmartToy'
+import StoreIcon from '@mui/icons-material/Store'
+import { ComponentType, LazyExoticComponent, lazy } from 'react'
 
 import { User } from '../types'
 
@@ -23,6 +23,7 @@ export type RoutePath =
   | '/bots'
   | '/users'
   | '/monitoring'
+  | '/profile'
 
 export interface RouteDefinition<Path extends RoutePath = RoutePath> {
   path: Path
@@ -39,7 +40,7 @@ export const baseAppRoles: ReadonlyArray<Role> = ['OWNER', 'ADMIN', 'VENDOR'] as
 export const routeDefinitions = [
   {
     path: '/dashboard',
-    pageName: 'dashboard', 
+    pageName: 'dashboard',
     allowedRoles: baseAppRoles,
     component: lazy(() => import('../pages/DashboardPage')),
     showInSidebar: true,
@@ -117,6 +118,13 @@ export const routeDefinitions = [
     showInSidebar: true,
     label: 'Мониторинг',
     icon: MonitorHeartIcon,
+  },
+  {
+    path: '/profile',
+    pageName: 'profile',
+    allowedRoles: baseAppRoles,
+    component: lazy(() => import('../pages/ProfilePage')),
+    showInSidebar: false,
   },
 ] as const satisfies ReadonlyArray<RouteDefinition>
 

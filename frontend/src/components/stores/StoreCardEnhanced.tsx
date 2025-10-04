@@ -1,46 +1,43 @@
-import React, { useState } from 'react'
 import {
-  Card,
-  CardContent,
-  CardActions,
-  Typography,
-  Box,
-  Button,
-  Chip,
-  IconButton,
-  Menu,
-  MenuItem,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Avatar,
-  Collapse,
-  Grid,
-  LinearProgress,
-} from '@mui/material'
-import {
-  MoreVert,
-  Store as StoreIcon,
-  Edit,
-  Delete,
-  Block,
-  CheckCircle,
-  AttachMoney,
-  Inventory,
-  Receipt,
-  People,
-  ExpandMore,
-  ExpandLess,
-  Analytics,
-  TrendingUp,
-  TrendingDown,
+    Analytics,
+    AttachMoney,
+    Block,
+    CheckCircle,
+    Delete,
+    Edit,
+    ExpandLess,
+    ExpandMore,
+    MoreVert,
+    People,
+    Store as StoreIcon,
+    TrendingDown,
+    TrendingUp
 } from '@mui/icons-material'
-import { Store } from '../../types'
-import { storeService } from '../../services/storeService'
+import {
+    Avatar,
+    Box,
+    Button,
+    Card,
+    CardActions,
+    CardContent,
+    Chip,
+    Collapse,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    Grid,
+    IconButton,
+    Menu,
+    MenuItem,
+    Typography
+} from '@mui/material'
+import React, { useState } from 'react'
 import { toast } from 'react-toastify'
-import StoreAnalytics from './StoreAnalytics'
+import { storeService } from '../../services/storeService'
+import { Store } from '../../types'
 import StoreAdminManagement from './StoreAdminManagement'
+import StoreAnalytics from './StoreAnalytics'
 
 interface StoreCardEnhancedProps {
   store: Store
@@ -49,11 +46,11 @@ interface StoreCardEnhancedProps {
   showAnalytics?: boolean
 }
 
-const StoreCardEnhanced: React.FC<StoreCardEnhancedProps> = ({ 
-  store, 
-  onEdit, 
-  onRefresh, 
-  showAnalytics = false 
+const StoreCardEnhanced: React.FC<StoreCardEnhancedProps> = ({
+  store,
+  onEdit,
+  onRefresh,
+  showAnalytics = false
 }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -131,7 +128,7 @@ const StoreCardEnhanced: React.FC<StoreCardEnhancedProps> = ({
     // Простая эвристика производительности на основе данных магазина
     const orderCount = store._count?.orders || 0
     const productCount = store._count?.products || 0
-    
+
     if (orderCount === 0) {
       return { color: 'text.secondary', icon: null, label: 'Нет данных' }
     } else if (orderCount < 5) {
@@ -147,10 +144,10 @@ const StoreCardEnhanced: React.FC<StoreCardEnhancedProps> = ({
 
   return (
     <>
-      <Card 
-        sx={{ 
-          height: '100%', 
-          display: 'flex', 
+      <Card
+        sx={{
+          height: '100%',
+          display: 'flex',
           flexDirection: 'column',
           transition: 'transform 0.2s, box-shadow 0.2s',
           '&:hover': {
@@ -181,7 +178,7 @@ const StoreCardEnhanced: React.FC<StoreCardEnhancedProps> = ({
                 </Typography>
                 <Box display="flex" gap={1} alignItems="center">
                   {getStatusChip()}
-                  <Chip 
+                  <Chip
                     icon={performance.icon}
                     label={`Активность: ${performance.label}`}
                     variant="outlined"
@@ -198,21 +195,21 @@ const StoreCardEnhanced: React.FC<StoreCardEnhancedProps> = ({
 
           {store.description && (
             <Typography variant="body2" color="text.secondary" mb={2}>
-              {store.description.length > 100 
-                ? `${store.description.substring(0, 100)}...` 
+              {store.description.length > 100
+                ? `${store.description.substring(0, 100)}...`
                 : store.description
               }
             </Typography>
           )}
 
           <Box display="flex" flexWrap="wrap" gap={1} mb={2}>
-            <Chip 
+            <Chip
               icon={<AttachMoney />}
               label={formatCurrency(store.currency)}
               variant="outlined"
               size="small"
             />
-            <Chip 
+            <Chip
               label={`/${store.slug}`}
               variant="outlined"
               size="small"
@@ -257,7 +254,7 @@ const StoreCardEnhanced: React.FC<StoreCardEnhancedProps> = ({
             <Typography variant="body2" color="text.secondary" gutterBottom>
               <strong>Владелец:</strong> {store.owner.firstName} {store.owner.lastName}
             </Typography>
-            
+
             {store.contactInfo?.phone && (
               <Typography variant="body2" color="text.secondary" gutterBottom>
                 <strong>Телефон:</strong> {store.contactInfo.phone}
@@ -284,8 +281,8 @@ const StoreCardEnhanced: React.FC<StoreCardEnhancedProps> = ({
           </Box>
           <Box>
             {showAnalytics && (
-              <Button 
-                size="small" 
+              <Button
+                size="small"
                 startIcon={<Analytics />}
                 endIcon={analyticsExpanded ? <ExpandLess /> : <ExpandMore />}
                 onClick={() => setAnalyticsExpanded(!analyticsExpanded)}
@@ -294,8 +291,8 @@ const StoreCardEnhanced: React.FC<StoreCardEnhancedProps> = ({
                 Аналитика
               </Button>
             )}
-            <Button 
-              size="small" 
+            <Button
+              size="small"
               color={store.status === 'ACTIVE' ? 'warning' : 'success'}
               onClick={handleToggleStatus}
               startIcon={store.status === 'ACTIVE' ? <Block /> : <CheckCircle />}
@@ -326,7 +323,7 @@ const StoreCardEnhanced: React.FC<StoreCardEnhancedProps> = ({
           <Edit fontSize="small" sx={{ mr: 1 }} />
           Редактировать
         </MenuItem>
-        <MenuItem 
+        <MenuItem
           onClick={() => {
             setAdminDialogOpen(true)
             handleMenuClose()
@@ -348,7 +345,7 @@ const StoreCardEnhanced: React.FC<StoreCardEnhancedProps> = ({
             </>
           )}
         </MenuItem>
-        <MenuItem 
+        <MenuItem
           onClick={() => {
             setDeleteDialogOpen(true)
             handleMenuClose()
@@ -365,7 +362,7 @@ const StoreCardEnhanced: React.FC<StoreCardEnhancedProps> = ({
         <DialogTitle>Подтвердите удаление</DialogTitle>
         <DialogContent>
           <Typography>
-            Вы уверены, что хотите удалить магазин "<strong>{store.name}</strong>"?
+            Вы уверены, что хотите удалить магазин &quot;<strong>{store.name}</strong>&quot;?
           </Typography>
           <Typography color="error" sx={{ mt: 1 }}>
             Это действие необратимо. Все данные магазина будут удалены.
@@ -375,9 +372,9 @@ const StoreCardEnhanced: React.FC<StoreCardEnhancedProps> = ({
           <Button onClick={() => setDeleteDialogOpen(false)} disabled={loading}>
             Отмена
           </Button>
-          <Button 
-            onClick={handleDelete} 
-            color="error" 
+          <Button
+            onClick={handleDelete}
+            color="error"
             variant="contained"
             disabled={loading}
           >

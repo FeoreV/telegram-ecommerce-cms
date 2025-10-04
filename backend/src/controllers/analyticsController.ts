@@ -1,10 +1,10 @@
+import { Prisma } from '@prisma/client';
+import { endOfDay, format, startOfDay, startOfMonth, startOfWeek, subDays } from 'date-fns';
 import { Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/auth';
 import { prisma } from '../lib/prisma';
+import { AuthenticatedRequest } from '../middleware/auth';
 import { AppError, asyncHandler } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
-import { startOfDay, endOfDay, startOfWeek, startOfMonth, subDays, format } from 'date-fns';
-import { Prisma } from '@prisma/client';
 
 interface DashboardMetrics {
   totalRevenue: number;
@@ -100,7 +100,7 @@ export const getDashboardAnalytics = asyncHandler(async (req: AuthenticatedReque
     const ordersGrowth = calculateGrowthPercentage(currentMetrics.totalOrders, previousMetrics.totalOrders);
 
     // Calculate conversion rate (orders/unique visitors - simplified)
-    const conversionRate = currentMetrics.totalOrders > 0 ? 
+    const conversionRate = currentMetrics.totalOrders > 0 ?
       (currentMetrics.totalOrders / Math.max(currentMetrics.totalOrders * 2, 100)) * 100 : 0;
 
     const metrics: DashboardMetrics = {
@@ -115,7 +115,11 @@ export const getDashboardAnalytics = asyncHandler(async (req: AuthenticatedReque
       storePerformance
     };
 
-    logger.info(`Analytics fetched for user ${req.user.id}, period: ${period}, storeId: ${storeId || 'all'}`);
+    // Sanitize log data to prevent log injection
+    const sanitizedUserId = String(req.user.id).replace(/[\r\n]/g, ' ');
+    const sanitizedPeriod = String(period).replace(/[\r\n]/g, ' ');
+    const sanitizedStoreId = storeId ? String(storeId).replace(/[\r\n]/g, ' ') : 'all';
+    logger.info(`Analytics fetched for user ${sanitizedUserId}, period: ${sanitizedPeriod}, storeId: ${sanitizedStoreId}`);
 
     res.json({
       success: true,
@@ -228,9 +232,9 @@ export const getRevenueTrends = asyncHandler(async (req: AuthenticatedRequest, r
     const storeFilter = await getStoreFilter(req.user, storeId as string);
 
     const trends = await getRevenueTrendsData(
-      timeRange.from, 
-      timeRange.to, 
-      storeFilter, 
+      timeRange.from,
+      timeRange.to,
+      storeFilter,
       granularity as string
     );
 
@@ -470,7 +474,7 @@ async function getRecentOrders(storeFilter: Prisma.OrderWhereInput, limit: numbe
     },
     take: limit
   });
-  
+
   // Transform to match expected interface
   return orders.map(order => ({
     id: order.id,
@@ -506,7 +510,7 @@ async function getSalesChart(from: Date, to: Date, storeFilter: Prisma.OrderWher
 
   // Group orders by date
   const chartData: { [key: string]: { revenue: number; orders: number } } = {};
-  
+
   orders.forEach(order => {
     const dateKey = format(order.createdAt, 'yyyy-MM-dd');
     if (!chartData[dateKey]) {
@@ -614,7 +618,7 @@ async function getRevenueTrendsData(from: Date, to: Date, storeFilter: Prisma.Or
 
   // Group by granularity
   const trends: { [key: string]: number } = {};
-  
+
   orders.forEach(order => {
     let dateKey: string;
     switch (granularity) {
@@ -630,7 +634,7 @@ async function getRevenueTrendsData(from: Date, to: Date, storeFilter: Prisma.Or
       default: // daily
         dateKey = format(order.createdAt, 'yyyy-MM-dd');
     }
-    
+
     trends[dateKey] = (trends[dateKey] || 0) + order.totalAmount;
   });
 
@@ -755,7 +759,7 @@ async function getCustomerLifetimeValue(storeFilter: Prisma.OrderWhereInput) {
     }
   });
 
-  const lifetimeValues = customers.map(customer => 
+  const lifetimeValues = customers.map(customer =>
     customer.orders.reduce((sum, order) => sum + order.totalAmount, 0)
   );
 

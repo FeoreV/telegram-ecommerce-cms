@@ -1,8 +1,8 @@
-import { Request, Response, NextFunction } from 'express';
-import { verifyToken, UserRole } from '../utils/jwt';
+import { NextFunction, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
-import { logger, maskSensitiveData } from '../utils/logger';
 import type { UserWithPermissions } from '../types/express.d';
+import { UserRole, verifyToken } from '../utils/jwt';
+import { logger, maskSensitiveData } from '../utils/logger';
 
 export interface AuthenticatedRequest extends Omit<Request, 'user'> {
   user?: UserWithPermissions;
@@ -15,14 +15,14 @@ export const authMiddleware = async (
 ) => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'No token provided' });
     }
 
     const token = authHeader.substring(7);
     let decoded;
-    
+
     try {
       decoded = verifyToken(token);
     } catch (error: unknown) {
@@ -31,9 +31,9 @@ export const authMiddleware = async (
         errorName: error instanceof Error ? error.name : undefined,
         userAgent: req.headers['user-agent'],
         ip: req.ip,
-        tokenPreview: `${token.substring(0, 6)}...${token.substring(token.length - 6)}`,
+        timestamp: new Date().toISOString()
       });
-      
+
       if (error instanceof Error && error.message === 'Token expired') {
         return res.status(401).json({ error: 'Token expired', code: 'TOKEN_EXPIRED' });
       } else if (error instanceof Error && error.message === 'Invalid token') {
@@ -42,7 +42,34 @@ export const authMiddleware = async (
         return res.status(401).json({ error: 'Authentication failed', code: 'AUTH_FAILED' });
       }
     }
-    
+
+    // SECURITY: Check if token has been revoked (CWE-613)
+    const crypto = require('crypto');
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+    // Check if revokedToken model is available (requires prisma generate)
+    let isRevoked = null;
+    try {
+      isRevoked = await (prisma as any).revokedToken?.findUnique({
+        where: { token: tokenHash }
+      });
+    } catch (error) {
+      // Model not available, skip revocation check
+      logger.debug('RevokedToken model not available, skipping check');
+    }
+
+    if (isRevoked) {
+      logger.warn('Revoked token used', {
+        userId: decoded.userId,
+        ip: req.ip,
+        userAgent: req.headers['user-agent']
+      });
+      return res.status(401).json({
+        error: 'Token has been revoked',
+        code: 'TOKEN_REVOKED'
+      });
+    }
+
     // Verify user exists and is active
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },

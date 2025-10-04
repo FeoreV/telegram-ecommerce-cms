@@ -109,7 +109,7 @@ let telegramBot = null;
 const initTelegramBot = async () => {
     if (process.env.ADMIN_TELEGRAM_BOT_TOKEN) {
         try {
-            const TelegramBot = await Promise.resolve().then(() => __importStar(require('node-telegram-bot-api')));
+            const TelegramBot = await import('node-telegram-bot-api');
             telegramBot = new TelegramBot.default(process.env.ADMIN_TELEGRAM_BOT_TOKEN, { polling: false });
             logger_1.logger.info('Admin Telegram bot initialized');
         }
@@ -327,7 +327,7 @@ class NotificationService {
                     timestamp: new Date().toISOString(),
                 }
             };
-            const { SocketRoomService } = await Promise.resolve().then(() => __importStar(require('./socketRoomService.js')));
+            const { SocketRoomService } = await import('./socketRoomService.js');
             notification.recipients.forEach(recipientId => {
                 SocketRoomService.notifyUser(recipientId, 'notification', socketData);
             });

@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const prisma_1 = require("../lib/prisma");
 const auth_1 = require("../middleware/auth");
+const csrfProtection_1 = require("../middleware/csrfProtection");
 const errorHandler_1 = require("../middleware/errorHandler");
 const loggerEnhanced_1 = require("../utils/loggerEnhanced");
 const router = express_1.default.Router();
@@ -41,7 +42,7 @@ router.get('/:id', auth_1.authMiddleware, (0, errorHandler_1.asyncHandler)(async
     }
     res.json(category);
 }));
-router.post('/', auth_1.authMiddleware, (0, errorHandler_1.asyncHandler)(async (req, res) => {
+router.post('/', csrfProtection_1.csrfProtection, auth_1.authMiddleware, (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { name } = req.body;
     if (!name) {
         return res.status(400).json({ error: 'Category name is required' });
@@ -60,7 +61,7 @@ router.post('/', auth_1.authMiddleware, (0, errorHandler_1.asyncHandler)(async (
     });
     res.status(201).json(category);
 }));
-router.put('/:id', auth_1.authMiddleware, (0, errorHandler_1.asyncHandler)(async (req, res) => {
+router.put('/:id', csrfProtection_1.csrfProtection, auth_1.authMiddleware, (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { id } = req.params;
     const { name } = req.body;
     const updateData = {};
@@ -79,7 +80,7 @@ router.put('/:id', auth_1.authMiddleware, (0, errorHandler_1.asyncHandler)(async
     });
     res.json(category);
 }));
-router.delete('/:id', auth_1.authMiddleware, (0, errorHandler_1.asyncHandler)(async (req, res) => {
+router.delete('/:id', csrfProtection_1.csrfProtection, auth_1.authMiddleware, (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { id } = req.params;
     const productsCount = await prisma_1.prisma.product.count({
         where: { categoryId: id }

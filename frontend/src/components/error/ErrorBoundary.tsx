@@ -1,23 +1,23 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react'
 import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Button,
-  Alert,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Chip,
-} from '@mui/material'
-import {
-  Error as ErrorIcon,
-  ExpandMore,
-  Refresh,
-  BugReport,
-  Home,
+    BugReport,
+    Error as ErrorIcon,
+    ExpandMore,
+    Home,
+    Refresh,
 } from '@mui/icons-material'
+import {
+    Accordion,
+    AccordionDetails,
+    AccordionSummary,
+    Alert,
+    Box,
+    Button,
+    Card,
+    CardContent,
+    Chip,
+    Typography,
+} from '@mui/material'
+import React, { Component, ErrorInfo, ReactNode } from 'react'
 
 interface Props {
   children: ReactNode
@@ -99,11 +99,13 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   logErrorToService = (error: Error, errorInfo: ErrorInfo) => {
+    // SECURITY FIX: CWE-117 - Sanitize logs
+    const { sanitizeForLog } = require('../../utils/sanitizer');
     // In a real application, you would send this to your error tracking service
     console.group('🚨 Error Boundary Caught An Error')
-    console.error('Error:', error)
-    console.error('Error Info:', errorInfo)
-    console.error('Component Stack:', errorInfo.componentStack)
+    console.error('Error:', sanitizeForLog(error.message))
+    console.error('Error Info:', sanitizeForLog(JSON.stringify(errorInfo)))
+    console.error('Component Stack:', sanitizeForLog(errorInfo.componentStack || ''))
     console.groupEnd()
 
     // Example: Send to external service
@@ -164,11 +166,11 @@ class ErrorBoundary extends Component<Props, State> {
           <Card sx={{ maxWidth: 600, width: '100%' }}>
             <CardContent sx={{ textAlign: 'center' }}>
               <ErrorIcon sx={{ fontSize: 64, color: 'error.main', mb: 2 }} />
-              
+
               <Typography variant="h5" gutterBottom>
                 Упс! Что-то пошло не так
               </Typography>
-              
+
               <Typography variant="body1" color="text.secondary" paragraph>
                 Произошла неожиданная ошибка. Мы автоматически отправили отчет об ошибке нашей команде.
               </Typography>
@@ -181,7 +183,7 @@ class ErrorBoundary extends Component<Props, State> {
                 >
                   Попробовать снова
                 </Button>
-                
+
                 <Button
                   variant="outlined"
                   startIcon={<Refresh />}
@@ -189,7 +191,7 @@ class ErrorBoundary extends Component<Props, State> {
                 >
                   Перезагрузить страницу
                 </Button>
-                
+
                 {!isolate && (
                   <Button
                     variant="outlined"
@@ -217,7 +219,7 @@ class ErrorBoundary extends Component<Props, State> {
                       <Typography variant="subtitle2" gutterBottom>
                         Ошибка: {error?.name}
                       </Typography>
-                      <Typography variant="body2" component="pre" sx={{ 
+                      <Typography variant="body2" component="pre" sx={{
                         whiteSpace: 'pre-wrap',
                         wordBreak: 'break-word',
                         fontSize: '0.8rem'
@@ -225,7 +227,7 @@ class ErrorBoundary extends Component<Props, State> {
                         {error?.message}
                       </Typography>
                     </Alert>
-                    
+
                     {error?.stack && (
                       <Box>
                         <Typography variant="subtitle2" gutterBottom>

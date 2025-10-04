@@ -1,14 +1,15 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middleware/auth';
-import { requirePermission, Permission } from '../middleware/permissions';
-import { validate } from '../middleware/validation';
 import { body, param, query } from 'express-validator';
 import {
-  getInventoryAlerts,
-  updateStock,
-  getStockHistory,
-  setStockAlertsConfig
+    getInventoryAlerts,
+    getStockHistory,
+    setStockAlertsConfig,
+    updateStock
 } from '../controllers/inventoryController';
+import { authMiddleware } from '../middleware/auth';
+import { csrfProtection } from '../middleware/csrfProtection';
+import { Permission, requirePermission } from '../middleware/permissions';
+import { validate } from '../middleware/validation';
 
 const router = Router();
 
@@ -37,9 +38,10 @@ router.get(
   getInventoryAlerts
 );
 
-// Update stock levels
+// Update stock levels (SECURITY: CSRF protected)
 router.post(
   '/stock/update',
+  csrfProtection,
   requirePermission(Permission.PRODUCT_UPDATE),
   [
     body('productId')
@@ -88,9 +90,10 @@ router.get(
   getStockHistory
 );
 
-// Set stock alerts configuration for store
+// Set stock alerts configuration for store (SECURITY: CSRF protected)
 router.post(
   '/alerts/config',
+  csrfProtection,
   requirePermission(Permission.STORE_UPDATE),
   [
     body('storeId')

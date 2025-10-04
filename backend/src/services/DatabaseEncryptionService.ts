@@ -1,6 +1,7 @@
 import { databaseService } from '../lib/database';
-import { encryptionService } from './EncryptionService';
 import { logger } from '../utils/logger';
+import { sanitizeForLog } from '../utils/sanitizer';
+import { encryptionService } from './EncryptionService';
 
 export interface EncryptionConfig {
   enableFieldLevelEncryption: boolean;
@@ -47,11 +48,12 @@ export class DatabaseEncryptionService {
    */
   async initialize(): Promise<void> {
     try {
-      // const _prisma = databaseService.getPrisma(); // Unused variable removed
-      
+      // const _prisma = databaseService.getPrisma();
+ // Unused variable removed
+
       // Check if encryption schema exists
       const schemaExists = await this.checkEncryptionSchema();
-      
+
       if (!schemaExists) {
         logger.warn('Database encryption schema not found. Run migration first.');
         return;
@@ -59,10 +61,10 @@ export class DatabaseEncryptionService {
 
       // Set up encryption keys in database session
       await this.setupEncryptionKeys();
-      
+
       // Perform health check
       await this.healthCheck();
-      
+
       logger.info('Database encryption service initialized successfully', {
         fieldLevelEncryption: this.config.enableFieldLevelEncryption,
         encryptedTables: Object.keys(this.config.encryptedFields).length
@@ -80,14 +82,14 @@ export class DatabaseEncryptionService {
   private async checkEncryptionSchema(): Promise<boolean> {
     try {
       const prisma = databaseService.getPrisma();
-      
+
       const result = await prisma.$queryRaw<{ exists: boolean }[]>`
         SELECT EXISTS (
-          SELECT 1 FROM information_schema.schemata 
+          SELECT 1 FROM information_schema.schemata
           WHERE schema_name = 'encryption'
         ) as exists
       `;
-      
+
       return result[0]?.exists || false;
     } catch (error) {
       logger.error('Failed to check encryption schema:', error);
@@ -102,7 +104,7 @@ export class DatabaseEncryptionService {
     try {
       const prisma = databaseService.getPrisma();
       const encryptionSecrets = encryptionService.getEncryptionSecrets();
-      
+
       // Set encryption keys for different data types
       const keyMappings = [
         { name: 'user_pii', key: encryptionSecrets.dataEncryptionKey },
@@ -156,7 +158,7 @@ export class DatabaseEncryptionService {
         `;
 
         const records = await prisma.$queryRawUnsafe<{ id: string }[]>(query);
-        
+
         if (records.length === 0) {
           hasMore = false;
           break;
@@ -169,21 +171,21 @@ export class DatabaseEncryptionService {
         }
 
         offset += batchSize;
-        
-        logger.info(`Processed ${totalProcessed} records in ${tableName}`);
-        
+
+        logger.info(`Processed ${totalProcessed} records in ${sanitizeForLog(tableName)}`);
+
         // Small delay to prevent overwhelming the database
         await new Promise(resolve => setTimeout(resolve, 100));
       }
 
-      logger.info(`Completed encryption of existing data in ${tableName}`, {
+      logger.info(`Completed encryption of existing data in ${sanitizeForLog(tableName)}`, {
         totalProcessed
       });
 
       return totalProcessed;
 
     } catch (error) {
-      logger.error(`Failed to encrypt existing data in ${tableName}:`, error);
+      logger.error(`Failed to encrypt existing data in ${sanitizeForLog(tableName)}:`, error);
       throw error;
     }
   }
@@ -198,15 +200,15 @@ export class DatabaseEncryptionService {
     // Build update query for encrypted fields
     const updateFields = encryptedFields.map(field => {
       const keyName = this.getKeyNameForTable(tableName);
-      return `${field}_encrypted = CASE 
-        WHEN ${field} IS NOT NULL AND ${field}_encrypted IS NULL 
+      return `${field}_encrypted = CASE
+        WHEN ${field} IS NOT NULL AND ${field}_encrypted IS NULL
         THEN encryption.encrypt_data(${field}, '${keyName}')
-        ELSE ${field}_encrypted 
+        ELSE ${field}_encrypted
       END`;
     }).join(', ');
 
     const query = `
-      UPDATE ${tableName} 
+      UPDATE ${tableName}
       SET ${updateFields}
       WHERE id = $1
     `;
@@ -253,9 +255,9 @@ export class DatabaseEncryptionService {
         for (const field of fields) {
           const result = await prisma.$queryRaw<{ rotate_encryption_key: number }[]>`
             SELECT encryption.rotate_encryption_key(
-              ${keyName}, 
-              ${newKeyName}, 
-              ${tableName}, 
+              ${keyName},
+              ${newKeyName},
+              ${tableName},
               ${field}
             ) as rotate_encryption_key
           `;
@@ -289,7 +291,7 @@ export class DatabaseEncryptionService {
 
       // Count encrypted records across all tables
       let totalEncryptedRecords = 0;
-      
+
       for (const [tableName, fields] of Object.entries(this.config.encryptedFields)) {
         for (const field of fields) {
           const result = await prisma.$queryRawUnsafe<{ count: number }[]>(
@@ -307,8 +309,8 @@ export class DatabaseEncryptionService {
 
       // Get last key rotation date
       const lastRotationResult = await prisma.$queryRaw<{ timestamp: Date }[]>`
-        SELECT MAX(timestamp) as timestamp 
-        FROM encryption.audit_log 
+        SELECT MAX(timestamp) as timestamp
+        FROM encryption.audit_log
         WHERE operation = 'KEY_ROTATION'
       `;
       const lastKeyRotation = lastRotationResult[0]?.timestamp || null;

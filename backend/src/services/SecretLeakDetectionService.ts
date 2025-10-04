@@ -1,6 +1,6 @@
+import crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
-import crypto from 'crypto';
 import { logger } from '../utils/logger';
 import { securityLogService } from './SecurityLogService';
 import { siemIntegrationService } from './SIEMIntegrationService';
@@ -23,34 +23,34 @@ export interface SecretDetectionConfig {
   enableLogScanning: boolean;
   enableFileScanning: boolean;
   enableNetworkScanning: boolean;
-  
+
   // Scanning targets
   logDirectories: string[];
   fileExtensions: string[];
   excludeDirectories: string[];
   excludeFiles: string[];
-  
+
   // Detection thresholds
   confidenceThreshold: number;
   entropyThreshold: number;
   maxFileSize: number; // bytes
-  
+
   // Response actions
   enableAutoQuarantine: boolean;
   enableAutoRotation: boolean;
   enableNotifications: boolean;
   notificationWebhook?: string;
-  
+
   // Scanning performance
   batchSize: number;
   scanIntervalMs: number;
   maxConcurrentScans: number;
-  
+
   // False positive reduction
   enableWhitelist: boolean;
   whitelistPatterns: string[];
   enableContextAnalysis: boolean;
-  
+
   // Retention
   retentionDays: number;
   enableEncryptedStorage: boolean;
@@ -59,49 +59,49 @@ export interface SecretDetectionConfig {
 export interface SecretDetectionResult {
   id: string;
   timestamp: Date;
-  
+
   // Detection details
   secretType: string;
   pattern: string;
   confidence: number;
   entropy: number;
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  
+
   // Location details
   source: 'log' | 'file' | 'network' | 'database' | 'memory';
   location: string;
   lineNumber?: number;
   columnStart?: number;
   columnEnd?: number;
-  
+
   // Context
   beforeContext: string;
   matchedContent: string;
   afterContext: string;
   fullLine?: string;
-  
+
   // File information
   filename?: string;
   filepath?: string;
   fileSize?: number;
   lastModified?: Date;
-  
+
   // Network information
   sourceIP?: string;
   destinationIP?: string;
   protocol?: string;
-  
+
   // Analysis
   riskScore: number;
   isValidSecret: boolean;
   isActiveSecret: boolean;
   potentialImpact: string[];
-  
+
   // Actions taken
   quarantined: boolean;
   rotated: boolean;
   notified: boolean;
-  
+
   // Metadata
   scanId: string;
   userId?: string;
@@ -112,26 +112,26 @@ export interface SecretLeakAlert {
   id: string;
   timestamp: Date;
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  
+
   // Alert details
   title: string;
   description: string;
   category: string;
-  
+
   // Related detections
   detections: SecretDetectionResult[];
   detectionCount: number;
-  
+
   // Risk assessment
   riskScore: number;
   impactLevel: 'minimal' | 'moderate' | 'significant' | 'severe';
   urgency: 'low' | 'medium' | 'high' | 'critical';
-  
+
   // Response
   status: 'open' | 'investigating' | 'mitigated' | 'resolved' | 'false_positive';
   assignee?: string;
   responseActions: string[];
-  
+
   // Timeline
   firstDetected: Date;
   lastDetected: Date;
@@ -155,29 +155,29 @@ export class SecretLeakDetectionService {
       enableLogScanning: process.env.ENABLE_LOG_SECRET_SCAN !== 'false',
       enableFileScanning: process.env.ENABLE_FILE_SECRET_SCAN !== 'false',
       enableNetworkScanning: process.env.ENABLE_NETWORK_SECRET_SCAN === 'true',
-      
+
       logDirectories: (process.env.SECRET_SCAN_LOG_DIRS || 'logs,/var/log').split(','),
       fileExtensions: (process.env.SECRET_SCAN_EXTENSIONS || '.js,.ts,.json,.yaml,.yml,.env,.config,.conf').split(','),
       excludeDirectories: (process.env.SECRET_SCAN_EXCLUDE_DIRS || 'node_modules,.git,dist,build').split(','),
       excludeFiles: (process.env.SECRET_SCAN_EXCLUDE_FILES || '.gitignore,package-lock.json').split(','),
-      
+
       confidenceThreshold: parseFloat(process.env.SECRET_CONFIDENCE_THRESHOLD || '0.7'),
       entropyThreshold: parseFloat(process.env.SECRET_ENTROPY_THRESHOLD || '3.5'),
       maxFileSize: parseInt(process.env.SECRET_MAX_FILE_SIZE || '10485760'), // 10MB
-      
+
       enableAutoQuarantine: process.env.ENABLE_AUTO_QUARANTINE === 'true',
       enableAutoRotation: process.env.ENABLE_AUTO_ROTATION === 'true',
       enableNotifications: process.env.ENABLE_SECRET_NOTIFICATIONS !== 'false',
       notificationWebhook: process.env.SECRET_NOTIFICATION_WEBHOOK,
-      
+
       batchSize: parseInt(process.env.SECRET_SCAN_BATCH_SIZE || '100'),
       scanIntervalMs: parseInt(process.env.SECRET_SCAN_INTERVAL || '300000'), // 5 minutes
       maxConcurrentScans: parseInt(process.env.SECRET_MAX_CONCURRENT_SCANS || '5'),
-      
+
       enableWhitelist: process.env.ENABLE_SECRET_WHITELIST !== 'false',
       whitelistPatterns: (process.env.SECRET_WHITELIST_PATTERNS || 'example,test,demo,placeholder').split(','),
       enableContextAnalysis: process.env.ENABLE_SECRET_CONTEXT_ANALYSIS !== 'false',
-      
+
       retentionDays: parseInt(process.env.SECRET_DETECTION_RETENTION_DAYS || '90'),
       enableEncryptedStorage: process.env.ENABLE_SECRET_ENCRYPTED_STORAGE !== 'false'
     };
@@ -380,7 +380,7 @@ export class SecretLeakDetectionService {
 
       try {
         const matches = this.findPatternMatches(content, pattern);
-        
+
         for (const match of matches) {
           const detection = await this.analyzeMatch(
             match,
@@ -395,8 +395,8 @@ export class SecretLeakDetectionService {
             results.push(detection);
           }
         }
-      } catch (error) {
-        logger.error(`Error scanning with pattern ${patternId}:`, error);
+      } catch (_error) {
+        logger.error(`Error scanning with pattern ${patternId}:`, _error);
       }
     }
 
@@ -418,15 +418,16 @@ export class SecretLeakDetectionService {
 
     try {
       const stats = fs.statSync(filepath);
-      
+
       // Skip large files
       if (stats.size > this.config.maxFileSize) {
-        logger.debug(`Skipping large file: ${filepath} (${stats.size} bytes)`);
+        const sanitizedFilepath = String(filepath).replace(/[\r\n]/g, ' ');
+        logger.debug(`Skipping large file: ${sanitizedFilepath} (${stats.size} bytes)`, { filepath: sanitizedFilepath, fileSize: stats.size });
         return [];
       }
 
       const content = fs.readFileSync(filepath, 'utf-8');
-      
+
       return await this.scanText(content, 'log', filepath, {
         filename: path.basename(filepath),
         filepath,
@@ -434,8 +435,10 @@ export class SecretLeakDetectionService {
         lastModified: stats.mtime
       });
 
-    } catch (error) {
-      logger.error(`Error scanning log file ${filepath}:`, error);
+    } catch (_error) {
+      const sanitizedFilepath = String(filepath).replace(/[\r\n]/g, ' ');
+      const sanitizedError = _error instanceof Error ? _error.message.replace(/[\r\n]/g, ' ') : String(_error).replace(/[\r\n]/g, ' ');
+      logger.error(`Error scanning log file ${sanitizedFilepath}:`, { error: sanitizedError, filepath: sanitizedFilepath });
       return [];
     }
   }
@@ -455,13 +458,13 @@ export class SecretLeakDetectionService {
 
     try {
       const stats = fs.statSync(filepath);
-      
+
       if (stats.size > this.config.maxFileSize) {
         return [];
       }
 
       const content = fs.readFileSync(filepath, 'utf-8');
-      
+
       return await this.scanText(content, 'file', filepath, {
         filename: path.basename(filepath),
         filepath,
@@ -469,8 +472,10 @@ export class SecretLeakDetectionService {
         lastModified: stats.mtime
       });
 
-    } catch (error) {
-      logger.error(`Error scanning source file ${filepath}:`, error);
+    } catch (_error) {
+      const sanitizedFilepath = String(filepath).replace(/[\r\n]/g, ' ');
+      const sanitizedError = _error instanceof Error ? _error.message.replace(/[\r\n]/g, ' ') : String(_error).replace(/[\r\n]/g, ' ');
+      logger.error(`Error scanning source file ${sanitizedFilepath}:`, { error: sanitizedError, filepath: sanitizedFilepath });
       return [];
     }
   }
@@ -519,10 +524,20 @@ export class SecretLeakDetectionService {
     const lines = content.split('\n');
     let globalIndex = 0;
 
+    // SECURITY: Validate pattern is from our predefined set to prevent code injection (CWE-94)
+    const isPredefinedPattern = Array.from(this.secretPatterns.values()).some(
+      p => p.pattern.source === pattern.pattern.source
+    );
+    if (!isPredefinedPattern) {
+      logger.warn('Attempted to use non-predefined pattern', { patternName: pattern.name });
+      return matches;
+    }
+
     for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
       const line = lines[lineIndex];
-      const regex = new RegExp(pattern.pattern.source, pattern.pattern.flags);
-      
+      // Use the pattern directly (it's already a RegExp from our predefined set)
+      const regex = pattern.pattern;
+
       let match;
       while ((match = regex.exec(line)) !== null) {
         matches.push({
@@ -533,7 +548,7 @@ export class SecretLeakDetectionService {
           lineContent: line
         });
       }
-      
+
       globalIndex += line.length + 1; // +1 for newline character
     }
 
@@ -549,10 +564,10 @@ export class SecretLeakDetectionService {
     metadata: Record<string, any>
   ): Promise<SecretDetectionResult | null> {
     const detectedSecret = match.match;
-    
+
     // Calculate entropy
     const entropy = this.calculateEntropy(detectedSecret);
-    
+
     // Check entropy threshold
     if (entropy < pattern.entropy) {
       return null;
@@ -613,7 +628,7 @@ export class SecretLeakDetectionService {
 
   private calculateEntropy(text: string): number {
     const freq: Record<string, number> = {};
-    
+
     for (const char of text) {
       freq[char] = (freq[char] || 0) + 1;
     }
@@ -631,15 +646,15 @@ export class SecretLeakDetectionService {
 
   private isWhitelisted(secret: string): boolean {
     const lowerSecret = secret.toLowerCase();
-    
-    return this.config.whitelistPatterns.some(pattern => 
+
+    return this.config.whitelistPatterns.some(pattern =>
       lowerSecret.includes(pattern.toLowerCase())
     );
   }
 
   private isLikelyFalsePositive(before: string, secret: string, after: string): boolean {
     const context = (before + secret + after).toLowerCase();
-    
+
     // Common false positive indicators
     const falsePositiveIndicators = [
       'example', 'test', 'demo', 'placeholder', 'sample',
@@ -648,7 +663,7 @@ export class SecretLeakDetectionService {
       'base64', 'encoded', 'hash', 'checksum'
     ];
 
-    return falsePositiveIndicators.some(indicator => 
+    return falsePositiveIndicators.some(indicator =>
       context.includes(indicator)
     );
   }
@@ -679,17 +694,17 @@ export class SecretLeakDetectionService {
 
     // Context analysis
     const context = (beforeContext + afterContext).toLowerCase();
-    
+
     // Production indicators
     if (context.includes('prod') || context.includes('production')) {
       score += 20;
     }
-    
+
     // Configuration file indicators
     if (context.includes('config') || context.includes('env')) {
       score += 15;
     }
-    
+
     // Comment indicators (lower risk)
     if (context.includes('//') || context.includes('#') || context.includes('/*')) {
       score -= 10;
@@ -717,7 +732,7 @@ export class SecretLeakDetectionService {
     if (pattern.name.includes('AWS')) {
       return /^AKIA[0-9A-Z]{16}$/.test(secret);
     }
-    
+
     return secret.length >= 16 && /^[A-Za-z0-9_-]+$/.test(secret);
   }
 
@@ -726,7 +741,7 @@ export class SecretLeakDetectionService {
       const parts = secret.split('.');
       return parts.length === 3;
     }
-    
+
     return true;
   }
 
@@ -749,19 +764,19 @@ export class SecretLeakDetectionService {
         impacts.push('Data exfiltration');
         impacts.push('Resource consumption');
         break;
-      
+
       case 'database':
         impacts.push('Database access');
         impacts.push('Data breach');
         impacts.push('Data manipulation');
         break;
-      
+
       case 'certificate':
         impacts.push('Identity spoofing');
         impacts.push('Man-in-the-middle attacks');
         impacts.push('Unauthorized authentication');
         break;
-      
+
       case 'password':
         impacts.push('Account takeover');
         impacts.push('Privilege escalation');
@@ -865,7 +880,7 @@ export class SecretLeakDetectionService {
         location: detection.location,
         secretType: detection.secretType
       });
-      
+
       detection.quarantined = true;
 
     } catch (error) {
@@ -880,7 +895,7 @@ export class SecretLeakDetectionService {
         detectionId: detection.id,
         secretType: detection.secretType
       });
-      
+
       detection.rotated = true;
 
     } catch (error) {
@@ -909,7 +924,7 @@ export class SecretLeakDetectionService {
           body: JSON.stringify(notification)
         });
       }
-      
+
       detection.notified = true;
 
     } catch (error) {
@@ -1000,7 +1015,7 @@ export class SecretLeakDetectionService {
     }
 
     // Check file extensions
-    if (this.config.fileExtensions.length > 0 && 
+    if (this.config.fileExtensions.length > 0 &&
         !this.config.fileExtensions.includes(extension)) {
       return true;
     }
@@ -1012,11 +1027,11 @@ export class SecretLeakDetectionService {
     if (secret.length <= 8) {
       return '*'.repeat(secret.length);
     }
-    
+
     const start = secret.substring(0, 3);
     const end = secret.substring(secret.length - 3);
     const middle = '*'.repeat(Math.max(1, secret.length - 6));
-    
+
     return start + middle + end;
   }
 
@@ -1052,16 +1067,16 @@ export class SecretLeakDetectionService {
 
       try {
         const files = fs.readdirSync(logDir);
-        
+
         for (const file of files.slice(0, this.config.batchSize)) {
           const filepath = path.join(logDir, file);
-          
+
           if (this.activeScanners.has(filepath) || this.shouldExcludeFile(filepath)) {
             continue;
           }
 
           this.activeScanners.add(filepath);
-          
+
           this.scanLogFile(filepath)
             .finally(() => {
               this.activeScanners.delete(filepath);
@@ -1081,7 +1096,7 @@ export class SecretLeakDetectionService {
     // Cleanup detection cache
     for (const [key, detections] of this.detectionCache.entries()) {
       const filteredDetections = detections.filter(d => d.timestamp > cutoffDate);
-      
+
       if (filteredDetections.length === 0) {
         this.detectionCache.delete(key);
       } else {
@@ -1128,11 +1143,11 @@ export class SecretLeakDetectionService {
     stats: any;
   }> {
     const stats = this.getStats();
-    
+
     const isHealthy = stats.activeScanners < this.config.maxConcurrentScans &&
                      stats.queueSize < 1000 &&
                      this.secretPatterns.size > 0;
-    
+
     return {
       status: isHealthy ? 'healthy' : 'degraded',
       stats

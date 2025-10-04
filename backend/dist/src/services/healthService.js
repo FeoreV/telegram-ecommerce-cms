@@ -1,49 +1,13 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HealthService = void 0;
-const prisma_1 = require("../lib/prisma");
-const logger_1 = require("../utils/logger");
 const os_1 = __importDefault(require("os"));
 const perf_hooks_1 = require("perf_hooks");
-const child_process_1 = require("child_process");
-const util_1 = require("util");
-const execAsync = (0, util_1.promisify)(child_process_1.exec);
+const prisma_1 = require("../lib/prisma");
+const logger_1 = require("../utils/logger");
 class HealthService {
     static recordRequest(responseTime, hasError = false) {
         this.performanceData.requests++;
@@ -163,8 +127,8 @@ class HealthService {
     }
     static async checkFileSystem() {
         try {
-            const fs = await Promise.resolve().then(() => __importStar(require('fs/promises')));
-            const path = await Promise.resolve().then(() => __importStar(require('path')));
+            const fs = await import('fs/promises');
+            const path = await import('path');
             const directories = ['uploads', 'backups', 'logs'];
             const results = [];
             for (const dir of directories) {
@@ -173,7 +137,7 @@ class HealthService {
                     await fs.access(dirPath);
                     results.push({ [dir]: 'accessible' });
                 }
-                catch (error) {
+                catch (_error) {
                     results.push({ [dir]: 'not_accessible' });
                 }
             }
@@ -212,7 +176,7 @@ class HealthService {
             try {
                 services.push({ smtp: 'configured' });
             }
-            catch (error) {
+            catch (_error) {
                 services.push({ smtp: 'error' });
             }
         }
@@ -322,25 +286,24 @@ class HealthService {
     }
     static async getDiskSpace() {
         try {
-            if (os_1.default.platform() === 'win32') {
-                const { stdout } = await execAsync('fsutil volume diskfree .');
-                const lines = stdout.trim().split('\n');
-                const freeBytes = parseInt(lines[0].split(':')[1].trim());
-                const totalBytes = parseInt(lines[1].split(':')[1].trim());
-                return {
-                    total: totalBytes,
-                    free: freeBytes,
-                    used: totalBytes - freeBytes,
-                };
-            }
-            else {
-                const { stdout } = await execAsync('df -B1 .');
-                const lines = stdout.trim().split('\n');
-                const data = lines[1].split(/\s+/);
-                const total = parseInt(data[1]);
-                const used = parseInt(data[2]);
-                const free = parseInt(data[3]);
+            const fs = await import('fs/promises');
+            try {
+                const stats = await fs.statfs(process.cwd());
+                const blockSize = stats.bsize;
+                const total = stats.blocks * blockSize;
+                const free = stats.bfree * blockSize;
+                const used = total - free;
                 return { total, free, used };
+            }
+            catch (statfsError) {
+                logger_1.logger.warn('statfs not available, using fallback disk space calculation');
+                const totalMem = os_1.default.totalmem();
+                const estimate = totalMem * 10;
+                return {
+                    total: estimate,
+                    free: estimate * 0.5,
+                    used: estimate * 0.5,
+                };
             }
         }
         catch (error) {

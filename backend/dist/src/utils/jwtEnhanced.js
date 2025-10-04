@@ -5,9 +5,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.JWTService = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const logger_1 = require("./logger");
-const env_1 = require("./env");
 const prisma_1 = require("../lib/prisma");
+const env_1 = require("./env");
+const logger_1 = require("./logger");
 const blacklistedTokens = new Map();
 const activeSessions = new Map();
 setInterval(() => {
@@ -94,8 +94,7 @@ class JWTService {
             const errorMessage = error instanceof Error ? error.message : String(error);
             const errorName = error instanceof Error ? error.name : 'Unknown';
             logger_1.logger.warn('Token verification failed', {
-                error: errorMessage,
-                tokenPreview: token.substring(0, 20) + '...',
+                error: errorMessage
             });
             if (errorName === 'TokenExpiredError') {
                 throw new Error('Token expired');
@@ -134,8 +133,7 @@ class JWTService {
         catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             logger_1.logger.warn('Token refresh failed', {
-                error: errorMessage,
-                tokenPreview: refreshToken.substring(0, 20) + '...',
+                error: errorMessage
             });
             throw error;
         }

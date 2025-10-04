@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NotificationHandler = void 0;
 const logger_1 = require("../utils/logger");
+const sanitizer_1 = require("../utils/sanitizer");
 class NotificationHandler {
     constructor(bot) {
         this.bot = bot;
@@ -103,9 +104,9 @@ class NotificationHandler {
             }
             catch (error) {
                 attempts++;
-                logger_1.logger.warn(`Notification attempt ${attempts} failed for customer ${notification.telegramId}:`, error);
+                logger_1.logger.warn(`Notification attempt ${attempts} failed for customer ${(0, sanitizer_1.sanitizeForLog)(notification.telegramId)}:`, error);
                 if (attempts >= maxRetries) {
-                    logger_1.logger.error(`Failed to send notification after ${maxRetries} attempts to customer ${notification.telegramId}`);
+                    logger_1.logger.error(`Failed to send notification after ${maxRetries} attempts to customer ${(0, sanitizer_1.sanitizeForLog)(notification.telegramId)}`);
                     return false;
                 }
                 const delay = Math.min(1000 * Math.pow(2, attempts - 1), 10000);
@@ -127,7 +128,7 @@ class NotificationHandler {
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
             catch (error) {
-                logger_1.logger.error(`Failed to send bulk notification to ${telegramId}:`, error);
+                logger_1.logger.error(`Failed to send bulk notification to ${(0, sanitizer_1.sanitizeForLog)(telegramId)}:`, error);
                 failed++;
             }
         }

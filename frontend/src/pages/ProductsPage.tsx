@@ -1,62 +1,59 @@
-import React, { useState, useEffect } from 'react'
 import {
-  Typography,
-  Box,
-  Button,
-  Grid,
-  Paper,
-  TextField,
-  InputAdornment,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Chip,
-  CircularProgress,
-  Alert,
-  ToggleButtonGroup,
-  ToggleButton,
-  Tabs,
-  Tab,
-  Badge,
-  Fab,
-  Tooltip,
-  Snackbar,
-  Alert as MuiAlert,
-} from '@mui/material'
-import {
-  Add,
-  Search,
-  FilterList,
-  FilterAlt,
-  ImportExport,
-  ContentCopy,
-  ViewList,
-  ViewModule,
-  Refresh,
-  Category as CategoryIcon,
-  Store as StoreIcon,
+    Add,
+    Category as CategoryIcon,
+    FilterAlt,
+    ImportExport,
+    Refresh,
+    Search,
+    Store as StoreIcon,
+    ViewList,
+    ViewModule
 } from '@mui/icons-material'
-import { Product, Store, Category } from '../types'
-import { productService, ProductFilters } from '../services/productService'
-import { storeService } from '../services/storeService'
-import ProductDialog from '../components/products/ProductDialog'
-import ProductCard from '../components/products/ProductCard'
-import CategoryManager from '../components/products/CategoryManager'
-import BulkOperations from '../components/products/BulkOperations'
-import ProductPreviewDialog from '../components/products/ProductPreviewDialog'
-import ProductAnalytics from '../components/products/ProductAnalytics'
+import {
+    Badge,
+    Box,
+    Button,
+    Chip,
+    CircularProgress,
+    Fab,
+    FormControl,
+    Grid,
+    InputAdornment,
+    InputLabel,
+    MenuItem,
+    Alert as MuiAlert,
+    Paper,
+    Select,
+    Snackbar,
+    Tab,
+    Tabs,
+    TextField,
+    ToggleButton,
+    ToggleButtonGroup,
+    Tooltip,
+    Typography
+} from '@mui/material'
+import React, { useCallback, useEffect, useState } from 'react'
+import { toast } from 'react-toastify'
 import AdvancedFilters, { AdvancedFilterData } from '../components/products/AdvancedFilters'
-import KeyboardShortcutsHelp from '../components/products/KeyboardShortcutsHelp'
-import PageHeader from '../components/ui/PageHeader'
-import EmptyState from '../components/ui/EmptyState'
-import ExportImport from '../components/products/ExportImport'
+import BulkOperations from '../components/products/BulkOperations'
+import CategoryManager from '../components/products/CategoryManager'
 import DuplicateProduct from '../components/products/DuplicateProduct'
 import EnhancedSorting from '../components/products/EnhancedSorting'
-import { useKeyboardShortcuts, productPageShortcuts } from '../hooks/useKeyboardShortcuts'
+import ExportImport from '../components/products/ExportImport'
+import KeyboardShortcutsHelp from '../components/products/KeyboardShortcutsHelp'
+import ProductAnalytics from '../components/products/ProductAnalytics'
+import ProductCard from '../components/products/ProductCard'
+import ProductDialog from '../components/products/ProductDialog'
+import ProductPreviewDialog from '../components/products/ProductPreviewDialog'
+import EmptyState from '../components/ui/EmptyState'
+import PageHeader from '../components/ui/PageHeader'
 import { useAuth } from '../contexts/AuthContext'
-import { toast } from 'react-toastify'
+import { productPageShortcuts, useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { useProductsRealTime } from '../hooks/useRealTimeUpdates'
+import { ProductFilters, productService } from '../services/productService'
+import { storeService } from '../services/storeService'
+import { Category, Product, Store } from '../types'
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -249,21 +246,38 @@ const ProductsPage: React.FC = () => {
     enabled: true,
   })
 
-  useEffect(() => {
-    loadInitialData()
-  }, [])
+  const loadStatusCounts = useCallback(async () => {
+    try {
+      // Load all products to count statuses
+      const response = await productService.getProducts({
+        limit: 1000,
+        storeId: filters.storeId,
+      })
 
-  useEffect(() => {
-    loadProducts()
-  }, [filters, activeTab])
+      // Check if response and items exist
+      if (!response || !response.items || !Array.isArray(response.items)) {
+        console.warn('Invalid response format for products:', response)
+        setStatusCounts({ all: 0, active: 0, inactive: 0, low_stock: 0, out_of_stock: 0 })
+        return
+      }
 
-  // Real-time updates
-  useProductsRealTime(() => {
-    loadProducts()
-    loadStatusCounts()
-  })
+      const counts = {
+        all: response.items.length,
+        active: response.items.filter(p => p.isActive).length,
+        inactive: response.items.filter(p => !p.isActive).length,
+        low_stock: response.items.filter(p => p.stock > 0 && p.stock <= 10).length,
+        out_of_stock: response.items.filter(p => p.stock === 0).length,
+      }
 
-  const loadInitialData = async () => {
+      setStatusCounts(counts)
+    } catch (error) {
+      console.error('Error loading status counts:', error)
+      // Set default counts on error
+      setStatusCounts({ all: 0, active: 0, inactive: 0, low_stock: 0, out_of_stock: 0 })
+    }
+  }, [filters.storeId])
+
+  const loadInitialData = useCallback(async () => {
     try {
       const [storesResponse, categoriesResponse] = await Promise.allSettled([
         storeService.getStores({ limit: 100 }),
@@ -281,9 +295,9 @@ const ProductsPage: React.FC = () => {
     } catch (error: any) {
       console.error('Error loading initial data:', error)
     }
-  }
+  }, [loadStatusCounts])
 
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     setLoading(true)
     try {
       let currentFilters = {
@@ -299,7 +313,7 @@ const ProductsPage: React.FC = () => {
       }
 
       const response = await productService.getProducts(currentFilters)
-      
+
       // Check if response and items exist
       if (!response || !response.items || !Array.isArray(response.items)) {
         console.warn('Invalid response format for products:', response)
@@ -308,7 +322,7 @@ const ProductsPage: React.FC = () => {
         setTotalCount(0)
         return
       }
-      
+
       let filteredProducts = response.items
 
       // Client-side filtering for stock-based tabs
@@ -327,38 +341,21 @@ const ProductsPage: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [filters, activeTab, statusTabs])
 
-  const loadStatusCounts = async () => {
-    try {
-      // Load all products to count statuses
-      const response = await productService.getProducts({ 
-        limit: 1000,
-        storeId: filters.storeId,
-      })
-      
-      // Check if response and items exist
-      if (!response || !response.items || !Array.isArray(response.items)) {
-        console.warn('Invalid response format for products:', response)
-        setStatusCounts({ all: 0, active: 0, inactive: 0, low_stock: 0, out_of_stock: 0 })
-        return
-      }
-      
-      const counts = {
-        all: response.items.length,
-        active: response.items.filter(p => p.isActive).length,
-        inactive: response.items.filter(p => !p.isActive).length,
-        low_stock: response.items.filter(p => p.stock > 0 && p.stock <= 10).length,
-        out_of_stock: response.items.filter(p => p.stock === 0).length,
-      }
-      
-      setStatusCounts(counts)
-    } catch (error) {
-      console.error('Error loading status counts:', error)
-      // Set default counts on error
-      setStatusCounts({ all: 0, active: 0, inactive: 0, low_stock: 0, out_of_stock: 0 })
-    }
-  }
+  useEffect(() => {
+    loadInitialData()
+  }, [loadInitialData])
+
+  useEffect(() => {
+    loadProducts()
+  }, [filters, activeTab])
+
+  // Real-time updates
+  useProductsRealTime(() => {
+    loadProducts()
+    loadStatusCounts()
+  })
 
   const handleCreateProduct = () => {
     setEditingProduct(null)
@@ -423,7 +420,7 @@ const ProductsPage: React.FC = () => {
   const handleClearAdvancedFilters = () => {
     setAdvancedFilters({
       priceRange: [0, 100000],
-      stockRange: [0, 1000], 
+      stockRange: [0, 1000],
       salesRange: [0, 100],
       hasSales: null,
       hasImages: null,
@@ -539,8 +536,8 @@ const ProductsPage: React.FC = () => {
           </Tooltip>
           {canCreateProduct && (
             <Tooltip title="Ctrl + N">
-              <Button 
-                variant="contained" 
+              <Button
+                variant="contained"
                 startIcon={<Add />}
                 onClick={handleCreateProduct}
               >
@@ -589,7 +586,7 @@ const ProductsPage: React.FC = () => {
               size="small"
             />
           </Grid>
-          
+
           {(stores && stores.length > 1) && (
             <Grid item xs={12} md={2}>
               <FormControl fullWidth size="small">
@@ -759,11 +756,11 @@ const ProductsPage: React.FC = () => {
         <Box>
           <Grid container spacing={viewMode === 'grid' ? 3 : 1}>
             {(products || []).map((product) => (
-              <Grid 
-                item 
-                xs={12} 
-                sm={viewMode === 'grid' ? 6 : 12} 
-                md={viewMode === 'grid' ? 4 : 12} 
+              <Grid
+                item
+                xs={12}
+                sm={viewMode === 'grid' ? 6 : 12}
+                md={viewMode === 'grid' ? 4 : 12}
                 lg={viewMode === 'grid' ? 3 : 12}
                 key={product.id}
               >

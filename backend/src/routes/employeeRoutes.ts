@@ -1,13 +1,13 @@
 import { Router } from 'express';
-import { 
-  getStoreEmployees,
-  inviteEmployee,
-  updateEmployeeRole,
-  removeEmployee
+import {
+    getStoreEmployees,
+    inviteEmployee,
+    removeEmployee,
+    updateEmployeeRole
 } from '../controllers/employeeController';
 import { authMiddleware } from '../middleware/auth';
-import { requirePermission } from '../middleware/permissions';
-import { Permission } from '../middleware/permissions';
+import { csrfProtection } from '../middleware/csrfProtection';
+import { Permission, requirePermission } from '../middleware/permissions';
 import { requireStoreAccess } from '../middleware/rbacMiddleware';
 
 const router = Router();
@@ -31,9 +31,11 @@ router.get(
  * @route POST /api/employees/invite
  * @desc Пригласить нового сотрудника
  * @access ADMIN, OWNER
+ * @security CSRF protected
  */
 router.post(
   '/invite',
+  csrfProtection,
   requirePermission(Permission.USER_CREATE),
   inviteEmployee
 );
@@ -42,9 +44,11 @@ router.post(
  * @route PUT /api/employees/role
  * @desc Обновить роль сотрудника
  * @access ADMIN, OWNER
+ * @security CSRF protected
  */
 router.put(
   '/role',
+  csrfProtection,
   requirePermission(Permission.USER_UPDATE),
   updateEmployeeRole
 );
@@ -53,9 +57,11 @@ router.put(
  * @route DELETE /api/employees/stores/:storeId/users/:userId
  * @desc Удалить сотрудника из магазина
  * @access ADMIN, OWNER
+ * @security CSRF protected
  */
 router.delete(
   '/stores/:storeId/users/:userId',
+  csrfProtection,
   requirePermission(Permission.USER_DELETE),
   requireStoreAccess('write'),
   removeEmployee

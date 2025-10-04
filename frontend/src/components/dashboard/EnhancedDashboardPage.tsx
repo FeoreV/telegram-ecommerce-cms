@@ -1,10 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Box } from '@mui/material'
+import React, { useCallback, useEffect, useState } from 'react'
 
-import DashboardLayout, { WidgetConfig } from './DashboardLayout'
+import { toast } from 'react-toastify'
 import { useAuth } from '../../contexts/AuthContext'
 import { useDashboardRealTime } from '../../hooks/useRealTimeUpdates'
-import { toast } from 'react-toastify'
+import DashboardLayout, { WidgetConfig } from './DashboardLayout'
 
 const DASHBOARD_LAYOUTS_KEY = 'dashboard-layouts'
 const DASHBOARD_WIDGETS_KEY = 'dashboard-widgets'
@@ -26,7 +26,7 @@ const parseJson = <T,>(value: string | null): T | null => {
 const defaultWidgets: WidgetConfig[] = []
 
 const EnhancedDashboardPage: React.FC = () => {
-  const { user } = useAuth()
+  const user = useAuth()
   const [isEditing, setIsEditing] = useState(false)
   const [widgets, setWidgets] = useState<WidgetConfig[]>(defaultWidgets)
 

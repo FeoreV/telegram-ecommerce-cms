@@ -4,8 +4,8 @@ exports.handleBotCreationCallback = handleBotCreationCallback;
 exports.handleBotCreationMessage = handleBotCreationMessage;
 exports.handleBotCreationSkipCallback = handleBotCreationSkipCallback;
 const apiService_1 = require("../services/apiService");
-const sessionManager_1 = require("../utils/sessionManager");
 const logger_1 = require("../utils/logger");
+const sessionManager_1 = require("../utils/sessionManager");
 async function handleBotCreationCallback(bot, chatId, callbackData) {
     const userId = chatId.toString();
     const session = sessionManager_1.userSessions.getSession(userId);
@@ -385,6 +385,16 @@ async function handleBotManagement(bot, chatId, callbackData, session) {
         await showBotManagementMenu(bot, chatId, session, storeId);
         return true;
     }
+    if (callbackData.startsWith('bot_settings_')) {
+        const storeId = callbackData.replace('bot_settings_', '');
+        await showBotSettings(bot, chatId, session, storeId);
+        return true;
+    }
+    if (callbackData.startsWith('bot_stats_')) {
+        const storeId = callbackData.replace('bot_stats_', '');
+        await showBotStats(bot, chatId, session, storeId);
+        return true;
+    }
     if (callbackData.startsWith('bot_restart_')) {
         const storeId = callbackData.replace('bot_restart_', '');
         await restartBot(bot, chatId, session, storeId);
@@ -435,6 +445,117 @@ ${statusIcon} *@${botData.botUsername}*
     catch (error) {
         logger_1.logger.error('Error showing bot management menu:', error);
         await bot.sendMessage(chatId, '❌ Ошибка при загрузке меню управления ботом.');
+    }
+}
+async function showBotSettings(bot, chatId, session, storeId) {
+    try {
+        const response = await apiService_1.apiService.getUserBots(session.token);
+        const bots = response.bots || [];
+        const botData = bots.find((b) => b.storeId === storeId);
+        if (!botData) {
+            await bot.sendMessage(chatId, '❌ Бот не найден.');
+            return;
+        }
+        let settingsData = {};
+        try {
+            settingsData = await apiService_1.apiService.getBotSettings(storeId, session.token);
+        }
+        catch (error) {
+            logger_1.logger.warn('Could not fetch bot settings, using defaults:', error);
+        }
+        const statusIcon = botData.isActive ? '✅' : '❌';
+        const status = botData.botStatus === 'ACTIVE' ? 'Активен' : 'Неактивен';
+        const text = `
+⚙️ *Настройки бота*
+
+🤖 *@${botData.botUsername}*
+🏪 Магазин: *${botData.storeName}*
+📊 Статус: ${status}
+
+*Текущие настройки:*
+💬 Приветственное сообщение: ${settingsData.welcomeMessage ? '✅ Настроено' : '❌ Не настроено'}
+📝 Описание: ${settingsData.description ? '✅ Настроено' : '❌ Не настроено'}
+🔔 Уведомления: ${settingsData.notificationsEnabled !== false ? '✅ Включены' : '❌ Выключены'}
+
+*Доступные действия:*
+    `;
+        const keyboard = [
+            [{ text: '🔗 Открыть бота', url: `https://t.me/${botData.botUsername}` }],
+            [{ text: '📊 Статистика бота', callback_data: `bot_stats_${storeId}` }],
+            [{ text: '🔄 Перезапустить', callback_data: `bot_restart_${storeId}` }],
+            [{ text: '🗑️ Удалить бота', callback_data: `bot_delete_${storeId}` }],
+            [{ text: '🔙 К списку ботов', callback_data: 'bot_list' }]
+        ];
+        await bot.sendMessage(chatId, text, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: keyboard
+            }
+        });
+    }
+    catch (error) {
+        logger_1.logger.error('Error showing bot settings:', error);
+        await bot.sendMessage(chatId, '❌ Ошибка при загрузке настроек бота.');
+    }
+}
+async function showBotStats(bot, chatId, session, storeId) {
+    const loadingMsg = await bot.sendMessage(chatId, '📊 Загружаю статистику...');
+    try {
+        const botsResponse = await apiService_1.apiService.getUserBots(session.token);
+        const bots = botsResponse.bots || [];
+        const botData = bots.find((b) => b.storeId === storeId);
+        if (!botData) {
+            await bot.editMessageText('❌ Бот не найден.', {
+                chat_id: chatId,
+                message_id: loadingMsg.message_id,
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '🔙 К списку ботов', callback_data: 'bot_list' }]
+                    ]
+                }
+            });
+            return;
+        }
+        const statsResponse = await apiService_1.apiService.getBotStats(storeId, session.token);
+        const stats = statsResponse.stats;
+        const text = `
+📊 *Статистика бота*
+
+🏪 Магазин: *${botData.storeName || 'Неизвестно'}*
+🤖 Бот: *@${botData.botUsername || 'Неизвестно'}*
+
+*Активность:*
+👥 Всего пользователей: ${stats.totalUsers || 0}
+👤 Активных пользователей: ${stats.activeUsers || 0}
+💬 Сообщений обработано: ${stats.messagesSent || 0}
+
+📅 *Данные обновлены:*
+${new Date().toLocaleString('ru-RU')}
+    `;
+        await bot.editMessageText(text, {
+            chat_id: chatId,
+            message_id: loadingMsg.message_id,
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '⚙️ Настройки', callback_data: `bot_settings_${storeId}` }],
+                    [{ text: '🔙 К списку ботов', callback_data: 'bot_list' }]
+                ]
+            }
+        });
+    }
+    catch (error) {
+        logger_1.logger.error('Error showing bot stats:', error);
+        const errorMessage = error.response?.data?.message || 'Не удалось загрузить статистику';
+        await bot.editMessageText(`❌ ${errorMessage}`, {
+            chat_id: chatId,
+            message_id: loadingMsg.message_id,
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '🔙 Назад', callback_data: `bot_settings_${storeId}` }]
+                ]
+            }
+        });
     }
 }
 async function restartBot(bot, chatId, session, storeId) {

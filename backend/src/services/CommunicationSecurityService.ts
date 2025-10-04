@@ -1,9 +1,10 @@
 import * as crypto from 'crypto';
-import { logger } from '../utils/logger';
 import { getErrorMessage } from '../utils/errorUtils';
-import { securityLogService } from './SecurityLogService';
-import { encryptionService } from './EncryptionService';
+import { logger } from '../utils/logger';
 import { DataCategory } from './DataClassificationService';
+import { encryptionService } from './EncryptionService';
+import { securityLogService } from './SecurityLogService';
+import { getSecurityKeyId } from '../config/securityKeys';
 
 export enum CommunicationType {
   TELEGRAM_MESSAGE = 'telegram_message',
@@ -35,18 +36,18 @@ export interface PIIRedactionRule {
   id: string;
   name: string;
   description: string;
-  
+
   // Targeting
   communicationTypes: CommunicationType[];
   dataCategories: DataCategory[];
   fieldPatterns: RegExp[];
-  
+
   // Redaction configuration
   redactionLevel: RedactionLevel;
   redactionStrategy: 'mask' | 'replace' | 'remove' | 'generalize';
   maskingCharacter: string;
   replacementText?: string;
-  
+
   // Conditions
   conditions: {
     priority?: NotificationPriority[];
@@ -55,16 +56,16 @@ export interface PIIRedactionRule {
     legalBasis?: string[];
     recipientType?: ('customer' | 'employee' | 'vendor' | 'admin')[];
   };
-  
+
   // Preservation rules
   preserveStructure: boolean;
   preserveLength: boolean;
   preserveBusinessContext: boolean;
-  
+
   // Compliance
   regulations: string[];
   auditRequired: boolean;
-  
+
   // Implementation
   enabled: boolean;
   priority: number;
@@ -75,28 +76,28 @@ export interface CommunicationTemplate {
   id: string;
   name: string;
   type: CommunicationType;
-  
+
   // Template content
   subject?: string;
   body: string;
   metadata: Record<string, any>;
-  
+
   // Security settings
   encryptionRequired: boolean;
   redactionLevel: RedactionLevel;
   allowedVariables: string[];
   bannedVariables: string[];
-  
+
   // PII handling
   containsPII: boolean;
   piiFields: string[];
   businessJustification?: string;
-  
+
   // Validation
   validated: boolean;
   lastValidated?: Date;
   validationErrors: string[];
-  
+
   // Compliance
   gdprCompliant: boolean;
   ccpaCompliant: boolean;
@@ -108,13 +109,13 @@ export interface NotificationEvent {
   id: string;
   type: CommunicationType;
   templateId?: string;
-  
+
   // Content
   subject?: string;
   body: string;
   originalBody: string; // Before redaction
   variables: Record<string, any>;
-  
+
   // Recipients
   recipients: {
     userId?: string;
@@ -123,18 +124,18 @@ export interface NotificationEvent {
     telegramChatId?: string;
     deviceTokens?: string[];
   }[];
-  
+
   // Security processing
   redactionApplied: boolean;
   redactedFields: string[];
   encryptionApplied: boolean;
-  
+
   // Metadata
   priority: NotificationPriority;
   createdAt: Date;
   processedAt?: Date;
   sentAt?: Date;
-  
+
   // Compliance
   consentVerified: boolean;
   legalBasis: string[];
@@ -143,7 +144,7 @@ export interface NotificationEvent {
     action: string;
     details: Record<string, any>;
   }[];
-  
+
   // Delivery tracking
   status: 'pending' | 'processing' | 'sent' | 'failed' | 'blocked';
   deliveryAttempts: number;
@@ -168,7 +169,7 @@ export interface CommunicationSecurityConfig {
   globalRedactionLevel: RedactionLevel;
   encryptionEnabled: boolean;
   auditAllCommunications: boolean;
-  
+
   // Rate limiting
   rateLimits: {
     perUser: { window: number; limit: number };
@@ -176,7 +177,7 @@ export interface CommunicationSecurityConfig {
     perPhone: { window: number; limit: number };
     global: { window: number; limit: number };
   };
-  
+
   // Content validation
   contentValidation: {
     maxLength: number;
@@ -184,7 +185,7 @@ export interface CommunicationSecurityConfig {
     bannedPatterns: RegExp[];
     malwareScanning: boolean;
   };
-  
+
   // Privacy controls
   privacyControls: {
     requireConsent: boolean;
@@ -192,7 +193,7 @@ export interface CommunicationSecurityConfig {
     respetDoNotTrack: boolean;
     anonymizeMetrics: boolean;
   };
-  
+
   // Compliance
   compliance: {
     gdprEnabled: boolean;
@@ -236,10 +237,10 @@ export class CommunicationSecurityService {
     try {
       // Initialize encryption for communication content
       await this.initializeCommunicationEncryption();
-      
+
       // Load blocked recipients list
       await this.loadBlockedRecipients();
-      
+
       // Setup real-time monitoring
       await this.setupCommunicationMonitoring();
 
@@ -577,22 +578,22 @@ If this was not you, please contact support immediately.`,
   private setupPIIPatterns(): void {
     // Email pattern
     this.piiPatterns.set('email', /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g);
-    
+
     // Phone pattern
     this.piiPatterns.set('phone', /(\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})/g);
-    
+
     // Credit card pattern
     this.piiPatterns.set('creditCard', /\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b/g);
-    
+
     // SSN pattern
     this.piiPatterns.set('ssn', /\b\d{3}-\d{2}-\d{4}\b/g);
-    
+
     // IP address pattern
     this.piiPatterns.set('ipAddress', /\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b/g);
-    
+
     // URL pattern with potential tokens
     this.piiPatterns.set('urlWithToken', /https?:\/\/[^\s]+[?&](?:token|key|secret)=[A-Za-z0-9+/=]+/g);
-    
+
     // JWT pattern
     this.piiPatterns.set('jwt', /eyJ[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*/g);
 
@@ -604,14 +605,14 @@ If this was not you, please contact support immediately.`,
       globalRedactionLevel: RedactionLevel.STANDARD,
       encryptionEnabled: true,
       auditAllCommunications: true,
-      
+
       rateLimits: {
         perUser: { window: 3600000, limit: 100 },    // 100 per hour
         perEmail: { window: 3600000, limit: 50 },    // 50 per hour per email
         perPhone: { window: 3600000, limit: 20 },    // 20 per hour per phone
         global: { window: 60000, limit: 1000 }       // 1000 per minute globally
       },
-      
+
       contentValidation: {
         maxLength: 10000,
         allowedHtml: ['b', 'i', 'u', 'br', 'p', 'a'],
@@ -623,14 +624,14 @@ If this was not you, please contact support immediately.`,
         ],
         malwareScanning: true
       },
-      
+
       privacyControls: {
         requireConsent: true,
         honorOptOut: true,
         respetDoNotTrack: true,
         anonymizeMetrics: true
       },
-      
+
       compliance: {
         gdprEnabled: true,
         ccpaEnabled: true,
@@ -658,11 +659,11 @@ If this was not you, please contact support immediately.`,
     } = {}
   ): Promise<string> {
     const notificationId = crypto.randomUUID();
-    
+
     try {
       // Validate recipients and check opt-out status
       const validRecipients = await this.validateRecipients(recipients, type);
-      
+
       if (validRecipients.length === 0) {
         throw new Error('No valid recipients after filtering');
       }
@@ -671,16 +672,16 @@ If this was not you, please contact support immediately.`,
       let content: string;
       let subject: string | undefined;
       let template: CommunicationTemplate | undefined;
-      
+
       if (templateId) {
         template = this.templates.get(templateId);
         if (!template) {
           throw new Error(`Template not found: ${templateId}`);
         }
-        
+
         // Validate template compliance
         await this.validateTemplateCompliance(template, variables);
-        
+
         content = this.interpolateTemplate(template.body, variables);
         subject = template.subject ? this.interpolateTemplate(template.subject, variables) : undefined;
       } else {
@@ -730,7 +731,7 @@ If this was not you, please contact support immediately.`,
           notification,
           template?.redactionLevel || this.config.globalRedactionLevel
         );
-        
+
         notification.body = redactionResult.redactedContent;
         notification.redactionApplied = true;
         notification.redactedFields = redactionResult.redactedFields.map(f => f.field);
@@ -748,10 +749,10 @@ If this was not you, please contact support immediately.`,
       }
 
       // Apply encryption if required
-      const encryptionRequired = options.forceEncryption || 
-                                template?.encryptionRequired || 
+      const encryptionRequired = options.forceEncryption ||
+                                template?.encryptionRequired ||
                                 this.config.encryptionEnabled;
-      
+
       if (encryptionRequired) {
         await this.applyContentEncryption(notification);
       }
@@ -861,7 +862,7 @@ If this was not you, please contact support immediately.`,
     }
 
     // Validate template hasn't expired
-    if (template.lastValidated && 
+    if (template.lastValidated &&
         Date.now() - template.lastValidated.getTime() > 30 * 24 * 60 * 60 * 1000) {
       throw new Error('Template validation expired, requires re-validation');
     }
@@ -872,14 +873,31 @@ If this was not you, please contact support immediately.`,
     }
   }
 
+  /**
+   * Interpolate template with variables - FIXED: CWE-1333 ReDoS
+   */
   private interpolateTemplate(template: string, variables: Record<string, any>): string {
     let result = template;
-    
+
     for (const [key, value] of Object.entries(variables)) {
-      const pattern = new RegExp(`\\{${key}\\}`, 'g');
-      result = result.replace(pattern, String(value || ''));
+      // SECURITY: Escape special regex characters to prevent ReDoS
+      const escapeRegex = (str: string): string => {
+        return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      };
+
+      // SECURITY: Use simple string replace instead of regex for simple cases
+      const placeholder = `{${key}}`;
+      if (!key.match(/[.*+?^${}()|[\]\\]/)) {
+        // Safe to use simple replace
+        result = result.split(placeholder).join(String(value || ''));
+      } else {
+        // Need regex, but escape the key
+        const escapedKey = escapeRegex(key);
+        const pattern = new RegExp(`\\{${escapedKey}\\}`, 'g');
+        result = result.replace(pattern, String(value || ''));
+      }
     }
-    
+
     return result;
   }
 
@@ -896,7 +914,7 @@ If this was not you, please contact support immediately.`,
       .filter(rule => {
         if (!rule.enabled) return false;
         if (!rule.communicationTypes.includes(notification.type)) return false;
-        
+
         // Check redaction level compatibility
         const levelOrder = {
           [RedactionLevel.MINIMAL]: 1,
@@ -904,7 +922,7 @@ If this was not you, please contact support immediately.`,
           [RedactionLevel.AGGRESSIVE]: 3,
           [RedactionLevel.COMPLETE]: 4
         };
-        
+
         return levelOrder[rule.redactionLevel] <= levelOrder[redactionLevel];
       })
       .sort((a, b) => b.priority - a.priority);
@@ -916,9 +934,9 @@ If this was not you, please contact support immediately.`,
         while ((match = pattern.exec(redactedContent)) !== null) {
           const originalValue = match[0];
           const redactedValue = this.applyRedactionStrategy(originalValue, rule);
-          
+
           redactedContent = redactedContent.replace(originalValue, redactedValue);
-          
+
           redactedFields.push({
             field: rule.name,
             category: rule.dataCategories[0] || DataCategory.PII_DIRECT,
@@ -941,9 +959,9 @@ If this was not you, please contact support immediately.`,
       while ((match = globalPattern.exec(redactedContent)) !== null) {
         const originalValue = match[0];
         const redactedValue = this.applyDefaultRedaction(originalValue, patternName);
-        
+
         redactedContent = redactedContent.replace(originalValue, redactedValue);
-        
+
         redactedFields.push({
           field: patternName,
           category: this.getDataCategoryForPattern(patternName),
@@ -979,13 +997,13 @@ If this was not you, please contact support immediately.`,
         } else {
           return rule.maskingCharacter.repeat(Math.min(value.length, 8));
         }
-      
+
       case 'replace':
         return rule.replacementText || '[REDACTED]';
-      
+
       case 'remove':
         return '';
-      
+
       case 'generalize':
         // Apply generalization based on data type
         if (rule.fieldPatterns.some(p => p.test('email'))) {
@@ -995,7 +1013,7 @@ If this was not you, please contact support immediately.`,
         } else {
           return rule.replacementText || '[GENERALIZED]';
         }
-      
+
       default:
         return '[REDACTED]';
     }
@@ -1008,30 +1026,30 @@ If this was not you, please contact support immediately.`,
         if (emailParts.length === 2) {
           const local = emailParts[0];
           const domain = emailParts[1];
-          const maskedLocal = local.length > 2 
+          const maskedLocal = local.length > 2
             ? local.substring(0, 1) + '*'.repeat(local.length - 2) + local.substring(local.length - 1)
             : '*'.repeat(local.length);
           return `${maskedLocal}@${domain}`;
         }
         return '[EMAIL]';
       }
-      
+
       case 'phone':
         if (value.length > 4) {
           return value.substring(0, 3) + 'X'.repeat(value.length - 6) + value.substring(value.length - 3);
         }
         return 'X'.repeat(value.length);
-      
+
       case 'creditCard':
         if (value.length >= 8) {
           const cleanValue = value.replace(/[\s-]/g, '');
           return cleanValue.substring(0, 4) + 'X'.repeat(cleanValue.length - 8) + cleanValue.substring(cleanValue.length - 4);
         }
         return 'X'.repeat(value.length);
-      
+
       case 'ssn':
         return 'XXX-XX-XXXX';
-      
+
       case 'ipAddress': {
         const parts = value.split('.');
         if (parts.length === 4) {
@@ -1039,11 +1057,11 @@ If this was not you, please contact support immediately.`,
         }
         return '[IP_ADDRESS]';
       }
-      
+
       case 'jwt':
       case 'urlWithToken':
         return '[REDACTED_TOKEN]';
-      
+
       default:
         return '[REDACTED]';
     }
@@ -1059,36 +1077,36 @@ If this was not you, please contact support immediately.`,
       'jwt': DataCategory.SYSTEM_CREDENTIALS,
       'urlWithToken': DataCategory.SYSTEM_CREDENTIALS
     };
-    
+
     return categoryMap[patternName as keyof typeof categoryMap] || DataCategory.PII_DIRECT;
   }
 
   private calculateComplianceScore(redactedFields: RedactionResult['redactedFields'], originalContent: string): number {
     const totalPiiDetected = redactedFields.length;
-    const criticalPiiRedacted = redactedFields.filter(f => 
-      f.category === DataCategory.PII_SENSITIVE || 
+    const criticalPiiRedacted = redactedFields.filter(f =>
+      f.category === DataCategory.PII_SENSITIVE ||
       f.category === DataCategory.FINANCIAL_ACCOUNT ||
       f.category === DataCategory.SYSTEM_CREDENTIALS
     ).length;
-    
+
     if (totalPiiDetected === 0) return 100;
-    
+
     const baseScore = (totalPiiDetected / (originalContent.length / 100)) * 10;
     const criticalBonus = criticalPiiRedacted * 20;
-    
+
     return Math.min(100, baseScore + criticalBonus);
   }
 
   private assessPrivacyRisk(redactedFields: RedactionResult['redactedFields'], _content: string): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' {
-    const criticalPii = redactedFields.filter(f => 
-      f.category === DataCategory.PII_SENSITIVE || 
+    const criticalPii = redactedFields.filter(f =>
+      f.category === DataCategory.PII_SENSITIVE ||
       f.category === DataCategory.FINANCIAL_ACCOUNT
     ).length;
-    
-    const systemSecrets = redactedFields.filter(f => 
+
+    const systemSecrets = redactedFields.filter(f =>
       f.category === DataCategory.SYSTEM_CREDENTIALS
     ).length;
-    
+
     if (systemSecrets > 0 || criticalPii > 2) {
       return 'CRITICAL';
     } else if (criticalPii > 0 || redactedFields.length > 5) {
@@ -1106,16 +1124,16 @@ If this was not you, please contact support immediately.`,
         notification.body,
         'communication-encryption-key'
       );
-      
+
       notification.body = encrypted;
       notification.encryptionApplied = true;
-      
+
       notification.auditTrail.push({
         timestamp: new Date(),
         action: 'content_encryption_applied',
         details: {
           algorithm: 'AES-256-GCM',
-          keyId: 'communication-encryption-key'
+          keyId: getSecurityKeyId('communicationEncryptionKeyId')
         }
       });
 
@@ -1133,7 +1151,7 @@ If this was not you, please contact support immediately.`,
     // In a real implementation, would check consent database
     notification.consentVerified = true;
     notification.legalBasis = ['legitimate_interest', 'contract'];
-    
+
     notification.auditTrail.push({
       timestamp: new Date(),
       action: 'consent_verified',
@@ -1222,17 +1240,17 @@ If this was not you, please contact support immediately.`,
     stats: any;
   }> {
     const stats = this.getStats();
-    
+
     let status = 'healthy';
-    
+
     if (stats.averageComplianceScore < 90) {
       status = 'warning'; // Compliance issues
     }
-    
+
     if (stats.redactionRate < 80) {
       status = 'warning'; // Low redaction rate
     }
-    
+
     if (stats.encryptionRate < 95) {
       status = 'degraded'; // Encryption issues
     }

@@ -4,378 +4,400 @@ on:
   push:
     branches: [ main, develop ]
   pull_request:
-    branches: [ main, develop ]
-    types: [opened, synchronize, reopened]
+    branches: [ main ]
 
 env:
   NODE_VERSION: '20'
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
 
 jobs:
-  # Job 1: Lint and Type Check
-  lint-and-typecheck:
-    name: 🔍 Lint & TypeScript Check
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: 🏗 Checkout repository
-        uses: actions/checkout@v4
-
-      - name: 🏗 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: 📦 Install root dependencies
-        run: npm ci
-
-      - name: 📦 Install backend dependencies
-        run: cd backend && npm ci
-
-      - name: 📦 Install frontend dependencies  
-        run: cd frontend && npm ci
-
-      - name: 📦 Install bot dependencies
-        run: cd bot && npm ci
-
-      - name: 🔍 Lint backend
-        run: cd backend && npm run lint
-
-      - name: 🔍 Lint frontend
-        run: cd frontend && npm run lint
-
-      - name: 🔧 TypeScript check backend
-        run: cd backend && npx tsc --noEmit
-
-      - name: 🔧 TypeScript check frontend
-        run: cd frontend && npx tsc --noEmit
-
-      - name: 🔧 TypeScript check bot
-        run: cd bot && npx tsc --noEmit
-
-  # Job 2: Backend Tests
-  backend-tests:
-    name: 🧪 Backend Tests
-    runs-on: ubuntu-latest
-    needs: lint-and-typecheck
-
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: test_ecommerce
-        options: >-
-          --health-cmd "mysqladmin ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 3306:3306
-
-      redis:
-        image: redis:7-alpine
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
-
-    env:
-      DATABASE_URL: "mysql://root:root@localhost:3306/test_ecommerce"
-      REDIS_URL: "redis://localhost:6379"
-      JWT_SECRET: "test-jwt-secret-32-chars-long-minimum"
-      JWT_REFRESH_SECRET: "test-jwt-refresh-secret-32-chars-long"
-      NODE_ENV: "test"
-      ENABLE_ADMINJS: "false"
-
-    steps:
-      - name: 🏗 Checkout repository
-        uses: actions/checkout@v4
-
-      - name: 🏗 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: 📦 Install backend dependencies
-        run: cd backend && npm ci
-
-      - name: 🗃️ Generate Prisma client
-        run: cd backend && npx prisma generate
-
-      - name: 🗃️ Run database migrations
-        run: cd backend && npx prisma migrate deploy
-
-      - name: 🌱 Seed test database
-        run: cd backend && npx prisma db seed
-
-      - name: 🧪 Run unit tests
-        run: cd backend && npm run test
-
-      - name: 📊 Generate test coverage
-        run: cd backend && npm run test:coverage
-
-      - name: 📤 Upload coverage reports
-        uses: codecov/codecov-action@v4
-        with:
-          file: backend/coverage/lcov.info
-          flags: backend
-          name: backend-coverage
-        continue-on-error: true
-
-  # Job 3: Frontend Tests  
-  frontend-tests:
-    name: 🧪 Frontend Tests
-    runs-on: ubuntu-latest
-    needs: lint-and-typecheck
-
-    steps:
-      - name: 🏗 Checkout repository
-        uses: actions/checkout@v4
-
-      - name: 🏗 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: 📦 Install frontend dependencies
-        run: cd frontend && npm ci
-
-      - name: 🏗 Build frontend
-        run: cd frontend && npm run build
-
-      - name: 🧪 Run frontend tests (if any)
-        run: cd frontend && npm test --passWithNoTests || echo "No frontend tests configured yet"
-        continue-on-error: true
-
-  # Job 4: Build Docker Images
-  build-docker:
-    name: 🐳 Build Docker Images
-    runs-on: ubuntu-latest
-    needs: [backend-tests, frontend-tests]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
-
-    permissions:
-      contents: read
-      packages: write
-
-    strategy:
-      matrix:
-        service: [backend, frontend, bot]
-
-    steps:
-      - name: 🏗 Checkout repository
-        uses: actions/checkout@v4
-
-      - name: 🏗 Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: 🔐 Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: 🏷️ Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: 🐳 Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: ${{ matrix.service }}
-          file: ${{ matrix.service }}/Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          platforms: linux/amd64,linux/arm64
-
-  # Job 5: Security Scan
+  # Security and dependency scanning
   security-scan:
-    name: 🔒 Security Scan
+    name: Security & Dependency Scan
     runs-on: ubuntu-latest
-    needs: lint-and-typecheck
-
     steps:
-      - name: 🏗 Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: 🔒 Run npm audit (Backend)
-        run: cd backend && npm audit --audit-level moderate
-        continue-on-error: true
-
-      - name: 🔒 Run npm audit (Frontend)
-        run: cd frontend && npm audit --audit-level moderate  
-        continue-on-error: true
-
-      - name: 🔒 Run npm audit (Bot)
-        run: cd bot && npm audit --audit-level moderate
-        continue-on-error: true
-
-      - name: 🔒 Run Trivy vulnerability scanner
+      - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
           scan-ref: '.'
           format: 'sarif'
           output: 'trivy-results.sarif'
-        continue-on-error: true
+          severity: 'CRITICAL,HIGH'
 
-      - name: 📤 Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: 'trivy-results.sarif'
-        continue-on-error: true
 
-  # Job 6: Database Migration Check
-  database-check:
-    name: 🗃️ Database Migration Check
+      - name: Check for secrets
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+
+  # Backend tests and build
+  backend-test:
+    name: Backend - Test & Build
     runs-on: ubuntu-latest
-    needs: lint-and-typecheck
-
+    defaults:
+      run:
+        working-directory: backend
+    
     services:
-      mysql:
-        image: mysql:8.0
+      postgres:
+        image: postgres:16-alpine
         env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: migration_test
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
         options: >-
-          --health-cmd "mysqladmin ping"
+          --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+
+      redis:
+        image: redis:7-alpine
         ports:
-          - 3306:3306
-
-    env:
-      DATABASE_URL: "mysql://root:root@localhost:3306/migration_test"
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
-      - name: 🏗 Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: 🏗 Setup Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
 
-      - name: 📦 Install backend dependencies
-        run: cd backend && npm ci
-
-      - name: 🗃️ Generate Prisma client
-        run: cd backend && npx prisma generate
-
-      - name: 🗃️ Check migration status
-        run: cd backend && npx prisma migrate status
-
-      - name: 🗃️ Validate schema
-        run: cd backend && npx prisma validate
-
-      - name: 🗃️ Run migrations (dry run)
-        run: cd backend && npx prisma migrate deploy --preview-feature || echo "Migration check completed"
-
-  # Job 7: Performance Tests (optional)
-  performance-tests:
-    name: ⚡ Performance Tests
-    runs-on: ubuntu-latest
-    needs: [backend-tests]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    steps:
-      - name: 🏗 Checkout repository
-        uses: actions/checkout@v4
-
-      - name: 🏗 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: 📦 Install dependencies
+      - name: Install dependencies
         run: npm ci
 
-      - name: 🏗 Start services for testing
-        run: |
-          docker-compose -f docker-compose.yml up -d mysql redis
-          sleep 30
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test
         env:
-          DATABASE_URL: "mysql://root:password@localhost:3307/telegram_ecommerce"
-          REDIS_URL: "redis://localhost:6379"
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-jwt-secret-for-ci-only
+          NODE_ENV: test
 
-      - name: ⚡ Run health check
-        run: node scripts/health-check.js
-        timeout-minutes: 2
+      - name: Build TypeScript
+        run: npm run build
 
-      - name: 🛑 Stop test services
-        run: docker-compose -f docker-compose.yml down
-        if: always()
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: backend-dist
+          path: backend/dist
+          retention-days: 7
 
-  # Job 8: Deployment (Production)
-  deploy-production:
-    name: 🚀 Deploy to Production
+  # Frontend tests and build
+  frontend-test:
+    name: Frontend - Test & Build
     runs-on: ubuntu-latest
-    needs: [build-docker, security-scan, database-check]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    environment: production
+    defaults:
+      run:
+        working-directory: frontend
 
     steps:
-      - name: 🏗 Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: 🚀 Deploy notification
-        run: |
-          echo "🚀 Production deployment triggered!"
-          echo "🐳 Docker images built and pushed"
-          echo "🔒 Security checks passed"
-          echo "🗃️ Database migrations validated"
-          echo "Ready for deployment to production environment"
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
 
-      # Here you would add actual deployment steps
-      # For example: kubectl apply, helm upgrade, or deployment to cloud provider
-      
-      - name: 📝 Create deployment summary
-        run: |
-          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- **Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Images:** Available in GitHub Container Registry" >> $GITHUB_STEP_SUMMARY
-          echo "- **Status:** Ready for production deployment" >> $GITHUB_STEP_SUMMARY
+      - name: Install dependencies
+        run: npm ci
 
-  # Job 9: Notification
-  notify:
-    name: 📢 Notification
+      - name: Run linter
+        run: npm run lint
+
+      - name: Build production bundle
+        run: npm run build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL || 'http://localhost:3001' }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 7
+
+  # Bot tests and build
+  bot-test:
+    name: Bot - Test & Build
     runs-on: ubuntu-latest
-    needs: [deploy-production]
-    if: always()
+    defaults:
+      run:
+        working-directory: bot
 
     steps:
-      - name: 📢 Success notification
-        if: needs.deploy-production.result == 'success'
-        run: |
-          echo "✅ CI/CD Pipeline completed successfully!"
-          echo "All checks passed, deployment ready"
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: 📢 Failure notification  
-        if: failure()
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: bot/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: bot-dist
+          path: bot/dist
+          retention-days: 7
+
+  # Docker build and push
+  docker-build:
+    name: Docker - Build & Push
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-test, bot-test, security-scan]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    strategy:
+      matrix:
+        service: [backend, frontend, bot]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKER_USERNAME }}/telegram-ecommerce-${{ matrix.service }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./${{ matrix.service }}
+          file: ./${{ matrix.service }}/Dockerfile${{ matrix.service == 'backend' && '.production' || '' }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_ENV=production
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VCS_REF=${{ github.sha }}
+
+  # Deploy to staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [docker-build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    environment:
+      name: staging
+      url: https://staging.yourdomain.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to staging server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USERNAME }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          port: ${{ secrets.STAGING_PORT || 22 }}
+          script: |
+            cd /opt/telegram-ecommerce
+            git pull origin develop
+            docker-compose -f config/docker/docker-compose.postgres-prod.yml pull
+            docker-compose -f config/docker/docker-compose.postgres-prod.yml up -d
+            docker-compose -f config/docker/docker-compose.postgres-prod.yml exec -T backend npx prisma migrate deploy
+            
+      - name: Run smoke tests
         run: |
-          echo "❌ CI/CD Pipeline failed!"
-          echo "Please check the logs for details"
+          echo "Running smoke tests against staging..."
+          curl -f https://staging.yourdomain.com/health || exit 1
+          curl -f https://staging.yourdomain.com/api/health || exit 1
+
+      - name: Notify deployment
+        uses: 8398a7/action-slack@v3
+        if: always()
+        with:
+          status: ${{ job.status }}
+          text: 'Staging deployment ${{ job.status }}'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  # Deploy to production
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [docker-build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://yourdomain.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create deployment backup
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USERNAME }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          port: ${{ secrets.PROD_PORT || 22 }}
+          script: |
+            cd /opt/telegram-ecommerce
+            ./scripts/backup.sh
+
+      - name: Deploy to production server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USERNAME }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          port: ${{ secrets.PROD_PORT || 22 }}
+          script: |
+            cd /opt/telegram-ecommerce
+            git pull origin main
+            ./scripts/deploy-production.sh --skip-backup
+
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests against production..."
+          curl -f https://yourdomain.com/health || exit 1
+          curl -f https://yourdomain.com/api/health || exit 1
+
+      - name: Notify deployment success
+        uses: 8398a7/action-slack@v3
+        if: success()
+        with:
+          status: success
+          text: '🚀 Production deployment successful!'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+      - name: Notify deployment failure
+        uses: 8398a7/action-slack@v3
+        if: failure()
+        with:
+          status: failure
+          text: '❌ Production deployment failed! @channel'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+      - name: Rollback on failure
+        if: failure()
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USERNAME }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          port: ${{ secrets.PROD_PORT || 22 }}
+          script: |
+            cd /opt/telegram-ecommerce
+            ./scripts/rollback.sh
+
+  # Database migration check
+  migration-check:
+    name: Database Migration Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Check migration status
+        working-directory: backend
+        run: |
+          npx prisma migrate status || echo "No migrations pending"
+          npx prisma validate
+
+      - name: Generate migration diff
+        if: github.event_name == 'pull_request'
+        working-directory: backend
+        run: |
+          echo "Checking for schema changes..."
+          git diff origin/${{ github.base_ref }} -- prisma/schema.prisma
+
+  # Performance tests
+  performance-test:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run k6 load tests
+        uses: grafana/k6-action@v0.3.0
+        with:
+          filename: tests/performance/load-test.js
+          flags: --out json=results.json
+        env:
+          K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
+          BASE_URL: https://staging.yourdomain.com
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v3
+        with:
+          name: k6-results
+          path: results.json

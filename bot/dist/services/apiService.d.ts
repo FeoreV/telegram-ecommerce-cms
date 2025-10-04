@@ -9,6 +9,9 @@ declare class ApiService {
     private request;
     getHttpClient(): AxiosInstance;
     authenticateUser(telegramId: string, username?: string, firstName?: string, lastName?: string): Promise<AuthResponse>;
+    getUserBalance(userToken: string): Promise<{
+        balance: number;
+    }>;
     getStores(userToken: string, page?: number, limit?: number): Promise<StoresListResponse>;
     getStore(storeId: string, userToken: string): Promise<StoreResponse>;
     createStore(storeData: any, userToken: string): Promise<StoreResponse>;

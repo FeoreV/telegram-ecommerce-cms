@@ -1,5 +1,6 @@
 import TelegramBot from 'node-telegram-bot-api';
 import { logger } from '../utils/logger';
+import { sanitizeForLog } from '../utils/sanitizer';
 
 export interface CustomerNotificationData {
   telegramId: string;
@@ -131,26 +132,26 @@ export class NotificationHandler {
     maxRetries: number = 3
   ): Promise<boolean> {
     let attempts = 0;
-    
+
     while (attempts < maxRetries) {
       try {
         await this.sendCustomerNotification(notification);
         return true;
       } catch (error) {
         attempts++;
-        logger.warn(`Notification attempt ${attempts} failed for customer ${notification.telegramId}:`, error);
-        
+        logger.warn(`Notification attempt ${attempts} failed for customer ${sanitizeForLog(notification.telegramId)}:`, error);
+
         if (attempts >= maxRetries) {
-          logger.error(`Failed to send notification after ${maxRetries} attempts to customer ${notification.telegramId}`);
+          logger.error(`Failed to send notification after ${maxRetries} attempts to customer ${sanitizeForLog(notification.telegramId)}`);
           return false;
         }
-        
+
         // Wait before retry (exponential backoff)
         const delay = Math.min(1000 * Math.pow(2, attempts - 1), 10000);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
-    
+
     return false;
   }
 
@@ -170,11 +171,11 @@ export class NotificationHandler {
           reply_markup: keyboard,
         });
         success++;
-        
+
         // Small delay to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 100));
       } catch (error) {
-        logger.error(`Failed to send bulk notification to ${telegramId}:`, error);
+        logger.error(`Failed to send bulk notification to ${sanitizeForLog(telegramId)}:`, error);
         failed++;
       }
     }

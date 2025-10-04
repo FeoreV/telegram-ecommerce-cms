@@ -1,8 +1,8 @@
 import crypto from 'crypto';
-import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
-import { logger, toLogMetadata } from '../utils/logger';
+import speakeasy from 'speakeasy';
 import { databaseService } from '../lib/database';
+import { logger, toLogMetadata } from '../utils/logger';
 import { tenantCacheService } from './TenantCacheService';
 
 export interface AdminSecurityConfig {
@@ -11,22 +11,22 @@ export interface AdminSecurityConfig {
   enableSessionTracking: boolean;
   enableAuditLogging: boolean;
   enableDeviceBinding: boolean;
-  
+
   // IP allowlist settings
   allowedIPs: string[];
   allowedCIDRs: string[];
   emergencyBypassEnabled: boolean;
-  
+
   // MFA settings
   mfaRequired: boolean;
   mfaBackupCodesCount: number;
   mfaTokenWindow: number;
-  
+
   // Session settings
   maxConcurrentSessions: number;
   sessionTimeout: number;
   adminSessionTimeout: number;
-  
+
   // Security settings
   maxFailedAttempts: number;
   lockoutDuration: number;
@@ -85,19 +85,19 @@ export class AdminSecurityService {
       enableSessionTracking: process.env.ENABLE_ADMIN_SESSION_TRACKING !== 'false',
       enableAuditLogging: process.env.ENABLE_ADMIN_AUDIT_LOGGING !== 'false',
       enableDeviceBinding: process.env.ENABLE_ADMIN_DEVICE_BINDING !== 'false',
-      
+
       allowedIPs: this.parseIPList(process.env.ADMIN_ALLOWED_IPS || ''),
       allowedCIDRs: this.parseIPList(process.env.ADMIN_ALLOWED_CIDRS || ''),
       emergencyBypassEnabled: process.env.ADMIN_EMERGENCY_BYPASS === 'true',
-      
+
       mfaRequired: process.env.ADMIN_MFA_REQUIRED !== 'false',
       mfaBackupCodesCount: parseInt(process.env.ADMIN_MFA_BACKUP_CODES || '10'),
       mfaTokenWindow: parseInt(process.env.ADMIN_MFA_TOKEN_WINDOW || '1'),
-      
+
       maxConcurrentSessions: parseInt(process.env.ADMIN_MAX_CONCURRENT_SESSIONS || '3'),
       sessionTimeout: parseInt(process.env.ADMIN_SESSION_TIMEOUT || '3600'), // 1 hour
       adminSessionTimeout: parseInt(process.env.ADMIN_SESSION_TIMEOUT_ADMIN || '1800'), // 30 minutes
-      
+
       maxFailedAttempts: parseInt(process.env.ADMIN_MAX_FAILED_ATTEMPTS || '3'),
       lockoutDuration: parseInt(process.env.ADMIN_LOCKOUT_DURATION || '900'), // 15 minutes
       requirePasswordChange: parseInt(process.env.ADMIN_PASSWORD_CHANGE_DAYS || '90'),
@@ -179,13 +179,13 @@ export class AdminSecurityService {
     try {
       const [network, prefixLength] = cidr.split('/');
       const prefix = parseInt(prefixLength, 10);
-      
+
       if (prefix < 0 || prefix > 32) return false;
-      
+
       const ipInt = this.ipToInt(ip);
       const networkInt = this.ipToInt(network);
       const mask = (0xFFFFFFFF << (32 - prefix)) >>> 0;
-      
+
       return (ipInt & mask) === (networkInt & mask);
     } catch (error) {
       return false;
@@ -228,7 +228,7 @@ export class AdminSecurityService {
     duration: number = 3600 // 1 hour
   ): Promise<string> {
     const bypassToken = crypto.randomBytes(32).toString('hex');
-    
+
     await tenantCacheService.set(
       'system',
       `emergency_bypass_${ipAddress}`,
@@ -242,17 +242,18 @@ export class AdminSecurityService {
       ipAddress,
       userAgent: '',
       success: true,
-      details: { reason, duration, token: bypassToken.substring(0, 8) + '...' },
+      // SECURITY FIX: CWE-522 - Do not log token fragments
+      details: { reason, duration },
       riskScore: 80,
       action: 'bypass_created'
     });
 
+    // SECURITY FIX: CWE-522 - Do not log token fragments
     logger.warn('Emergency bypass generated', {
       ipAddress,
       requestedBy,
       reason,
-      duration,
-      token: bypassToken.substring(0, 8) + '...'
+      duration
     });
 
     return bypassToken;
@@ -322,7 +323,7 @@ export class AdminSecurityService {
   }> {
     try {
       const mfaData = await this.getMFASetup(userId);
-      
+
       if (!mfaData) {
         return { verified: false };
       }
@@ -330,7 +331,7 @@ export class AdminSecurityService {
       if (isBackupCode) {
         // Check backup code
         const codeIndex = mfaData.backupCodes.indexOf(token.toUpperCase());
-        
+
         if (codeIndex === -1) {
           await this.auditSecurityEvent({
             eventType: 'mfa_backup_code_failed',
@@ -338,7 +339,8 @@ export class AdminSecurityService {
             ipAddress: 'system',
             userAgent: '',
             success: false,
-            details: { token: token.substring(0, 2) + '...' },
+            // SECURITY FIX: CWE-522 - Do not log token fragments
+            details: { userId },
             riskScore: 30,
             action: 'mfa_verification_failed'
           });
@@ -401,7 +403,7 @@ export class AdminSecurityService {
   async completeMFASetup(userId: string, verificationToken: string): Promise<boolean> {
     try {
       const verificationResult = await this.verifyMFA(userId, verificationToken);
-      
+
       if (verificationResult.verified) {
         // Mark MFA as verified
         const mfaData = await this.getMFASetup(userId);
@@ -511,7 +513,7 @@ export class AdminSecurityService {
 
     } catch (error) {
       await this.recordFailedAttempt(userId, ipAddress);
-      
+
       await this.auditSecurityEvent({
         eventType: 'admin_session_creation_failed',
         userId,
@@ -542,7 +544,7 @@ export class AdminSecurityService {
   }> {
     try {
       const session = await this.getAdminSession(sessionId);
-      
+
       if (!session) {
         return { valid: false, reason: 'Session not found' };
       }
@@ -560,7 +562,7 @@ export class AdminSecurityService {
       if (this.config.enableDeviceBinding) {
         if (session.deviceFingerprint !== this.generateDeviceFingerprint(userAgent, ipAddress)) {
           await this.terminateSession(sessionId, 'device_mismatch');
-          
+
           await this.auditSecurityEvent({
             eventType: 'session_device_mismatch',
             userId: session.userId,
@@ -598,7 +600,7 @@ export class AdminSecurityService {
   async terminateSession(sessionId: string, reason: string): Promise<void> {
     try {
       const session = await this.getAdminSession(sessionId);
-      
+
       if (session) {
         session.isActive = false;
         await this.storeAdminSession(session);
@@ -641,7 +643,7 @@ export class AdminSecurityService {
 
     if (attempts.count >= this.config.maxFailedAttempts) {
       attempts.lockedUntil = new Date(now.getTime() + this.config.lockoutDuration * 1000);
-      
+
       await this.auditSecurityEvent({
         eventType: 'user_account_locked',
         userId,
@@ -672,7 +674,7 @@ export class AdminSecurityService {
    */
   private async isUserLockedOut(userId: string): Promise<boolean> {
     const attempts = this.failedAttempts.get(userId);
-    
+
     if (!attempts || !attempts.lockedUntil) {
       return false;
     }
@@ -695,7 +697,7 @@ export class AdminSecurityService {
 
     if (userSessions.length >= this.config.maxConcurrentSessions) {
       // Terminate oldest session
-      const oldestSession = userSessions.sort((a, b) => 
+      const oldestSession = userSessions.sort((a, b) =>
         a.lastActivity.getTime() - b.lastActivity.getTime()
       )[0];
 
@@ -970,7 +972,7 @@ export class AdminSecurityService {
   }> {
     try {
       const stats = this.getStats();
-      
+
       return {
         status: 'healthy',
         stats

@@ -1,13 +1,14 @@
 import { Response } from 'express';
+import { z } from 'zod';
+import { AuthenticatedRequest } from '../auth/SecureAuthSystem';
+import { prisma } from '../lib/prisma.js';
 import { botFactoryService } from '../services/botFactoryService.js';
 import { getWebhookManager } from '../services/webhookManagerService.js';
-import { prisma } from '../lib/prisma.js';
-import { logger, toLogMetadata } from '../utils/logger.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { validateInput } from '../utils/validation.js';
-import { z } from 'zod';
 import { UserRole } from '../utils/jwt';
-import { AuthenticatedRequest } from '../auth/SecureAuthSystem';
+import { logger, toLogMetadata } from '../utils/logger.js';
+import { sanitizeForLog } from '../utils/sanitizer';
+import { validateInput } from '../utils/validation.js';
 
 // Validation schemas
 const createBotSchema = z.object({
@@ -18,12 +19,113 @@ const createBotSchema = z.object({
 
 const updateBotSettingsSchema = z.object({
   settings: z.object({
+    // Legacy fields (snake_case)
     welcome_message: z.string().optional(),
     language: z.enum(['ru', 'en', 'uk']).optional(),
     timezone: z.string().optional(),
     auto_responses: z.boolean().optional(),
-    payment_methods: z.array(z.string()).optional()
-  })
+    payment_methods: z.array(z.string()).optional(),
+
+    // New fields from BotConstructor (camelCase)
+    welcomeMessage: z.string().optional(),
+    currency: z.string().optional(),
+
+    // Start customization
+    startCustomization: z.object({
+      emoji: z.string().optional(),
+      greeting: z.string().optional(),
+      welcomeText: z.string().optional(),
+      showStats: z.boolean().optional(),
+      showDescription: z.boolean().optional(),
+      additionalText: z.string().optional(),
+      headerImage: z.string().optional(),
+      catalogButton: z.object({ text: z.string(), emoji: z.string().optional() }).optional(),
+      profileButton: z.object({ text: z.string(), emoji: z.string().optional() }).optional(),
+      helpButton: z.object({ text: z.string(), emoji: z.string().optional() }).optional(),
+      extraButtons: z.array(z.object({
+        text: z.string(),
+        url: z.string().optional(),
+        callback_data: z.string().optional()
+      })).optional()
+    }).optional(),
+
+    // Menu customization
+    menuCustomization: z.object({
+      catalogText: z.string().optional(),
+      ordersText: z.string().optional(),
+      profileText: z.string().optional(),
+      helpText: z.string().optional()
+    }).optional(),
+
+    // Auto responses and FAQ
+    autoResponses: z.object({
+      responses: z.array(z.object({
+        trigger: z.string(),
+        response: z.string(),
+        enabled: z.boolean().optional()
+      })).optional()
+    }).optional(),
+
+    faqs: z.array(z.object({
+      question: z.string(),
+      answer: z.string()
+    })).optional(),
+
+    // Custom commands
+    customCommands: z.array(z.object({
+      command: z.string(),
+      description: z.string().optional(),
+      response: z.string(),
+      enabled: z.boolean().optional()
+    })).optional(),
+
+    // Payment settings
+    paymentSettings: z.object({
+      enabled: z.boolean().optional(),
+      instructions: z.string().optional(),
+      bankDetails: z.object({
+        accountName: z.string().optional(),
+        accountNumber: z.string().optional(),
+        bankName: z.string().optional(),
+        notes: z.string().optional()
+      }).optional()
+    }).optional(),
+
+    // Notification settings
+    notificationSettings: z.object({
+      newOrderAlert: z.boolean().optional(),
+      paymentConfirmation: z.boolean().optional(),
+      orderStatusUpdate: z.boolean().optional()
+    }).optional(),
+
+    // Appearance settings
+    appearance: z.object({
+      theme: z.string().optional(),
+      primaryColor: z.string().optional(),
+      useEmojis: z.boolean().optional()
+    }).optional(),
+
+    // Catalog settings
+    catalog: z.object({
+      itemsPerPage: z.number().optional(),
+      showImages: z.boolean().optional(),
+      sortBy: z.string().optional()
+    }).optional(),
+
+    // Notifications settings
+    notifications: z.object({
+      orderCreated: z.boolean().optional(),
+      orderPaid: z.boolean().optional(),
+      stockLow: z.boolean().optional()
+    }).optional(),
+
+    // Advanced settings
+    advanced: z.object({
+      enableAnalytics: z.boolean().optional(),
+      sessionTimeout: z.number().optional(),
+      debugMode: z.boolean().optional()
+    }).optional()
+  }).passthrough() // Allow additional fields that aren't explicitly defined
 });
 
 /**
@@ -42,18 +144,24 @@ export const getUserBots = asyncHandler(async (req: AuthenticatedRequest, res: R
       where: { userId },
       select: { storeId: true }
     });
-    storeQuery = { 
+    storeQuery = {
       id: { in: adminStores.map(admin => admin.storeId) }
     };
   } else {
-    return res.status(403).json({ 
-      success: false, 
-      message: 'Недостаточно прав для просмотра ботов' 
+    return res.status(403).json({
+      success: false,
+      message: 'Недостаточно прав для просмотра ботов'
     });
   }
 
   const stores = await prisma.store.findMany({
-    where: storeQuery,
+    where: {
+      ...storeQuery,
+      OR: [
+        { botToken: { not: null } },
+        { botUsername: { not: null } }
+      ]
+    },
     select: {
       id: true,
       name: true,
@@ -77,7 +185,7 @@ export const getUserBots = asyncHandler(async (req: AuthenticatedRequest, res: R
   // Get real-time bot activity from Bot Factory Service
   const botsWithActivity = stores.map(store => {
     const activeBot = botFactoryService.getBotByStore(store.id);
-    
+
     return {
       storeId: store.id,
       storeName: store.name,
@@ -115,11 +223,11 @@ export const createBot = asyncHandler(async (req: AuthenticatedRequest, res: Res
   // Check if store already has a bot
   const store = await prisma.store.findUnique({
     where: { id: storeId },
-    select: { 
-      id: true, 
-      name: true, 
-      botToken: true, 
-      botStatus: true 
+    select: {
+      id: true,
+      name: true,
+      botToken: true,
+      botStatus: true
     }
   });
 
@@ -159,7 +267,7 @@ export const createBot = asyncHandler(async (req: AuthenticatedRequest, res: Res
     }
   });
 
-  logger.info(`✅ Bot created for store ${store.name} by user ${req.user.id}`);
+  logger.info('Bot created for store', { storeName: sanitizeForLog(store.name), userId: sanitizeForLog(req.user.id) });
 
   res.status(201).json({
     success: true,
@@ -187,11 +295,12 @@ export const removeBot = asyncHandler(async (req: AuthenticatedRequest, res: Res
   // Get store info before removal
   const store = await prisma.store.findUnique({
     where: { id: storeId },
-    select: { 
-      id: true, 
-      name: true, 
+    select: {
+      id: true,
+      name: true,
       botUsername: true,
-      botStatus: true 
+      botToken: true,
+      botStatus: true
     }
   });
 
@@ -202,10 +311,11 @@ export const removeBot = asyncHandler(async (req: AuthenticatedRequest, res: Res
     });
   }
 
-  if (!store.botUsername) {
+  // Check if store has any bot data to remove
+  if (!store.botUsername && !store.botToken) {
     return res.status(400).json({
       success: false,
-      message: 'У этого магазина нет бота'
+      message: 'У этого магазина нет данных бота для удаления'
     });
   }
 
@@ -219,11 +329,12 @@ export const removeBot = asyncHandler(async (req: AuthenticatedRequest, res: Res
     });
   }
 
-  logger.info(`🗑️ Bot @${store.botUsername} removed from store ${store.name} by user ${req.user.id}`);
+  const botIdentifier = store.botUsername ? `@${store.botUsername}` : 'Бот';
+  logger.info('Bot removed from store', { bot: sanitizeForLog(botIdentifier), storeName: sanitizeForLog(store.name), userId: sanitizeForLog(req.user.id) });
 
   res.json({
     success: true,
-    message: `Бот @${store.botUsername} успешно удален`
+    message: `${botIdentifier} успешно удален из магазина ${store.name}`
   });
 });
 
@@ -240,11 +351,11 @@ export const updateBotSettings = asyncHandler(async (req: AuthenticatedRequest, 
   // Get current settings
   const store = await prisma.store.findUnique({
     where: { id: storeId },
-    select: { 
-      id: true, 
-      name: true, 
+    select: {
+      id: true,
+      name: true,
       botSettings: true,
-      botStatus: true 
+      botStatus: true
     }
   });
 
@@ -269,17 +380,30 @@ export const updateBotSettings = asyncHandler(async (req: AuthenticatedRequest, 
   // Update in database
   await prisma.store.update({
     where: { id: storeId },
-    data: { 
+    data: {
       botSettings: JSON.stringify(newSettings),
       updatedAt: new Date()
     }
   });
 
-  logger.info(`⚙️ Bot settings updated for store ${store.name} by user ${req.user.id}`);
+  logger.info('Bot settings updated', { storeName: sanitizeForLog(store.name), userId: sanitizeForLog(req.user.id) });
+
+  // Hot-reload bot settings without full restart
+  try {
+    const reloadResult = await botFactoryService.reloadBotSettings(storeId);
+    if (reloadResult.success) {
+      logger.info('Bot settings reloaded', { storeId: sanitizeForLog(storeId) });
+    } else {
+      logger.warn('Could not reload bot settings', { error: sanitizeForLog(reloadResult.error) });
+    }
+  } catch (error) {
+    logger.error('Error reloading bot settings:', error);
+    // Don't fail the request if reload fails
+  }
 
   res.json({
     success: true,
-    message: 'Настройки бота обновлены',
+    message: 'Настройки бота обновлены и применены',
     settings: newSettings
   });
 });
@@ -295,7 +419,7 @@ export const getBotStats = asyncHandler(async (req: AuthenticatedRequest, res: R
 
   const store = await prisma.store.findUnique({
     where: { id: storeId },
-    select: { 
+    select: {
       id: true,
       name: true,
       botUsername: true,
@@ -410,7 +534,7 @@ export const restartBot = asyncHandler(async (req: AuthenticatedRequest, res: Re
 
   const store = await prisma.store.findUnique({
     where: { id: storeId },
-    select: { 
+    select: {
       id: true,
       name: true,
       botToken: true,
@@ -435,10 +559,10 @@ export const restartBot = asyncHandler(async (req: AuthenticatedRequest, res: Re
 
   // Remove old instance
   await botFactoryService.removeBot(storeId);
-  
+
   // Wait a moment
   await new Promise(resolve => setTimeout(resolve, 2000));
-  
+
   // Create new instance
   const result = await botFactoryService.createBot(storeId, store.botToken, store.botUsername);
 
@@ -449,7 +573,7 @@ export const restartBot = asyncHandler(async (req: AuthenticatedRequest, res: Re
     });
   }
 
-  logger.info(`🔄 Bot restarted for store ${store.name} by user ${req.user.id}`);
+  logger.info('Bot restarted', { storeName: sanitizeForLog(store.name), userId: sanitizeForLog(req.user.id) });
 
   res.json({
     success: true,
@@ -470,11 +594,11 @@ export const enableWebhook = asyncHandler(async (req: AuthenticatedRequest, res:
 
   const store = await prisma.store.findUnique({
     where: { id: storeId },
-    select: { 
+    select: {
       id: true,
       name: true,
       botToken: true,
-      botStatus: true 
+      botStatus: true
     }
   });
 
@@ -503,7 +627,7 @@ export const enableWebhook = asyncHandler(async (req: AuthenticatedRequest, res:
       });
     }
 
-    logger.info(`✅ Webhook enabled for store ${store.name} by user ${req.user.id}`);
+    logger.info('Webhook enabled', { storeName: sanitizeForLog(store.name), userId: sanitizeForLog(req.user.id) });
 
     res.json({
       success: true,
@@ -511,9 +635,9 @@ export const enableWebhook = asyncHandler(async (req: AuthenticatedRequest, res:
       webhookUrl: result.webhookUrl
     });
   } catch (error: unknown) {
-    logger.error(`Error enabling webhook for store ${storeId}:`, {
-      error: error instanceof Error ? error.message : String(error),
-      storeId
+    logger.error('Error enabling webhook', {
+      storeId: sanitizeForLog(storeId),
+      error: error instanceof Error ? error.message : String(error)
     });
     res.status(500).json({
       success: false,
@@ -533,7 +657,7 @@ export const disableWebhook = asyncHandler(async (req: AuthenticatedRequest, res
 
   const store = await prisma.store.findUnique({
     where: { id: storeId },
-    select: { 
+    select: {
       id: true,
       name: true
     }
@@ -557,16 +681,16 @@ export const disableWebhook = asyncHandler(async (req: AuthenticatedRequest, res
       });
     }
 
-    logger.info(`🔄 Webhook disabled for store ${store.name} by user ${req.user.id}`);
+    logger.info('Webhook disabled', { storeName: sanitizeForLog(store.name), userId: sanitizeForLog(req.user.id) });
 
     res.json({
       success: true,
       message: 'Webhook отключен, бот переведен на polling'
     });
   } catch (error: unknown) {
-    logger.error(`Error disabling webhook for store ${storeId}:`, {
-      error: error instanceof Error ? error.message : String(error),
-      storeId
+    logger.error('Error disabling webhook', {
+      storeId: sanitizeForLog(storeId),
+      error: error instanceof Error ? error.message : String(error)
     });
     res.status(500).json({
       success: false,
@@ -586,7 +710,7 @@ export const getWebhookStatus = asyncHandler(async (req: AuthenticatedRequest, r
 
   const store = await prisma.store.findUnique({
     where: { id: storeId },
-    select: { 
+    select: {
       id: true,
       name: true,
       botWebhookUrl: true,
@@ -616,7 +740,7 @@ export const getWebhookStatus = asyncHandler(async (req: AuthenticatedRequest, r
         botStatus: store.botStatus
       }
     });
-  } catch (error) {
+  } catch {
     // Webhook Manager может быть не инициализирован
     res.json({
       success: true,
@@ -662,7 +786,7 @@ export const getGlobalWebhookStats = asyncHandler(async (req: AuthenticatedReque
         dbWebhookCount: dbStats
       }
     });
-  } catch (error) {
+  } catch {
     // Webhook Manager может быть не инициализирован
     const dbStats = await prisma.store.count({
       where: {
@@ -696,7 +820,7 @@ export const getBotSettings = asyncHandler(async (req: AuthenticatedRequest, res
 
   const store = await prisma.store.findUnique({
     where: { id: storeId },
-    select: { 
+    select: {
       id: true,
       name: true,
       botUsername: true,
@@ -726,12 +850,12 @@ export const getBotSettings = asyncHandler(async (req: AuthenticatedRequest, res
     try {
       settings = JSON.parse(store.botSettings);
     } catch (error: unknown) {
-      logger.warn(`Failed to parse bot settings for store ${storeId}:`, toLogMetadata(error));
+      logger.warn('Failed to parse bot settings', { storeId: sanitizeForLog(storeId), error: toLogMetadata(error) });
       settings = {};
     }
   }
 
-  logger.info(`Bot settings retrieved for store ${store.name} by user ${req.user.id}`);
+  logger.info('Bot settings retrieved', { storeName: sanitizeForLog(store.name), userId: sanitizeForLog(req.user.id) });
 
   res.json({
     success: true,
@@ -795,7 +919,7 @@ async function verifyStorePermission(user: { id: string; role: UserRole }, store
         ownerId: user.id
       }
     });
-    
+
     if (!store) {
       throw new Error('У вас нет доступа к этому магазину');
     }
@@ -807,7 +931,7 @@ async function verifyStorePermission(user: { id: string; role: UserRole }, store
         userId: user.id
       }
     });
-    
+
     if (!storeAdmin) {
       throw new Error('У вас нет доступа к этому магазину');
     }

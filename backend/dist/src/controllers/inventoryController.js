@@ -1,43 +1,11 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.setStockAlertsConfig = exports.getStockHistory = exports.updateStock = exports.getInventoryAlerts = void 0;
 const prisma_1 = require("../lib/prisma");
 const errorHandler_1 = require("../middleware/errorHandler");
 const logger_1 = require("../utils/logger");
 const notificationService_1 = require("../services/notificationService");
+const sanitizer_1 = require("../utils/sanitizer");
 exports.getInventoryAlerts = (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { storeId, severity, limit = 50 } = req.query;
     if (!req.user) {
@@ -334,7 +302,7 @@ exports.updateStock = (0, errorHandler_1.asyncHandler)(async (req, res) => {
             }
         });
         await checkStockAlerts(variantId ? updatedItem.product : updatedItem, variantId ? updatedItem : null, oldStock, stock, storeId);
-        const { SocketRoomService } = await Promise.resolve().then(() => __importStar(require('../services/socketRoomService.js')));
+        const { SocketRoomService } = await import('../services/socketRoomService.js');
         SocketRoomService.notifyStore(storeId, 'inventory:stock_updated', {
             productId: variantId ? updatedItem.productId : updatedItem.id,
             variantId: variantId || null,
@@ -344,7 +312,7 @@ exports.updateStock = (0, errorHandler_1.asyncHandler)(async (req, res) => {
             change: stock - oldStock,
             updatedBy: req.user.id
         });
-        logger_1.logger.info(`Stock updated for ${productName}: ${oldStock} -> ${stock} by user ${req.user.id}`);
+        logger_1.logger.info(`Stock updated for ${(0, sanitizer_1.sanitizeForLog)(productName)}: ${oldStock} -> ${stock} by user ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
         res.json({
             success: true,
             message: 'Stock updated successfully',
@@ -476,7 +444,7 @@ exports.setStockAlertsConfig = (0, errorHandler_1.asyncHandler)(async (req, res)
                 enableStockAlerts: enableAlerts !== false
             }
         });
-        logger_1.logger.info(`Stock alerts config updated for store ${storeId} by user ${req.user.id}`);
+        logger_1.logger.info(`Stock alerts config updated for store ${(0, sanitizer_1.sanitizeForLog)(storeId)} by user ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
         res.json({
             success: true,
             message: 'Stock alerts configuration updated',
@@ -557,7 +525,7 @@ async function checkStockAlerts(product, variant, oldStock, newStock, storeId) {
                     threshold: newStock <= criticalThreshold ? criticalThreshold : lowThreshold
                 }
             });
-            const { SocketRoomService } = await Promise.resolve().then(() => __importStar(require('../services/socketRoomService.js')));
+            const { SocketRoomService } = await import('../services/socketRoomService.js');
             SocketRoomService.notifyStore(storeId, 'inventory:alert', {
                 type: newStock === 0 ? 'out_of_stock' : 'low_stock',
                 severity: newStock <= criticalThreshold ? 'critical' : 'high',

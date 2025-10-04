@@ -1,19 +1,19 @@
-import React, { useMemo } from 'react'
-import { Box, Typography, Card, CardContent, Skeleton, useTheme } from '@mui/material'
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ReferenceLine,
-} from 'recharts'
-import { useChartColors } from '../../utils/chartTheme'
+import { Box, Card, CardContent, Skeleton, Typography, useTheme } from '@mui/material'
 import { format, parseISO } from 'date-fns'
 import { ru } from 'date-fns/locale'
+import React, { useCallback, useMemo } from 'react'
+import {
+    Area,
+    AreaChart,
+    CartesianGrid,
+    Legend,
+    ReferenceLine,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
+} from 'recharts'
+import { useChartColors } from '../../utils/chartTheme'
 
 interface RevenueDataPoint {
   date: string
@@ -55,7 +55,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({
     }).format(value)
   }
 
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     try {
       const date = parseISO(dateString)
       switch (period) {
@@ -70,17 +70,18 @@ const RevenueChart: React.FC<RevenueChartProps> = ({
         default:
           return format(date, 'dd.MM', { locale: ru })
       }
-    } catch {
+    } catch (error: unknown) {
+      console.error('Error formatting date:', error)
       return dateString
     }
-  }
+  }, [period])
 
   const processedData = useMemo(() => {
     return data.map(item => ({
       ...item,
       formattedDate: formatDate(item.date),
     }))
-  }, [data, period])
+  }, [data, formatDate])
 
   const averageRevenue = useMemo(() => {
     if (data.length === 0) return 0
@@ -91,14 +92,14 @@ const RevenueChart: React.FC<RevenueChartProps> = ({
     return Math.max(...data.map(item => item.revenue), 0)
   }, [data])
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ dataKey: string; value: number; color: string; name: string }>; label?: string }) => {
     if (active && payload && payload.length) {
       return (
         <Card elevation={4} sx={{ p: 2, minWidth: 200 }}>
           <Typography variant="subtitle2" gutterBottom>
             {label}
           </Typography>
-          {payload.map((entry: any, index: number) => (
+          {payload.map((entry, index: number) => (
             <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Box
                 sx={{
@@ -110,7 +111,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({
               />
               <Typography variant="body2">
                 {entry.name}: {
-                  entry.dataKey === 'revenue' 
+                  entry.dataKey === 'revenue'
                     ? formatCurrency(entry.value)
                     : entry.value
                 }
@@ -173,38 +174,38 @@ const RevenueChart: React.FC<RevenueChartProps> = ({
                 </linearGradient>
               )}
             </defs>
-            
-            <CartesianGrid 
-              strokeDasharray="3 3" 
-              stroke={chartColors.gridColor} 
+
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke={chartColors.gridColor}
             />
-            
-            <XAxis 
+
+            <XAxis
               dataKey="formattedDate"
               tick={{ fill: chartColors.textColor, fontSize: 12 }}
               axisLine={{ stroke: chartColors.gridColor }}
             />
-            
-            <YAxis 
+
+            <YAxis
               yAxisId="revenue"
               orientation="left"
               tick={{ fill: chartColors.textColor, fontSize: 12 }}
               axisLine={{ stroke: chartColors.gridColor }}
               tickFormatter={formatCurrency}
             />
-            
+
             {showOrders && (
-              <YAxis 
+              <YAxis
                 yAxisId="orders"
                 orientation="right"
                 tick={{ fill: chartColors.textColor, fontSize: 12 }}
                 axisLine={{ stroke: chartColors.gridColor }}
               />
             )}
-            
+
             <Tooltip content={<CustomTooltip />} />
             <Legend />
-            
+
             {showTarget && (
               <ReferenceLine
                 y={averageRevenue}
@@ -213,7 +214,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({
                 label="Среднее"
               />
             )}
-            
+
             <Area
               yAxisId="revenue"
               type="monotone"
@@ -224,7 +225,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({
               name="Выручка"
               connectNulls
             />
-            
+
             {showOrders && (
               <Area
                 yAxisId="orders"

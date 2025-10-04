@@ -33,18 +33,19 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getOrderStats = exports.getPaymentProof = exports.uploadOrderPaymentProof = exports.cancelOrder = exports.deliverOrder = exports.shipOrder = exports.getOrder = exports.rejectOrder = exports.confirmPayment = exports.createOrder = exports.getOrders = void 0;
+exports.exportOrders = exports.getOrderStats = exports.getPaymentProof = exports.uploadOrderPaymentProof = exports.cancelOrder = exports.deliverOrder = exports.shipOrder = exports.getOrder = exports.rejectOrder = exports.confirmPayment = exports.createOrder = exports.getOrders = void 0;
+const fs = __importStar(require("fs/promises"));
+const path = __importStar(require("path"));
 const prisma_1 = require("../lib/prisma");
+const socket_1 = require("../lib/socket");
 const errorHandler_1 = require("../middleware/errorHandler");
-const logger_1 = require("../utils/logger");
+const uploadPaymentProof_1 = require("../middleware/uploadPaymentProof");
 const notificationService_1 = require("../services/notificationService");
 const telegramNotificationService_1 = require("../services/telegramNotificationService");
-const socket_1 = require("../lib/socket");
-const uploadPaymentProof_1 = require("../middleware/uploadPaymentProof");
-const path = __importStar(require("path"));
-const fs = __importStar(require("fs/promises"));
+const logger_1 = require("../utils/logger");
+const sanitizer_1 = require("../utils/sanitizer");
 exports.getOrders = (0, errorHandler_1.asyncHandler)(async (req, res) => {
-    const { page = 1, limit = 20, status, storeId, customerId, search, dateFrom, dateTo, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
+    const { page = 1, limit = 20, status, statuses, storeId, customerId, search, dateFrom, dateTo, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
     if (!req.user) {
         throw new errorHandler_1.AppError('Authentication required', 401);
     }
@@ -58,7 +59,11 @@ exports.getOrders = (0, errorHandler_1.asyncHandler)(async (req, res) => {
             ]
         };
     }
-    if (status) {
+    if (statuses) {
+        const statusArray = Array.isArray(statuses) ? statuses : [statuses];
+        whereClause.status = { in: statusArray };
+    }
+    else if (status) {
         whereClause.status = status;
     }
     if (storeId) {
@@ -359,7 +364,7 @@ exports.createOrder = (0, errorHandler_1.asyncHandler)(async (req, res) => {
                 currency: store.currency,
             }
         });
-        const { SocketRoomService } = await Promise.resolve().then(() => __importStar(require('../services/socketRoomService.js')));
+        const { SocketRoomService } = await import('../services/socketRoomService.js');
         SocketRoomService.notifyOrderUpdate(order.id, store.id, 'order:new', {
             orderId: order.id,
             orderNumber: order.orderNumber,
@@ -372,7 +377,7 @@ exports.createOrder = (0, errorHandler_1.asyncHandler)(async (req, res) => {
             currency: store.currency,
             itemCount: validatedItems.length,
         });
-        logger_1.logger.info(`Order created: ${order.orderNumber} by user ${req.user.id}`);
+        logger_1.logger.info(`Order created: ${(0, sanitizer_1.sanitizeForLog)(order.orderNumber)} by user ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
         res.status(201).json({ order });
     }
     catch (error) {
@@ -438,7 +443,7 @@ exports.confirmPayment = (0, errorHandler_1.asyncHandler)(async (req, res) => {
         },
     });
     await notifyCustomerPaymentConfirmed(updatedOrder);
-    const { SocketRoomService } = await Promise.resolve().then(() => __importStar(require('../services/socketRoomService.js')));
+    const { SocketRoomService } = await import('../services/socketRoomService.js');
     SocketRoomService.notifyOrderUpdate(id, order.storeId, 'order:payment_confirmed', {
         orderId: id,
         orderNumber: order.orderNumber,
@@ -449,7 +454,7 @@ exports.confirmPayment = (0, errorHandler_1.asyncHandler)(async (req, res) => {
         totalAmount: order.totalAmount,
         currency: order.currency
     });
-    logger_1.logger.info(`Payment confirmed for order ${id} by admin ${req.user.id}`);
+    logger_1.logger.info(`Payment confirmed for order ${(0, sanitizer_1.sanitizeForLog)(id)} by admin ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
     res.json({ order: updatedOrder, message: 'Payment confirmed successfully' });
 });
 exports.rejectOrder = (0, errorHandler_1.asyncHandler)(async (req, res) => {
@@ -539,7 +544,7 @@ exports.rejectOrder = (0, errorHandler_1.asyncHandler)(async (req, res) => {
         },
     });
     await notifyCustomerOrderRejected(updatedOrder, reason);
-    const { SocketRoomService } = await Promise.resolve().then(() => __importStar(require('../services/socketRoomService.js')));
+    const { SocketRoomService } = await import('../services/socketRoomService.js');
     SocketRoomService.notifyOrderUpdate(id, order.storeId, 'order:rejected', {
         orderId: id,
         orderNumber: order.orderNumber,
@@ -548,12 +553,12 @@ exports.rejectOrder = (0, errorHandler_1.asyncHandler)(async (req, res) => {
         customerId: order.customerId,
         reason,
     });
-    logger_1.logger.info(`Order ${id} rejected by admin ${req.user.id}. Reason: ${reason}`);
+    logger_1.logger.info(`Order ${(0, sanitizer_1.sanitizeForLog)(id)} rejected by admin ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}. Reason: ${(0, sanitizer_1.sanitizeForLog)(reason)}`);
     res.json({ order: updatedOrder, message: 'Order rejected successfully' });
 });
 async function notifyCustomerPaymentConfirmed(order) {
     try {
-        const { telegramNotificationService } = await Promise.resolve().then(() => __importStar(require('../services/telegramNotificationService.js')));
+        const { telegramNotificationService } = await import('../services/telegramNotificationService.js');
         await telegramNotificationService.notifyCustomerPaymentConfirmed(order);
         await notificationService_1.NotificationService.send({
             title: 'Оплата подтверждена',
@@ -575,7 +580,7 @@ async function notifyCustomerPaymentConfirmed(order) {
 }
 async function notifyCustomerOrderRejected(order, reason) {
     try {
-        const { telegramNotificationService } = await Promise.resolve().then(() => __importStar(require('../services/telegramNotificationService.js')));
+        const { telegramNotificationService } = await import('../services/telegramNotificationService.js');
         await telegramNotificationService.notifyCustomerOrderRejected(order, reason);
         await notificationService_1.NotificationService.send({
             title: 'Заказ отклонен',
@@ -812,7 +817,7 @@ exports.shipOrder = (0, errorHandler_1.asyncHandler)(async (req, res) => {
         trackingNumber,
         carrier,
     });
-    logger_1.logger.info(`Order ${id} shipped by admin ${req.user.id}`);
+    logger_1.logger.info(`Order ${(0, sanitizer_1.sanitizeForLog)(id)} shipped by admin ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
     res.json({ order: updatedOrder, message: 'Order shipped successfully' });
 });
 exports.deliverOrder = (0, errorHandler_1.asyncHandler)(async (req, res) => {
@@ -880,7 +885,7 @@ exports.deliverOrder = (0, errorHandler_1.asyncHandler)(async (req, res) => {
         status: 'DELIVERED',
         adminId: req.user.id,
     });
-    logger_1.logger.info(`Order ${id} delivered by admin ${req.user.id}`);
+    logger_1.logger.info(`Order ${(0, sanitizer_1.sanitizeForLog)(id)} delivered by admin ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
     res.json({ order: updatedOrder, message: 'Order delivered successfully' });
 });
 exports.cancelOrder = (0, errorHandler_1.asyncHandler)(async (req, res) => {
@@ -1083,7 +1088,6 @@ const uploadOrderPaymentProof = (req, res) => {
 exports.uploadOrderPaymentProof = uploadOrderPaymentProof;
 async function notifyAdminsPaymentProofUploaded(order) {
     try {
-        const customerName = `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim() || 'Неизвестный покупатель';
         await notificationService_1.NotificationService.send({
             title: 'Payment Proof Uploaded',
             message: `Payment proof has been uploaded for order ${order.orderNumber}`,
@@ -1230,5 +1234,124 @@ exports.getOrderStats = (0, errorHandler_1.asyncHandler)(async (req, res) => {
         totalRevenue: revenueStats._sum.totalAmount || 0,
         period: period,
     });
+});
+exports.exportOrders = (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { status, statuses, storeId, dateFrom, dateTo, } = req.query;
+    if (!req.user) {
+        throw new errorHandler_1.AppError('Authentication required', 401);
+    }
+    const whereClause = {};
+    if (req.user.role !== 'OWNER') {
+        whereClause.store = {
+            OR: [
+                { ownerId: req.user.id },
+                { admins: { some: { userId: req.user.id } } }
+            ]
+        };
+    }
+    if (statuses) {
+        const statusArray = Array.isArray(statuses) ? statuses : [statuses];
+        whereClause.status = { in: statusArray };
+    }
+    else if (status) {
+        whereClause.status = status;
+    }
+    if (storeId) {
+        whereClause.storeId = storeId;
+    }
+    if (dateFrom || dateTo) {
+        whereClause.createdAt = {};
+        if (dateFrom) {
+            whereClause.createdAt.gte = new Date(dateFrom);
+        }
+        if (dateTo) {
+            const endDate = new Date(dateTo);
+            endDate.setHours(23, 59, 59, 999);
+            whereClause.createdAt.lte = endDate;
+        }
+    }
+    try {
+        const orders = await prisma_1.prisma.order.findMany({
+            where: whereClause,
+            include: {
+                customer: {
+                    select: {
+                        firstName: true,
+                        lastName: true,
+                        username: true,
+                        telegramId: true,
+                    }
+                },
+                store: {
+                    select: {
+                        name: true,
+                        currency: true,
+                    }
+                },
+                items: {
+                    include: {
+                        product: {
+                            select: {
+                                name: true,
+                                sku: true,
+                            }
+                        },
+                        variant: {
+                            select: {
+                                name: true,
+                                value: true,
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: {
+                createdAt: 'desc'
+            }
+        });
+        const csvHeader = 'Номер заказа,Дата,Статус,Клиент,Telegram ID,Магазин,Товары,Сумма,Валюта,Примечания\n';
+        const csvRows = orders.map(order => {
+            const customerName = order.customer
+                ? `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim() || order.customer.username || 'Неизвестно'
+                : 'Неизвестно';
+            const items = order.items.map(item => {
+                const variantInfo = item.variant ? ` (${item.variant.name}: ${item.variant.value})` : '';
+                return `${item.product.name}${variantInfo} x${item.quantity}`;
+            }).join('; ');
+            const statusLabels = {
+                PENDING_ADMIN: 'Ожидает подтверждения',
+                PAID: 'Оплачен',
+                SHIPPED: 'Отправлен',
+                DELIVERED: 'Доставлен',
+                REJECTED: 'Отклонен',
+                CANCELLED: 'Отменен',
+            };
+            return [
+                `"${order.orderNumber}"`,
+                `"${new Date(order.createdAt).toLocaleString('ru-RU')}"`,
+                `"${statusLabels[order.status] || order.status}"`,
+                `"${customerName.replace(/"/g, '""')}"`,
+                `"${order.customer?.telegramId || ''}"`,
+                `"${order.store.name.replace(/"/g, '""')}"`,
+                `"${items.replace(/"/g, '""')}"`,
+                order.totalAmount.toFixed(2),
+                `"${order.store.currency}"`,
+                `"${(order.notes || '').replace(/"/g, '""')}"`,
+            ].join(',');
+        }).join('\n');
+        const csvContent = '\uFEFF' + csvHeader + csvRows;
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="orders-${new Date().toISOString().split('T')[0]}.csv"`);
+        logger_1.logger.info('Orders exported', {
+            userId: req.user.id,
+            count: orders.length,
+            filters: { status: statuses || status, storeId, dateFrom, dateTo }
+        });
+        res.send(csvContent);
+    }
+    catch (error) {
+        logger_1.logger.error('Error exporting orders:', (0, logger_1.toLogMetadata)(error));
+        throw new errorHandler_1.AppError('Failed to export orders', 500);
+    }
 });
 //# sourceMappingURL=orderController.js.map

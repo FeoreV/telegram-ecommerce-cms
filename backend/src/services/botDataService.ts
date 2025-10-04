@@ -68,7 +68,7 @@ export class BotDataService {
         total: await prisma.product.count({ where: whereClause })
       };
     } catch (error) {
-      logger.error(`Error fetching products for store ${this.storeId}:`, error);
+      logger.error('Error fetching products for store', { storeId: this.storeId, error });
       throw new Error('Ошибка получения товаров');
     }
   }
@@ -92,7 +92,7 @@ export class BotDataService {
 
       return product;
     } catch (error) {
-      logger.error(`Error fetching product ${productId} for store ${this.storeId}:`, error);
+      logger.error('Error fetching product for store', { productId, storeId: this.storeId, error });
       throw error;
     }
   }
@@ -126,7 +126,7 @@ export class BotDataService {
 
       return categories;
     } catch (error) {
-      logger.error(`Error fetching categories for store ${this.storeId}:`, error);
+      logger.error(`Error fetching categories for store:`, { storeId: this.storeId, error });
       throw new Error('Ошибка получения категорий');
     }
   }
@@ -202,10 +202,10 @@ export class BotDataService {
         }
       });
 
-      logger.info(`Order created: ${order.orderNumber} for store ${this.storeId}`);
+      logger.info('Order created', { orderNumber: order.orderNumber, storeId: this.storeId });
       return order;
     } catch (error) {
-      logger.error(`Error creating order for store ${this.storeId}:`, error);
+      logger.error('Error creating order for store', { storeId: this.storeId, error });
       throw error;
     }
   }
@@ -242,7 +242,7 @@ export class BotDataService {
 
       return order;
     } catch (error) {
-      logger.error(`Error fetching order ${orderId} for store ${this.storeId}:`, error);
+      logger.error('Error fetching order for store', { orderId, storeId: this.storeId, error });
       throw error;
     }
   }
@@ -275,7 +275,7 @@ export class BotDataService {
 
       return order;
     } catch (error) {
-      logger.error(`Error fetching order ${orderNumber} for store ${this.storeId}:`, error);
+      logger.error('Error fetching order by number for store', { orderNumber, storeId: this.storeId, error });
       throw error;
     }
   }
@@ -302,7 +302,7 @@ export class BotDataService {
 
       return orders;
     } catch (error) {
-      logger.error(`Error fetching orders for customer ${customerId} in store ${this.storeId}:`, error);
+      logger.error('Error fetching orders for customer in store', { customerId, storeId: this.storeId, error });
       throw new Error('Ошибка получения заказов');
     }
   }
@@ -330,7 +330,7 @@ export class BotDataService {
             role: 'CUSTOMER'
           }
         });
-        logger.info(`New customer created: ${telegramId} for store ${this.storeId}`);
+        logger.info('New customer created for store', { telegramId, storeId: this.storeId });
       } else {
         // Обновляем информацию пользователя, если она изменилась
         const updateData: any = {};
@@ -354,7 +354,7 @@ export class BotDataService {
 
       return user;
     } catch (error) {
-      logger.error(`Error getting/creating customer ${telegramId} for store ${this.storeId}:`, error);
+      logger.error('Error getting/creating customer for store', { telegramId, storeId: this.storeId, error });
       throw new Error('Ошибка работы с пользователем');
     }
   }
@@ -391,19 +391,33 @@ export class BotDataService {
         botSettings: store.botSettings ? JSON.parse(store.botSettings) : null
       };
     } catch (error) {
-      logger.error(`Error fetching store info for ${this.storeId}:`, error);
+      logger.error('Error fetching store info', { storeId: this.storeId, error });
       throw error;
     }
   }
 
   async updateStoreStats() {
     try {
+      // First check if store exists
+      const store = await prisma.store.findUnique({
+        where: { id: this.storeId },
+        select: { id: true }
+      });
+
+      if (!store) {
+        logger.error('Store not found - bot should be stopped', { storeId: this.storeId });
+        throw new Error(`STORE_NOT_FOUND: Store ${this.storeId} does not exist`);
+      }
+
       await prisma.store.update({
         where: { id: this.storeId },
         data: { botLastActive: new Date() }
       });
     } catch (error) {
-      logger.warn(`Error updating store stats for ${this.storeId}:`, error);
+      if (error instanceof Error && error.message.startsWith('STORE_NOT_FOUND')) {
+        throw error; // Re-throw to signal bot should stop
+      }
+      logger.warn('Error updating store stats', { storeId: this.storeId, error });
     }
   }
 
@@ -413,7 +427,7 @@ export class BotDataService {
   private async generateOrderNumber(): Promise<string> {
     const now = new Date();
     const monthYear = `${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getFullYear().toString().slice(-2)}`;
-    
+
     const lastOrder = await prisma.order.findFirst({
       where: {
         storeId: this.storeId,
@@ -443,7 +457,7 @@ export class BotDataService {
 
       return !!(store && store.botStatus === 'ACTIVE');
     } catch (error) {
-      logger.error(`Error validating store access for ${this.storeId}:`, error);
+      logger.error('Error validating store access', { storeId: this.storeId, error });
       return false;
     }
   }
@@ -493,7 +507,7 @@ export class BotDataService {
         revenue: totalRevenue._sum.totalAmount || 0
       };
     } catch (error) {
-      logger.error(`Error fetching basic stats for store ${this.storeId}:`, error);
+      logger.error('Error fetching basic stats for store', { storeId: this.storeId, error });
       throw new Error('Ошибка получения статистики');
     }
   }

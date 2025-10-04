@@ -4,6 +4,7 @@ import { getErrorMessage } from '../utils/errorUtils';
 import { securityLogService } from './SecurityLogService';
 import { encryptionService } from './EncryptionService';
 import { secretLeakDetectionService } from './SecretLeakDetectionService';
+import { getSecurityKeyId } from '../config/securityKeys';
 
 export enum WebSocketEventType {
   ORDER_UPDATE = 'order_update',
@@ -941,7 +942,7 @@ export class WebSocketSecurityService {
         action: 'message_encrypted',
         details: {
           algorithm: 'AES-256-GCM',
-          keyId: 'websocket-encryption-key'
+          keyId: getSecurityKeyId('websocketEncryptionKeyId')
         }
       });
 

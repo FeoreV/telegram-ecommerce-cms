@@ -35,8 +35,9 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.dataMaskingService = exports.DataMaskingService = exports.MaskingStrategy = exports.Environment = void 0;
 const crypto = __importStar(require("crypto"));
-const logger_1 = require("../utils/logger");
 const errorUtils_1 = require("../utils/errorUtils");
+const logger_1 = require("../utils/logger");
+const sanitizer_1 = require("../utils/sanitizer");
 const SecurityLogService_1 = require("./SecurityLogService");
 var Environment;
 (function (Environment) {
@@ -580,13 +581,13 @@ class DataMaskingService {
     async createEnvironmentBackup(environment, job) {
         logger_1.logger.info(`Creating backup for environment: ${environment}`, { jobId: job.id });
         await new Promise(resolve => setTimeout(resolve, 2000));
-        logger_1.logger.info(`Backup created for environment: ${environment}`);
+        logger_1.logger.info(`Backup created for environment: ${(0, sanitizer_1.sanitizeForLog)(environment)}`);
     }
     async processTable(tableName, job) {
-        logger_1.logger.debug(`Processing table: ${tableName}`, { jobId: job.id });
+        logger_1.logger.debug(`Processing table: ${(0, sanitizer_1.sanitizeForLog)(tableName)}`, { jobId: job.id });
         const applicableRules = this.getApplicableRules(tableName, job);
         if (applicableRules.length === 0) {
-            logger_1.logger.debug(`No applicable rules for table: ${tableName}`);
+            logger_1.logger.debug(`No applicable rules for table: ${(0, sanitizer_1.sanitizeForLog)(tableName)}`);
             return;
         }
         const recordCount = this.getTableRecordCount(tableName);

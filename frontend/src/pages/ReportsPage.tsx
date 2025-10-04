@@ -1,71 +1,63 @@
-import React, { useState, useEffect } from 'react'
 import {
-  Box,
-  Typography,
-  Grid,
-  Card,
-  CardContent,
-  Button,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  TextField,
-  Tabs,
-  Tab,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  IconButton,
-  Chip,
-  Avatar,
-  Divider,
-  Alert,
-  CircularProgress,
+    Alert,
+    Avatar,
+    Box,
+    Button,
+    Card,
+    CardContent,
+    Chip,
+    CircularProgress,
+    Divider,
+    FormControl,
+    Grid,
+    IconButton,
+    InputLabel,
+    MenuItem,
+    Paper,
+    Select,
+    Tab,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Tabs,
+    TextField,
+    Typography,
 } from '@mui/material'
+import React, { useCallback, useEffect, useState } from 'react'
 // DatePicker removed to avoid dependency issues
 import {
-  FileDownload,
-  Print,
-  Refresh,
-  TrendingUp,
-  TrendingDown,
-  AttachMoney,
-  Receipt,
-  Inventory,
-  People,
-  Store,
-  CalendarToday,
-  Assessment,
-  PieChart,
-  BarChart as BarChartIcon,
+    Assessment,
+    AttachMoney,
+    FileDownload,
+    Inventory,
+    People,
+    Print,
+    Receipt,
+    Refresh,
+    TrendingDown,
+    TrendingUp
 } from '@mui/icons-material'
-import {
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  PieChart as RechartsPieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts'
-import { dashboardService, DashboardFilters } from '../services/dashboardService'
-import { useAuth } from '../contexts/AuthContext'
 import { toast } from 'react-toastify'
-import PageHeader from '../components/ui/PageHeader'
-import SectionCard from '../components/ui/SectionCard'
+import {
+    Area,
+    AreaChart,
+    CartesianGrid,
+    Cell,
+    Legend,
+    Line,
+    LineChart,
+    Pie,
+    PieChart as RechartsPieChart,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis
+} from 'recharts'
+import { useAuth } from '../contexts/AuthContext'
+import { DashboardFilters, dashboardService } from '../services/dashboardService'
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -96,7 +88,7 @@ const ReportsPage: React.FC = () => {
   const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month' | 'quarter' | 'year'>('month')
   const [selectedStore, setSelectedStore] = useState<string>('all')
   const [customDateRange, setCustomDateRange] = useState<{from: string, to: string}>({ from: '', to: '' })
-  
+
   // Data states
   const [salesData, setSalesData] = useState<any[]>([])
   const [revenueData, setRevenueData] = useState<any[]>([])
@@ -121,11 +113,7 @@ const ReportsPage: React.FC = () => {
     { label: 'Производительность', icon: <TrendingUp /> },
   ]
 
-  useEffect(() => {
-    loadReportsData()
-  }, [selectedPeriod, selectedStore])
-
-  const loadReportsData = async () => {
+  const loadReportsData = useCallback(async () => {
     setLoading(true)
     try {
       const filters: DashboardFilters = {
@@ -152,33 +140,29 @@ const ReportsPage: React.FC = () => {
       setRevenueData(Array.isArray(revenueChartData) ? revenueChartData : [])
       setTopProducts(Array.isArray(topProductsData) ? topProductsData : [])
       setTopStores(Array.isArray(topStoresData) ? topStoresData : [])
-      
-      // Mock sales data
-      const chartData = Array.isArray(revenueChartData) ? revenueChartData : []
-      setSalesData(chartData.map(item => ({
-        ...item,
-        conversion: Math.random() * 5 + 2,
-        visitors: Math.floor(Math.random() * 1000) + 100,
-      })))
 
-      // Mock performance metrics
+      // Use real sales data from revenue chart
+      const chartData = Array.isArray(revenueChartData) ? revenueChartData : []
+      setSalesData(chartData)
+
+      // Calculate real performance metrics from API data
       const totalRevenue = Number(statsData?.totalRevenue) || 0
       const totalOrders = Number(statsData?.totalOrders) || 0
       setPerformanceMetrics({
         totalRevenue,
         totalOrders,
         averageOrderValue: totalOrders > 0 ? totalRevenue / totalOrders : 0,
-        conversionRate: Math.random() * 5 + 2,
-        customerRetention: Math.random() * 30 + 60,
-        customerAcquisitionCost: Math.random() * 50 + 25,
+        conversionRate: Number(statsData?.conversionRate) || 0,
+        customerRetention: Number(statsData?.customerRetention) || 0,
+        customerAcquisitionCost: Number(statsData?.customerAcquisitionCost) || 0,
       })
 
-      // Mock customer stats
+      // Use real customer stats from API
       setCustomerStats({
-        newCustomers: Math.floor(Math.random() * 100) + 20,
-        returningCustomers: Math.floor(Math.random() * 80) + 40,
-        totalCustomers: Math.floor(Math.random() * 500) + 200,
-        averageLifetimeValue: Math.floor(Math.random() * 1000) + 500,
+        newCustomers: Number(statsData?.newCustomers) || 0,
+        returningCustomers: Number(statsData?.returningCustomers) || 0,
+        totalCustomers: Number(statsData?.totalCustomers) || 0,
+        averageLifetimeValue: Number(statsData?.averageLifetimeValue) || 0,
       })
 
     } catch (error: any) {
@@ -187,7 +171,11 @@ const ReportsPage: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedPeriod, selectedStore, user?.role, customDateRange, setRevenueData, setTopProducts, setTopStores, setPerformanceMetrics, setCustomerStats, setSalesData, setLoading, toast.error, console.error])
+
+  useEffect(() => {
+    loadReportsData()
+  }, [selectedPeriod, selectedStore, loadReportsData])
 
   const handleExportReport = (format: 'pdf' | 'excel' | 'csv') => {
     toast.info(`Экспорт отчета в формате ${format.toUpperCase()}`)
@@ -347,7 +335,7 @@ const ReportsPage: React.FC = () => {
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="date" />
                       <YAxis />
-                      <Tooltip 
+                      <Tooltip
                         formatter={(value: number, name: string) => [
                           name === 'revenue' ? formatCurrency(value) : value,
                           name === 'revenue' ? 'Выручка' : name === 'orders' ? 'Заказы' : 'Конверсия'
@@ -550,8 +538,8 @@ const ReportsPage: React.FC = () => {
                           <TableRow key={product.id}>
                             <TableCell>
                               <Box display="flex" alignItems="center" gap={1}>
-                                <Chip 
-                                  label={`#${index + 1}`} 
+                                <Chip
+                                  label={`#${index + 1}`}
                                   size="small"
                                   color={index < 3 ? 'primary' : 'default'}
                                 />
@@ -585,7 +573,7 @@ const ReportsPage: React.FC = () => {
                   <ResponsiveContainer width="100%" height={250}>
                     <RechartsPieChart>
                       <Pie
-                        data={(topProducts || []).slice(0, 5).map((p, i) => ({ 
+                        data={(topProducts || []).slice(0, 5).map((p, i) => ({
                           name: p.name,
                           value: p.revenue || 0,
                           color: COLORS[i % COLORS.length]
@@ -611,13 +599,13 @@ const ReportsPage: React.FC = () => {
         {/* Other tabs would be implemented similarly */}
         <TabPanel value={activeTab} index={3}>
           <Alert severity="info">
-            Раздел "Клиенты" находится в разработке
+            Раздел &quot;Клиенты&quot; находится в разработке
           </Alert>
         </TabPanel>
 
         <TabPanel value={activeTab} index={4}>
           <Alert severity="info">
-            Раздел "Производительность" находится в разработке
+            Раздел &quot;Безопасность&quot; находится в разработке
           </Alert>
         </TabPanel>
       </Paper>

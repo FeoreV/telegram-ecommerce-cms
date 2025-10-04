@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.vaultHealthChecker = exports.vaultHealthEndpoint = exports.vaultHealthMiddleware = void 0;
 const VaultService_1 = require("../services/VaultService");
 const logger_1 = require("../utils/logger");
+const sanitizer_1 = require("../utils/sanitizer");
 class VaultHealthChecker {
     constructor() {
         this.lastHealthCheck = null;
@@ -22,7 +23,7 @@ class VaultHealthChecker {
             });
         }, 60000);
         this.performHealthCheck().catch(error => {
-            logger_1.logger.error('Initial Vault health check failed:', error);
+            logger_1.logger.error('Initial Vault health check failed:', (0, sanitizer_1.sanitizeObjectForLog)(error));
         });
     }
     async performHealthCheck() {

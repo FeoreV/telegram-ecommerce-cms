@@ -43,6 +43,7 @@ const crypto_1 = __importDefault(require("crypto"));
 const logger_1 = require("../utils/logger");
 const TenantCacheService_1 = require("./TenantCacheService");
 const EncryptionService_1 = require("./EncryptionService");
+const securityKeys_1 = require("../config/securityKeys");
 class SecurityLogService {
     constructor() {
         this.logBuffer = new Map();
@@ -130,7 +131,7 @@ class SecurityLogService {
             return;
         }
         try {
-            const keyId = 'security-logs-encryption-key';
+            const keyId = (0, securityKeys_1.getSecurityKeyId)('securityLogsEncryptionKeyId');
             let encryptionKey = await EncryptionService_1.encryptionService.getDataKey(keyId);
             if (!encryptionKey) {
                 encryptionKey = await EncryptionService_1.encryptionService.generateDataKey(keyId, 32);
@@ -656,7 +657,7 @@ class SecurityLogService {
             return data;
         }
         try {
-            const keyId = 'security-logs-encryption-key';
+            const keyId = (0, securityKeys_1.getSecurityKeyId)('securityLogsEncryptionKeyId');
             const encryptionKey = this.encryptionKeys.get(keyId);
             if (!encryptionKey) {
                 logger_1.logger.warn('Encryption key not found, attempting to reinitialize...');

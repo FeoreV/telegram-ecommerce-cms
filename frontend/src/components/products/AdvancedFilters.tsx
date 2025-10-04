@@ -1,33 +1,29 @@
-import React, { useState } from 'react'
+import { Clear, ExpandMore, FilterList } from '@mui/icons-material'
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Grid,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Slider,
-  Typography,
-  Box,
-  Chip,
-  Divider,
-  Switch,
-  FormControlLabel,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Alert,
+    Accordion,
+    AccordionDetails,
+    AccordionSummary,
+    Alert,
+    Box,
+    Button,
+    Chip,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    FormControl,
+    Grid,
+    InputLabel,
+    MenuItem,
+    Select,
+    Slider,
+    TextField,
+    Typography
 } from '@mui/material'
-import { LocalizationProvider } from '@mui/x-date-pickers'
+import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers'
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns'
-import { DatePicker } from '@mui/x-date-pickers'
-import { ExpandMore, FilterList, Clear } from '@mui/icons-material'
 import { ru } from 'date-fns/locale'
+import React, { useState } from 'react'
 
 export interface AdvancedFilterData {
   priceRange: [number, number]
@@ -267,7 +263,7 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                     slotProps={{ textField: { size: 'small', fullWidth: true } }}
                   />
                 </Grid>
-                
+
                 <Grid item xs={12} sx={{ mt: 2 }}>
                   <Typography variant="subtitle2" gutterBottom>Дата обновления</Typography>
                 </Grid>
@@ -345,9 +341,9 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                     <InputLabel>Наличие продаж</InputLabel>
                     <Select
                       value={filters.hasSales === null ? '' : filters.hasSales.toString()}
-                      onChange={(e) => setFilters(prev => ({ 
-                        ...prev, 
-                        hasSales: e.target.value === '' ? null : e.target.value === 'true' 
+                      onChange={(e) => setFilters(prev => ({
+                        ...prev,
+                        hasSales: e.target.value === '' ? null : e.target.value === 'true'
                       }))}
                       label="Наличие продаж"
                     >
@@ -363,9 +359,9 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                     <InputLabel>Наличие изображений</InputLabel>
                     <Select
                       value={filters.hasImages === null ? '' : filters.hasImages.toString()}
-                      onChange={(e) => setFilters(prev => ({ 
-                        ...prev, 
-                        hasImages: e.target.value === '' ? null : e.target.value === 'true' 
+                      onChange={(e) => setFilters(prev => ({
+                        ...prev,
+                        hasImages: e.target.value === '' ? null : e.target.value === 'true'
                       }))}
                       label="Наличие изображений"
                     >
@@ -381,9 +377,9 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                     <InputLabel>Наличие описания</InputLabel>
                     <Select
                       value={filters.hasDescription === null ? '' : filters.hasDescription.toString()}
-                      onChange={(e) => setFilters(prev => ({ 
-                        ...prev, 
-                        hasDescription: e.target.value === '' ? null : e.target.value === 'true' 
+                      onChange={(e) => setFilters(prev => ({
+                        ...prev,
+                        hasDescription: e.target.value === '' ? null : e.target.value === 'true'
                       }))}
                       label="Наличие описания"
                     >
@@ -399,9 +395,9 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                     <InputLabel>Наличие вариантов</InputLabel>
                     <Select
                       value={filters.hasVariants === null ? '' : filters.hasVariants.toString()}
-                      onChange={(e) => setFilters(prev => ({ 
-                        ...prev, 
-                        hasVariants: e.target.value === '' ? null : e.target.value === 'true' 
+                      onChange={(e) => setFilters(prev => ({
+                        ...prev,
+                        hasVariants: e.target.value === '' ? null : e.target.value === 'true'
                       }))}
                       label="Наличие вариантов"
                     >
@@ -418,7 +414,7 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
           {isFilterActive() && (
             <Alert severity="info" sx={{ mt: 2 }}>
               <Typography variant="body2">
-                Активны расширенные фильтры. Нажмите "Очистить все" для сброса.
+                Активны расширенные фильтры. Нажмите &quot;Очистить все&quot; для сброса.
               </Typography>
             </Alert>
           )}
@@ -426,8 +422,8 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
       </DialogContent>
 
       <DialogActions>
-        <Button 
-          onClick={handleClear} 
+        <Button
+          onClick={handleClear}
           startIcon={<Clear />}
           disabled={!isFilterActive()}
         >
@@ -436,8 +432,8 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
         <Button onClick={onClose}>
           Отмена
         </Button>
-        <Button 
-          variant="contained" 
+        <Button
+          variant="contained"
           onClick={handleApply}
           startIcon={<FilterList />}
         >

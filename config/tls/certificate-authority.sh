@@ -122,9 +122,25 @@ echo 1000 > /tmp/ca/serial
 touch /tmp/ca/index.txt
 echo 1000 > /tmp/ca/crlnumber
 
+# SECURITY FIX: CWE-798, CWE-259 - Remove hardcoded CA password
 # Generate CA private key
 echo "🔑 Generating CA private key..."
-openssl genrsa -aes256 -passout pass:botrt-ca-password -out /tmp/ca/private/ca.key.pem 4096
+
+# Check if CA password is provided via environment variable
+if [ -z "$CA_PASSWORD" ]; then
+  echo "❌ ERROR: CA_PASSWORD environment variable is not set"
+  echo "   Please set a strong password for the CA private key:"
+  echo "   export CA_PASSWORD='your-strong-password-here'"
+  exit 1
+fi
+
+# Validate password strength (minimum 16 characters)
+if [ ${#CA_PASSWORD} -lt 16 ]; then
+  echo "❌ ERROR: CA_PASSWORD must be at least 16 characters long"
+  exit 1
+fi
+
+openssl genrsa -aes256 -passout "env:CA_PASSWORD" -out /tmp/ca/private/ca.key.pem 4096
 chmod 400 /tmp/ca/private/ca.key.pem
 
 # Generate CA certificate
@@ -133,7 +149,7 @@ openssl req -config /tmp/ca/openssl.cnf \
     -key /tmp/ca/private/ca.key.pem \
     -new -x509 -days 7300 -sha256 -extensions v3_ca \
     -out /tmp/ca/certs/ca.cert.pem \
-    -passin pass:botrt-ca-password \
+    -passin "env:CA_PASSWORD" \
     -subj "/C=RU/ST=Moscow/L=Moscow/O=Telegram Ecommerce Bot/OU=Security Team/CN=BotRT Root CA"
 
 chmod 444 /tmp/ca/certs/ca.cert.pem

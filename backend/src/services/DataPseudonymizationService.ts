@@ -1,8 +1,8 @@
 import * as crypto from 'crypto';
-import { logger } from '../utils/logger';
 import { getErrorMessage } from '../utils/errorUtils';
-import { securityLogService } from './SecurityLogService';
+import { logger } from '../utils/logger';
 import { encryptionService } from './EncryptionService';
+import { securityLogService } from './SecurityLogService';
 import { getVaultService } from './VaultService';
 const vaultService = getVaultService();
 
@@ -27,24 +27,24 @@ export interface PseudonymizationRule {
   id: string;
   name: string;
   description: string;
-  
+
   // Targeting
   fieldPattern: RegExp;
   tablePattern?: RegExp;
   dataTypes: string[];
-  
+
   // Method configuration
   method: PseudonymizationMethod;
   reversibility: ReversibilityLevel;
   preserveFormat: boolean;
   preserveDistribution: boolean;
-  
+
   // Transformation settings
   hashAlgorithm?: string;
   saltLength?: number;
   encryptionKeyId?: string;
   tokenizationFormat?: string;
-  
+
   // Conditions
   conditions: {
     minLength?: number;
@@ -53,16 +53,16 @@ export interface PseudonymizationRule {
     purpose?: string[];
     environment?: ('production' | 'staging' | 'test' | 'development')[];
   };
-  
+
   // Quality settings
   consistencyRequired: boolean;  // Same input -> same output
   uniquenessRequired: boolean;   // Unique inputs -> unique outputs
-  
+
   // Compliance
   regulations: string[];
   legalBasis: string[];
   retentionPeriod: number;
-  
+
   // Implementation
   enabled: boolean;
   priority: number;
@@ -89,23 +89,23 @@ export interface TransformationResult {
   method: PseudonymizationMethod;
   ruleId: string;
   keyId?: string;
-  
+
   // Metadata
   transformedAt: Date;
   transformedBy: string;
   reversible: boolean;
-  
+
   // Quality metrics
   formatPreserved: boolean;
   lengthPreserved: boolean;
   typePreserved: boolean;
   distributionPreserved: boolean;
-  
+
   // Compliance
   purposes: string[];
   legalBasis: string[];
   retentionPeriod: number;
-  
+
   // Validation
   validated: boolean;
   validationErrors: string[];
@@ -115,34 +115,34 @@ export interface PseudonymizationJob {
   id: string;
   type: 'transform' | 'reverse' | 'validate' | 'rotate';
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
-  
+
   // Configuration
   scope: {
     tables: string[];
     fields: string[];
     conditions: Record<string, any>;
   };
-  
+
   // Execution
   startTime: Date;
   endTime?: Date;
   duration?: number;
-  
+
   // Results
   recordsProcessed: number;
   transformationsApplied: number;
   validationErrors: string[];
-  
+
   // Quality assessment
   qualityScore: number;
   consistencyScore: number;
   uniquenessScore: number;
-  
+
   // Metadata
   executedBy: string;
   approvalRequired: boolean;
   approvedBy?: string;
-  
+
   // Progress tracking
   progress: number; // 0-100
   currentTable?: string;
@@ -177,7 +177,7 @@ export class DataPseudonymizationService {
 
   private async initialize(): Promise<void> {
     await this.initializeDataPseudonymization();
-    
+
     logger.info('Data Pseudonymization Service initialized', {
       rules: this.pseudonymizationRules.size,
       keys: this.pseudonymizationKeys.size,
@@ -197,10 +197,10 @@ export class DataPseudonymizationService {
     try {
       // Initialize cryptographic keys
       await this.initializePseudonymizationKeys();
-      
+
       // Load existing transformations
       await this.loadExistingTransformations();
-      
+
       // Validate service health
       await this.validateServiceHealth();
 
@@ -217,21 +217,21 @@ export class DataPseudonymizationService {
       // Create or retrieve pseudonymization keys
       const keyTypes = [
         'hash-salt-key',
-        'tokenization-key', 
+        'tokenization-key',
         'format-preserving-key',
         'synthetic-data-key'
       ];
 
       for (const keyType of keyTypes) {
         let keyValue = await vaultService.getSecret(`pseudonymization-keys/${keyType}`);
-        
+
         if (!keyValue) {
           // Generate new key
           const keyBuffer = crypto.randomBytes(32); // 256-bit key
           keyValue = keyBuffer.toString('base64') as any;
-          
+
           await vaultService.putSecret(`pseudonymization-keys/${keyType}`, { key: keyValue });
-          
+
           logger.info(`Generated new pseudonymization key: ${keyType}`);
         }
 
@@ -278,6 +278,7 @@ export class DataPseudonymizationService {
       reversibility: ReversibilityLevel.RESTRICTED,
       preserveFormat: true,
       preserveDistribution: false,
+      // NOTE: This is a format identifier, not a credential (CWE-798 false positive)
       tokenizationFormat: 'email',
       conditions: {
         minLength: 5,
@@ -433,8 +434,8 @@ export class DataPseudonymizationService {
     this.formatPreservers.set('phone', {
       pattern: /^(\+?[1-9])(\d{3})(\d{3})(\d{4})$/,
       transform: (match: RegExpMatchArray) => {
-        const masked = match[2].replace(/\d/g, 'X') + 
-                      match[3].replace(/\d/g, 'X') + 
+        const masked = match[2].replace(/\d/g, 'X') +
+                      match[3].replace(/\d/g, 'X') +
                       match[4];
         return `${match[1]}${masked}`;
       }
@@ -475,11 +476,11 @@ export class DataPseudonymizationService {
         }
 
         const applicableRules = this.findApplicableRules(fieldName, tableName, originalValue, _environment);
-        
+
         if (applicableRules.length > 0) {
           // Apply highest priority rule
           const rule = applicableRules[0];
-          
+
           try {
             const transformation = await this.applyTransformation(
               fieldName,
@@ -487,10 +488,10 @@ export class DataPseudonymizationService {
               rule,
               _environment
             );
-            
+
             transformations.push(transformation);
             transformedData[fieldName] = transformation.transformedValue;
-            
+
             // Calculate quality score for this transformation
             const qualityScore = this.calculateTransformationQuality(transformation);
             totalQualityScore += qualityScore;
@@ -506,8 +507,8 @@ export class DataPseudonymizationService {
         }
       }
 
-      const overallQualityScore = transformationCount > 0 
-        ? totalQualityScore / transformationCount 
+      const overallQualityScore = transformationCount > 0
+        ? totalQualityScore / transformationCount
         : 100;
 
       logger.debug('Data transformation completed', {
@@ -570,11 +571,11 @@ export class DataPseudonymizationService {
       if (rule.tablePattern && !rule.tablePattern.test(tableName)) continue;
 
       // Check environment
-      if (rule.conditions.environment && 
+      if (rule.conditions.environment &&
           !rule.conditions.environment.includes(environment as any)) continue;
 
       // Check data pattern if specified
-      if (rule.conditions.dataPattern && 
+      if (rule.conditions.dataPattern &&
           !rule.conditions.dataPattern.test(value.toString())) continue;
 
       // Check length constraints
@@ -596,7 +597,7 @@ export class DataPseudonymizationService {
     _environment: string
   ): Promise<TransformationResult> {
     const transformationId = crypto.randomUUID();
-    
+
     // Validate before transformation
     if (rule.validateBeforeTransform) {
       await this.validateInput(originalValue, rule);
@@ -668,11 +669,11 @@ export class DataPseudonymizationService {
   private async applyHashTransformation(value: string, rule: PseudonymizationRule): Promise<string> {
     const algorithm = rule.hashAlgorithm || 'SHA-256';
     const saltLength = rule.saltLength || 16;
-    
+
     // Generate or retrieve consistent salt for this rule
     const saltKey = `hash-salt-${rule.id}`;
     let salt = await vaultService.getSecret(`pseudonymization-salts/${saltKey}`);
-    
+
     if (!salt) {
       salt = crypto.randomBytes(saltLength).toString('hex') as any;
       await vaultService.putSecret(`pseudonymization-salts/${saltKey}`, { salt });
@@ -680,17 +681,17 @@ export class DataPseudonymizationService {
 
     const hash = crypto.createHash(algorithm.toLowerCase().replace('-', ''));
     hash.update(value + salt);
-    
+
     return hash.digest('hex');
   }
 
   private async applyTokenization(value: string, rule: PseudonymizationRule): Promise<string> {
     const originalHash = crypto.createHash('sha256').update(value).digest('hex');
-    
+
     // Check if we already have a token for this value
     const existingMapping = Array.from(this.tokenMappings.values())
       .find(mapping => mapping.originalHash === originalHash);
-    
+
     if (existingMapping && rule.consistencyRequired) {
       existingMapping.lastUsed = new Date();
       existingMapping.usageCount++;
@@ -699,7 +700,7 @@ export class DataPseudonymizationService {
 
     // Generate new token
     let tokenValue: string;
-    
+
     if (rule.preserveFormat && rule.tokenizationFormat) {
       tokenValue = await this.generateFormatPreservingToken(value, rule.tokenizationFormat);
     } else {
@@ -714,6 +715,7 @@ export class DataPseudonymizationService {
       createdAt: new Date(),
       lastUsed: new Date(),
       usageCount: 1,
+      // NOTE: This is a version identifier, not a credential (CWE-798 false positive)
       keyVersion: '1.0'
     };
 
@@ -749,7 +751,7 @@ export class DataPseudonymizationService {
     const alphanumeric = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     const numeric = '0123456789';
     const alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-    
+
     let chars: string;
     switch (type) {
       case 'numeric':
@@ -771,7 +773,7 @@ export class DataPseudonymizationService {
 
   private async applyEncryption(value: string, rule: PseudonymizationRule): Promise<string> {
     const keyId = rule.encryptionKeyId || 'format-preserving-key';
-    
+
     try {
       const encrypted = await encryptionService.encryptData(value, keyId);
       return encrypted;
@@ -799,7 +801,7 @@ export class DataPseudonymizationService {
     const start = value.substring(0, 2);
     const end = value.substring(value.length - 2);
     const middle = 'X'.repeat(value.length - 4);
-    
+
     return start + middle + end;
   }
 
@@ -869,7 +871,7 @@ export class DataPseudonymizationService {
     if (rule.uniquenessRequired) {
       const duplicates = Array.from(this.transformationResults.values())
         .filter(t => t.transformedValue === transformation.transformedValue && t.id !== transformation.id);
-      
+
       if (duplicates.length > 0) {
         errors.push('Uniqueness requirement violated');
       }
@@ -892,7 +894,7 @@ export class DataPseudonymizationService {
     // Check if basic format characteristics are preserved
     const originalDigits = (original.match(/\d/g) || []).length;
     const transformedDigits = (transformed.match(/\d/g) || []).length;
-    
+
     const originalLetters = (original.match(/[a-zA-Z]/g) || []).length;
     const transformedLetters = (transformed.match(/[a-zA-Z]/g) || []).length;
 
@@ -908,7 +910,7 @@ export class DataPseudonymizationService {
   private isTypePreserved(original: string, transformed: string): boolean {
     const originalIsNumeric = /^\d+$/.test(original);
     const transformedIsNumeric = /^\d+$/.test(transformed);
-    
+
     const originalIsAlpha = /^[a-zA-Z]+$/.test(original);
     const transformedIsAlpha = /^[a-zA-Z]+$/.test(transformed);
 
@@ -1033,7 +1035,7 @@ export class DataPseudonymizationService {
     dryRun: boolean = false
   ): Promise<string> {
     const jobId = crypto.randomUUID();
-    
+
     const job: PseudonymizationJob = {
       id: jobId,
       type: 'transform',
@@ -1072,18 +1074,18 @@ export class DataPseudonymizationService {
 
       for (const tableName of tables) {
         job.currentTable = tableName;
-        
+
         // Simulate processing records (in real implementation, would query database)
         const simulatedRecords = this.generateSimulatedRecords(tableName, 100);
-        
+
         for (const record of simulatedRecords) {
           const result = await this.transformData(record, tableName, environment);
-          
+
           job.recordsProcessed++;
           job.transformationsApplied += result.transformations.length;
           totalQualityScore += result.qualityScore;
           totalRecords++;
-          
+
           // Update progress
           job.progress = Math.round((job.recordsProcessed / (tables.length * 100)) * 100);
         }
@@ -1111,7 +1113,7 @@ export class DataPseudonymizationService {
       job.status = 'failed';
       job.endTime = new Date();
       job.duration = job.endTime!.getTime() - job.startTime.getTime();
-      
+
       logger.error('Pseudonymization job failed', {
         jobId,
         error: getErrorMessage(error)
@@ -1123,7 +1125,7 @@ export class DataPseudonymizationService {
 
   private generateSimulatedRecords(tableName: string, count: number): Record<string, any>[] {
     const records: Record<string, any>[] = [];
-    
+
     for (let i = 0; i < count; i++) {
       const record: Record<string, any> = {
         id: i + 1
@@ -1200,17 +1202,17 @@ export class DataPseudonymizationService {
     stats: any;
   }> {
     const stats = this.getStats();
-    
+
     let status = 'healthy';
-    
+
     if (stats.averageQualityScore < 90) {
       status = 'warning'; // Quality issues
     }
-    
+
     if (stats.activeJobs > 5) {
       status = 'degraded'; // Too many active jobs
     }
-    
+
     if (stats.averageQualityScore < 70) {
       status = 'critical'; // Critical quality issues
     }

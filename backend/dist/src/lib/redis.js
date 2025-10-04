@@ -111,7 +111,7 @@ class RedisService {
             const parsed = new URL(url);
             return parsed.hostname;
         }
-        catch (error) {
+        catch {
             return 'localhost';
         }
     }
@@ -122,7 +122,7 @@ class RedisService {
             const parsed = new URL(url);
             return parseInt(parsed.port) || (TLSService_1.tlsService.isEnabled() ? 6380 : 6379);
         }
-        catch (error) {
+        catch {
             return TLSService_1.tlsService.isEnabled() ? 6380 : 6379;
         }
     }

@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EnvValidator = void 0;
-const loggerEnhanced_1 = require("./loggerEnhanced");
 const env_1 = require("./env");
+const loggerEnhanced_1 = require("./loggerEnhanced");
 class EnvValidator {
     static validate() {
         const errors = [];
@@ -51,7 +51,7 @@ class EnvValidator {
             try {
                 new URL(env_1.env.DATABASE_URL);
             }
-            catch (error) {
+            catch (_error) {
                 errors.push('DATABASE_URL must be a valid URL');
             }
         }
@@ -93,7 +93,7 @@ class EnvValidator {
                 try {
                     new URL(origin);
                 }
-                catch (error) {
+                catch (_error) {
                     warnings.push(`Invalid CORS origin: ${origin}`);
                 }
             }
@@ -209,7 +209,7 @@ class EnvValidator {
                     warnings.push('FRONTEND_URL should use https:// in production');
                 }
             }
-            catch (error) {
+            catch (_error) {
                 warnings.push('FRONTEND_URL is not a valid URL');
             }
         }

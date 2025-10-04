@@ -1,10 +1,10 @@
+import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
-import crypto from 'crypto';
 import { Transform, TransformCallback } from 'stream';
+import { logger } from '../utils/logger';
 import { encryptionService } from './EncryptionService';
 import { getVaultService } from './VaultService';
-import { logger } from '../utils/logger';
 
 export interface LogEncryptionConfig {
   enabled: boolean;
@@ -72,12 +72,12 @@ export class LogEncryptionService {
     try {
       // Create necessary directories
       await this.ensureDirectories();
-      
+
       // Set up log rotation scheduler
       if (this.config.enabled) {
         this.setupLogRotation();
       }
-      
+
       logger.info('Log encryption service initialized', {
         enabled: this.config.enabled,
         realtimeEncryption: this.config.realtimeEncryption,
@@ -126,9 +126,9 @@ export class LogEncryptionService {
 
     const streamId = `${service}-${logLevel}-${Date.now()}`;
     const stream = new EncryptedLogStream(logFile, logLevel, service, this.config);
-    
+
     this.encryptionStreams.set(streamId, stream);
-    
+
     // Clean up stream when it ends
     stream.on('end', () => {
       this.encryptionStreams.delete(streamId);
@@ -152,7 +152,7 @@ export class LogEncryptionService {
 
       const logId = this.generateLogId(service, logLevel);
       const originalFile = path.basename(logFilePath);
-      
+
       logger.debug('Starting log file encryption', {
         logId,
         logFilePath,
@@ -173,7 +173,7 @@ export class LogEncryptionService {
 
       // Encrypt the data
       const encrypted = await this.encryptLogData(processedData);
-      
+
       // Generate encrypted filename
       const encryptedFile = `${logId}.log.enc`;
       const encryptedPath = path.join(this.config.encryptedLogPath, encryptedFile);
@@ -248,7 +248,7 @@ export class LogEncryptionService {
 
       // Load metadata
       const metadata = await this.loadLogMetadata(logId);
-      
+
       // Read encrypted log
       const encryptedPath = path.join(this.config.encryptedLogPath, metadata.encryptedFile);
       const encryptedContent = await fs.readFile(encryptedPath, 'utf8');
@@ -306,11 +306,11 @@ export class LogEncryptionService {
   }> {
     try {
       const useVault = process.env.USE_VAULT === 'true';
-      
+
       if (useVault) {
         const vault = getVaultService();
         const encryptedData = await vault.encrypt('app-data-key', data.toString('base64'));
-        
+
         return {
           data: Buffer.from(encryptedData),
           keyVersion: 'vault-log-1',
@@ -321,10 +321,10 @@ export class LogEncryptionService {
         // Local encryption
         const key = encryptionService.getEncryptionSecrets().dataEncryptionKey;
         const iv = crypto.randomBytes(16);
-        
+
         const cipher = crypto.createCipheriv('aes-256-gcm', Buffer.from(key, 'hex'), iv);
         cipher.setAAD(Buffer.from('log-encryption', 'utf8'));
-        
+
         let encrypted = cipher.update(data);
         encrypted = Buffer.concat([encrypted, cipher.final()]);
         const tag = cipher.getAuthTag();
@@ -360,14 +360,14 @@ export class LogEncryptionService {
       } else {
         // Local decryption
         const key = encryptionService.getEncryptionSecrets().dataEncryptionKey;
-        
+
         const decipher = crypto.createDecipher('aes-256-gcm', Buffer.from(key, 'hex'));
         decipher.setAAD(Buffer.from('log-encryption', 'utf8'));
         decipher.setAuthTag(tag);
-        
+
         let decrypted = decipher.update(encryptedData);
         decrypted = Buffer.concat([decrypted, decipher.final()]);
-        
+
         return decrypted;
       }
 
@@ -469,20 +469,20 @@ export class LogEncryptionService {
   private async rotateLogsIfNeeded(): Promise<void> {
     try {
       const logFiles = await fs.readdir(this.config.logBasePath);
-      
+
       for (const logFile of logFiles) {
         if (logFile.endsWith('.log')) {
           const logPath = path.join(this.config.logBasePath, logFile);
           const stats = await fs.stat(logPath);
-          
+
           // Check if rotation is needed based on size or time
-          const needsRotation = 
+          const needsRotation =
             stats.size > this.config.rotationSize ||
             (Date.now() - stats.mtime.getTime()) > (this.config.rotationInterval * 60 * 60 * 1000);
-          
+
           if (needsRotation) {
             await this.encryptLogFile(logPath);
-            
+
             // Archive the original log
             const archivedPath = path.join(
               this.config.encryptedLogPath,
@@ -490,7 +490,7 @@ export class LogEncryptionService {
               `${logFile}.${Date.now()}`
             );
             await fs.rename(logPath, archivedPath);
-            
+
             logger.info('Log file rotated and encrypted', {
               originalFile: logFile,
               size: stats.size
@@ -512,9 +512,9 @@ export class LogEncryptionService {
       const logs = await this.listLogs();
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - this.config.retentionDays);
-      
+
       let deletedCount = 0;
-      
+
       for (const log of logs) {
         if (log.createdAt < cutoffDate) {
           try {
@@ -542,7 +542,7 @@ export class LogEncryptionService {
     try {
       const metadataDir = path.join(this.config.encryptedLogPath, 'metadata');
       const files = await fs.readdir(metadataDir);
-      
+
       const metadataFiles = files.filter(file => file.endsWith('.json'));
       const logList: EncryptedLogMetadata[] = [];
 
@@ -550,7 +550,7 @@ export class LogEncryptionService {
         try {
           const logId = metaFile.replace('.json', '');
           const metadata = await this.loadLogMetadata(logId);
-          
+
           if ((!service || metadata.service === service) &&
               (!logLevel || metadata.logLevel === logLevel)) {
             logList.push(metadata);
@@ -575,7 +575,7 @@ export class LogEncryptionService {
   async deleteLog(logId: string): Promise<void> {
     try {
       const metadata = await this.loadLogMetadata(logId);
-      
+
       const logPath = path.join(this.config.encryptedLogPath, metadata.encryptedFile);
       const metadataPath = path.join(
         this.config.encryptedLogPath,
@@ -603,7 +603,7 @@ export class LogEncryptionService {
   async getLogStats(): Promise<LogStats> {
     try {
       const logs = await this.listLogs();
-      
+
       if (logs.length === 0) {
         return {
           totalLogs: 0,
@@ -620,7 +620,7 @@ export class LogEncryptionService {
       const encryptedSize = logs.reduce((sum, log) => sum + log.encryptedSize, 0);
       const oldestLog = logs[logs.length - 1].createdAt;
       const newestLog = logs[0].createdAt;
-      
+
       const logsByLevel: { [level: string]: number } = {};
       logs.forEach(log => {
         logsByLevel[log.logLevel] = (logsByLevel[log.logLevel] || 0) + 1;
@@ -653,7 +653,7 @@ export class LogEncryptionService {
   }> {
     try {
       const stats = await this.getLogStats();
-      
+
       return {
         status: 'healthy',
         enabled: this.config.enabled,
@@ -716,11 +716,11 @@ class EncryptedLogStream extends Transform {
     try {
       // Buffer incoming data
       this.buffer = Buffer.concat([this.buffer, chunk as Buffer]);
-      
+
       // Process complete log lines
       const lines = this.buffer.toString().split('\n');
       this.buffer = Buffer.from(lines.pop() || ''); // Keep incomplete line in buffer
-      
+
       // Encrypt and push complete lines
       for (const line of lines) {
         if (line.trim()) {
@@ -728,7 +728,7 @@ class EncryptedLogStream extends Transform {
           this.push(encryptedLine);
         }
       }
-      
+
       callback();
     } catch (error) {
       callback(error);
@@ -754,10 +754,10 @@ class EncryptedLogStream extends Transform {
     const key = encryptionService.getEncryptionSecrets().dataEncryptionKey;
     const iv = crypto.randomBytes(16);
     const cipher = crypto.createCipheriv('aes-256-ctr', key, iv);
-    
+
     let encrypted = cipher.update(line, 'utf8', 'base64');
     encrypted += cipher.final('base64');
-    
+
     return encrypted + '\n';
   }
 }

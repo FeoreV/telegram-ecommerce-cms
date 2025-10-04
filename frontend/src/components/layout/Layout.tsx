@@ -1,41 +1,40 @@
-import React, { useState } from 'react'
 import {
-  AppBar,
-  Box,
-  Drawer,
-  IconButton,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Toolbar,
-  Typography,
-  Button,
-  Avatar,
-  Menu,
-  MenuItem,
-  Badge,
-  Tooltip,
-  Switch,
-} from '@mui/material'
-import {
-  Menu as MenuIcon,
-  AccountCircle,
-  Logout,
-  Notifications,
-  Settings,
-  DarkMode,
-  LightMode,
+    AccountCircle,
+    DarkMode,
+    LightMode,
+    Logout,
+    Menu as MenuIcon,
+    Notifications,
+    Settings,
 } from '@mui/icons-material'
-import { useNavigate, useLocation } from 'react-router-dom'
+import {
+    AppBar,
+    Avatar,
+    Badge,
+    Box,
+    Button,
+    Drawer,
+    IconButton,
+    List,
+    ListItem,
+    ListItemIcon,
+    ListItemText,
+    Menu,
+    MenuItem,
+    Toolbar,
+    Tooltip,
+    Typography
+} from '@mui/material'
+import React, { useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
+import { useThemeMode } from '../../contexts/ThemeModeContext'
+import { getRoutesForRole } from '../../routes/config'
+import { useResponsive } from '../../theme/responsive'
 import ConnectionStatus from '../notifications/ConnectionStatus'
 import NotificationCenter from '../notifications/NotificationCenter'
 import OrderNotificationSettings from '../orders/OrderNotificationSettings'
-import { useThemeMode } from '../../contexts/ThemeModeContext'
-import { useResponsive } from '../../theme/responsive'
 import styles from './Layout.module.css'
-import { getRoutesForRole } from '../../routes/config'
 
 const drawerWidth = 240
 
@@ -74,11 +73,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const accessibleRoutes = user?.role ? getRoutesForRole(user.role) : []
 
   const menuItems = accessibleRoutes
-    .filter((route) => route.showInSidebar)
-    .map(({ path, label, icon: Icon }) => ({
-      path,
-      text: label ?? path,
-      Icon,
+    .filter((route): route is typeof route & { label: string; icon: any } =>
+      route.showInSidebar === true
+    )
+    .map((route) => ({
+      path: route.path,
+      text: route.label,
+      Icon: route.icon,
     }))
 
   const drawer = (
@@ -133,7 +134,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </Typography>
           <div className={styles.layout__userSection}>
             <ConnectionStatus />
-            
+
             <IconButton
               color="inherit"
               onClick={() => setNotificationCenterOpen(true)}

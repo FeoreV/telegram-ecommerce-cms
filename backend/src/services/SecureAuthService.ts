@@ -1,9 +1,9 @@
-import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { secretManager } from '../utils/SecretManager';
-import { tenantCacheService } from './TenantCacheService';
+import jwt from 'jsonwebtoken';
 import { databaseService } from '../lib/database';
 import { logger } from '../utils/logger';
+import { secretManager } from '../utils/SecretManager';
+import { tenantCacheService } from './TenantCacheService';
 
 export interface TokenPair {
   accessToken: string;
@@ -95,7 +95,7 @@ export class SecureAuthService {
       ipAddress: this.hashIpAddress(ipAddress),
       ...additionalData
     };
-    
+
     return crypto
       .createHash('sha256')
       .update(JSON.stringify(fingerprintData))
@@ -138,7 +138,7 @@ export class SecureAuthService {
     try {
       const sessionId = this.generateSessionId();
       const jwtSecrets = secretManager.getJWTSecrets();
-      
+
       // Create access token (short-lived)
       const accessTokenPayload = {
         userId,
@@ -231,10 +231,10 @@ export class SecureAuthService {
   ): Promise<TokenPair> {
     try {
       const jwtSecrets = secretManager.getJWTSecrets();
-      
+
       // Verify refresh token
       const decoded = jwt.verify(refreshToken, jwtSecrets.refreshSecret) as any;
-      
+
       if (decoded.type !== 'refresh') {
         throw new Error('Invalid token type');
       }
@@ -259,7 +259,7 @@ export class SecureAuthService {
             actual: deviceInfo.deviceFingerprint,
             ipAddress: deviceInfo.ipAddress
           });
-          
+
           // Revoke session on device mismatch
           await this.revokeSession(decoded.sessionId);
           throw new Error('Device binding verification failed');
@@ -273,7 +273,22 @@ export class SecureAuthService {
         .digest('hex');
 
       if (sessionData.refreshTokenHash !== refreshTokenHash) {
-        throw new Error('Invalid refresh token');
+        // Check if this token is in grace period (old token after rotation)
+        const { tokenRotationService } = await import('./TokenRotationService.js');
+        const graceCheck = await tokenRotationService.validateTokenInGracePeriod(
+          refreshTokenHash,
+          sessionData.sessionId
+        );
+
+        if (graceCheck.valid && graceCheck.newTokenHash === sessionData.refreshTokenHash) {
+          logger.info('Refresh token used during grace period', {
+            sessionId: sessionData.sessionId,
+            userId: sessionData.userId
+          });
+          // Allow the refresh during grace period
+        } else {
+          throw new Error('Invalid refresh token');
+        }
       }
 
       // Create new access token
@@ -316,16 +331,35 @@ export class SecureAuthService {
 
         newRefreshTokenExpiry = new Date(Date.now() + this.config.refreshTokenTTL * 1000);
 
-        // Update session with new refresh token hash
+        // Calculate token hashes
+        const oldRefreshTokenHash = crypto
+          .createHash('sha256')
+          .update(refreshToken)
+          .digest('hex');
+
         const newRefreshTokenHash = crypto
           .createHash('sha256')
           .update(newRefreshToken)
           .digest('hex');
 
+        // Update session with new refresh token hash
         sessionData.refreshTokenHash = newRefreshTokenHash;
-        
-        // Revoke old refresh token
-        this.revokedTokens.add(refreshToken);
+
+        // SECURITY: Implement grace period for token rotation to prevent race conditions
+        const { tokenRotationService } = await import('./TokenRotationService.js');
+        await tokenRotationService.recordRotation(
+          oldRefreshTokenHash,
+          newRefreshTokenHash,
+          sessionData.sessionId,
+          sessionData.userId
+        );
+
+        // Note: Old refresh token will be valid during grace period
+        // After grace period expires, it will be automatically invalid
+        logger.debug('Token rotation completed with grace period', {
+          sessionId: sessionData.sessionId,
+          userId: sessionData.userId
+        });
       }
 
       // Update session activity
@@ -360,16 +394,36 @@ export class SecureAuthService {
   async validateToken(accessToken: string, deviceInfo?: DeviceInfo): Promise<any> {
     try {
       const jwtSecrets = secretManager.getJWTSecrets();
-      
+
       // Verify token signature and expiration
       const decoded = jwt.verify(accessToken, jwtSecrets.secret) as any;
-      
+
       if (decoded.type !== 'access') {
         throw new Error('Invalid token type');
       }
 
-      // Check if token is revoked
+      // Check if token is revoked (with grace period support for refresh tokens)
       if (this.revokedTokens.has(accessToken)) {
+        // For refresh tokens, check if they're in grace period
+        if (decoded.type === 'refresh') {
+          const tokenHash = crypto.createHash('sha256').update(accessToken).digest('hex');
+          const { tokenRotationService } = await import('./TokenRotationService.js');
+
+          const graceCheck = await tokenRotationService.validateTokenInGracePeriod(
+            tokenHash,
+            decoded.sessionId
+          );
+
+          if (graceCheck.valid) {
+            logger.info('Token validated during grace period', {
+              sessionId: decoded.sessionId,
+              newTokenHash: graceCheck.newTokenHash
+            });
+            // Token is valid during grace period - allow it
+            return decoded;
+          }
+        }
+
         throw new Error('Access token has been revoked');
       }
 
@@ -387,7 +441,7 @@ export class SecureAuthService {
           inactivityMs,
           timeoutMs: this.config.sessionInactivityTimeout * 1000
         });
-        
+
         await this.revokeSession(decoded.sessionId);
         throw new Error('Session expired due to inactivity');
       }
@@ -400,7 +454,7 @@ export class SecureAuthService {
             expected: sessionData.deviceInfo.deviceFingerprint,
             actual: deviceInfo.deviceFingerprint
           });
-          
+
           await this.revokeSession(decoded.sessionId);
           throw new Error('Device binding verification failed');
         }
@@ -467,7 +521,7 @@ export class SecureAuthService {
   async revokeAllUserSessions(userId: string): Promise<void> {
     try {
       const sessions = await this.getUserSessions(userId);
-      
+
       for (const session of sessions) {
         await this.revokeSession(session.sessionId);
       }
@@ -597,7 +651,7 @@ export class SecureAuthService {
     try {
       const prisma = databaseService.getPrisma();
       const result = await prisma.$queryRaw<any[]>`
-        SELECT * FROM user_sessions 
+        SELECT * FROM user_sessions
         WHERE user_id = ${userId}::UUID AND is_active = true
         ORDER BY last_activity DESC
       `;
@@ -627,7 +681,7 @@ export class SecureAuthService {
   private async cleanupUserSessions(userId: string): Promise<void> {
     try {
       const sessions = await this.getUserSessions(userId);
-      
+
       if (sessions.length > this.config.maxSessionsPerUser) {
         // Sort by last activity and revoke oldest sessions
         const sessionsToRevoke = sessions

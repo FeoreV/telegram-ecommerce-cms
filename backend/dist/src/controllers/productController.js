@@ -4,6 +4,7 @@ exports.bulkUpdateProducts = exports.deleteProduct = exports.updateProduct = exp
 const prisma_1 = require("../lib/prisma");
 const errorHandler_1 = require("../middleware/errorHandler");
 const logger_1 = require("../utils/logger");
+const sanitizer_1 = require("../utils/sanitizer");
 exports.getCategories = (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { storeId } = req.query;
     let whereClause = {};
@@ -65,7 +66,16 @@ exports.getCategories = (0, errorHandler_1.asyncHandler)(async (req, res) => {
         },
         orderBy: { name: 'asc' }
     });
-    res.json({ categories });
+    const sanitizedCategories = categories.map(cat => ({
+        id: cat.id,
+        name: cat.name,
+        slug: cat.slug,
+        parentId: cat.parentId,
+        productCount: cat._count?.products || 0,
+        createdAt: cat.createdAt,
+        updatedAt: cat.updatedAt
+    }));
+    res.json({ categories: sanitizedCategories });
 });
 exports.getProducts = (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { page = 1, limit = 10, search, storeId, categoryId, isActive, minPrice, maxPrice } = req.query;
@@ -246,7 +256,7 @@ exports.createProduct = (0, errorHandler_1.asyncHandler)(async (req, res) => {
             variants: true,
         },
     });
-    logger_1.logger.info(`Product created: ${product.id} by user ${req.user.id}`);
+    logger_1.logger.info(`Product created: ${(0, sanitizer_1.sanitizeForLog)(product.id)} by user ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
     const transformedProduct = {
         ...product,
         images: product.images ? JSON.parse(product.images) : []
@@ -301,7 +311,7 @@ exports.updateProduct = (0, errorHandler_1.asyncHandler)(async (req, res) => {
             variants: true,
         },
     });
-    logger_1.logger.info(`Product updated: ${product.id} by user ${req.user.id}`);
+    logger_1.logger.info(`Product updated: ${(0, sanitizer_1.sanitizeForLog)(product.id)} by user ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
     const transformedProduct = {
         ...product,
         images: product.images ? JSON.parse(product.images) : []
@@ -316,7 +326,7 @@ exports.deleteProduct = (0, errorHandler_1.asyncHandler)(async (req, res) => {
     await prisma_1.prisma.product.delete({
         where: { id },
     });
-    logger_1.logger.info(`Product deleted: ${id} by user ${req.user.id}`);
+    logger_1.logger.info(`Product deleted: ${(0, sanitizer_1.sanitizeForLog)(id)} by user ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
     res.json({ message: 'Product deleted successfully' });
 });
 exports.bulkUpdateProducts = (0, errorHandler_1.asyncHandler)(async (req, res) => {
@@ -342,7 +352,7 @@ exports.bulkUpdateProducts = (0, errorHandler_1.asyncHandler)(async (req, res) =
         },
         data: updateData,
     });
-    logger_1.logger.info(`Bulk update: ${result.count} products updated by user ${req.user.id}`);
+    logger_1.logger.info(`Bulk update: ${result.count} products updated by user ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
     res.json({
         message: `${result.count} products updated successfully`,
         count: result.count

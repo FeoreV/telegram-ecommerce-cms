@@ -20,14 +20,15 @@
   width: 240px;
   background-color: var(--color-sidebar-bg, #ffffff);
   border-right: 1px solid var(--color-border, #dee2e6);
+  border-radius: 0 !important;
 }
 
 .layout__appBar {
   width: 100%;
   z-index: 1200;
-  background-color: var(--color-bg-secondary, #f8f9fa);
   border-bottom: 1px solid var(--color-border, #dee2e6);
   color: var(--color-text, #333333);
+  border-radius: 0 !important;
 }
 
 .layout__appBar--shifted {
@@ -191,7 +192,9 @@
 }
 
 .theme--dark .layout__appBar {
-  background-color: var(--color-bg-secondary, #2d2d2d);
+  background-color: rgba(45, 45, 45, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-bottom-color: var(--color-border, #404040);
   color: var(--color-text, #f5f5f5);
 }

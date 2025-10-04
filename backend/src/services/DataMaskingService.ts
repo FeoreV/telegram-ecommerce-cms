@@ -1,6 +1,7 @@
 import * as crypto from 'crypto';
-import { logger } from '../utils/logger';
 import { getErrorMessage } from '../utils/errorUtils';
+import { logger } from '../utils/logger';
+import { sanitizeForLog } from '../utils/sanitizer';
 import { securityLogService } from './SecurityLogService';
 
 export enum Environment {
@@ -25,20 +26,20 @@ export interface MaskingRule {
   id: string;
   name: string;
   description: string;
-  
+
   // Targeting
   sourceEnvironment: Environment;
   targetEnvironments: Environment[];
   tablePattern?: RegExp;
   fieldPattern: RegExp;
   dataTypes: string[];
-  
+
   // Masking configuration
   strategy: MaskingStrategy;
   preserveFormat: boolean;
   preserveLength: boolean;
   preserveNulls: boolean;
-  
+
   // Strategy-specific settings
   maskingCharacter?: string;        // For partial masking
   visiblePrefix?: number;           // Characters to show at start
@@ -47,7 +48,7 @@ export interface MaskingRule {
   syntheticDataType?: string;       // For synthetic data generation
   hashAlgorithm?: string;           // For hashing
   saltLength?: number;              // For hashing
-  
+
   // Conditions
   conditions: {
     minLength?: number;
@@ -56,7 +57,7 @@ export interface MaskingRule {
     sensitivity?: 'low' | 'medium' | 'high' | 'critical';
     cascadeToRelated?: boolean;     // Mask related records
   };
-  
+
   // Compliance
   compliance: {
     gdprRequired: boolean;
@@ -65,21 +66,21 @@ export interface MaskingRule {
     soxRequired: boolean;
     pciRequired: boolean;
   };
-  
+
   // Quality requirements
   referentialIntegrity: boolean;    // Maintain FK relationships
   consistency: boolean;             // Same input -> same output
   reversibility: boolean;           // Can be reversed if needed
-  
+
   // Implementation
   enabled: boolean;
   priority: number;
   validateAfterMasking: boolean;
-  
+
   // Performance
   batchSize: number;
   parallelProcessing: boolean;
-  
+
   // Audit
   auditRequired: boolean;
   retainOriginalHash: boolean;      // Keep hash of original for verification
@@ -89,11 +90,11 @@ export interface MaskingJob {
   id: string;
   name: string;
   type: 'full_refresh' | 'incremental' | 'selective' | 'validation';
-  
+
   // Source and target
   sourceEnvironment: Environment;
   targetEnvironment: Environment;
-  
+
   // Scope
   scope: {
     databases: string[];
@@ -101,13 +102,13 @@ export interface MaskingJob {
     excludeTables: string[];
     includeSystemTables: boolean;
   };
-  
+
   // Execution details
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'paused';
   startTime: Date;
   endTime?: Date;
   duration?: number;
-  
+
   // Progress tracking
   progress: {
     totalTables: number;
@@ -118,7 +119,7 @@ export interface MaskingJob {
     maskedFields: number;
     estimatedCompletion?: Date;
   };
-  
+
   // Results
   results: {
     tablesProcessed: number;
@@ -133,7 +134,7 @@ export interface MaskingJob {
       cpuUsagePercent: number;
     };
   };
-  
+
   // Configuration
   configuration: {
     preserveReferentialIntegrity: boolean;
@@ -143,7 +144,7 @@ export interface MaskingJob {
     batchSize: number;
     retryFailedRecords: boolean;
   };
-  
+
   // Compliance and audit
   complianceValidation: {
     gdprCompliant: boolean;
@@ -152,7 +153,7 @@ export interface MaskingJob {
     dataMinimized: boolean;
     auditTrailGenerated: boolean;
   };
-  
+
   // Metadata
   executedBy: string;
   approvedBy?: string;
@@ -211,10 +212,10 @@ export class DataMaskingService {
     try {
       // Initialize consistency mappings storage
       this.initializeConsistencyMappings();
-      
+
       // Validate environment configurations
       await this.validateEnvironmentConfigurations();
-      
+
       // Setup performance monitoring
       await this.setupPerformanceMonitoring();
 
@@ -229,7 +230,7 @@ export class DataMaskingService {
   private initializeConsistencyMappings(): void {
     // Initialize consistency mappings for each masking rule
     const ruleIds = ['email-masking', 'phone-masking', 'name-masking', 'address-masking', 'ssn-masking'];
-    
+
     for (const ruleId of ruleIds) {
       this.consistencyMappings.set(ruleId, new Map<string, string>());
     }
@@ -240,7 +241,7 @@ export class DataMaskingService {
   private async validateEnvironmentConfigurations(): Promise<void> {
     // Validate that non-production environments are properly configured
     const requiredEnvs = [Environment.STAGING, Environment.TEST, Environment.DEVELOPMENT];
-    
+
     for (const env of requiredEnvs) {
       // Would validate database connections, permissions, etc.
       logger.debug(`Validating environment configuration: ${env}`);
@@ -266,6 +267,7 @@ export class DataMaskingService {
       preserveFormat: true,
       preserveLength: false,
       preserveNulls: true,
+      // NOTE: This is a format identifier, not a credential (CWE-798 false positive)
       tokenFormat: 'email',
       conditions: {
         minLength: 5,
@@ -508,7 +510,7 @@ export class DataMaskingService {
       generator: (_originalValue: string, _context?: any) => {
         const firstNames = ['Alex', 'Jordan', 'Casey', 'Morgan', 'Taylor', 'Jamie', 'Avery', 'Riley', 'Parker', 'Quinn'];
         const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Wilson'];
-        
+
         if (_originalValue.includes(' ')) {
           // Full name
           const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
@@ -530,7 +532,7 @@ export class DataMaskingService {
         const streetNumbers = Math.floor(Math.random() * 9999) + 1;
         const streetNames = ['Main St', 'Oak Ave', 'First St', 'Second St', 'Park Rd', 'Church St', 'Maple Ave', 'Cedar Ln'];
         const streetName = streetNames[Math.floor(Math.random() * streetNames.length)];
-        
+
         return `${streetNumbers} ${streetName}`;
       }
     });
@@ -544,7 +546,7 @@ export class DataMaskingService {
         const domains = ['example.com', 'test.org', 'sample.net', 'demo.co', 'mock.io'];
         const localPart = 'user' + Math.floor(Math.random() * 10000);
         const domain = domains[Math.floor(Math.random() * domains.length)];
-        
+
         return `${localPart}@${domain}`;
       }
     });
@@ -557,10 +559,10 @@ export class DataMaskingService {
       generator: (_originalValue: string, _context?: any) => {
         const adjectives = ['Global', 'Dynamic', 'Advanced', 'Premier', 'Elite', 'Strategic', 'Innovative', 'Professional'];
         const nouns = ['Solutions', 'Systems', 'Technologies', 'Services', 'Enterprises', 'Corporation', 'Industries', 'Group'];
-        
+
         const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
         const noun = nouns[Math.floor(Math.random() * nouns.length)];
-        
+
         return `${adjective} ${noun}`;
       }
     });
@@ -601,7 +603,7 @@ export class DataMaskingService {
     }
   ): Promise<string> {
     const jobId = crypto.randomUUID();
-    
+
     const job: MaskingJob = {
       id: jobId,
       name: `Mask ${sourceEnvironment} → ${targetEnvironment}`,
@@ -758,12 +760,12 @@ export class DataMaskingService {
 
   private async identifyTablesToProcess(job: MaskingJob): Promise<string[]> {
     // Identify tables that need masking based on rules
-    const allTables = job.scope.tables.length > 0 
-      ? job.scope.tables 
+    const allTables = job.scope.tables.length > 0
+      ? job.scope.tables
       : this.getDefaultTables();
 
     // Filter out excluded tables
-    const tablesToProcess = allTables.filter(table => 
+    const tablesToProcess = allTables.filter(table =>
       !job.scope.excludeTables.includes(table)
     );
 
@@ -806,38 +808,38 @@ export class DataMaskingService {
 
   private async createEnvironmentBackup(environment: Environment, job: MaskingJob): Promise<void> {
     logger.info(`Creating backup for environment: ${environment}`, { jobId: job.id });
-    
+
     // In a real implementation, would create actual database backup
     // For now, just simulate the backup process
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    logger.info(`Backup created for environment: ${environment}`);
+
+    logger.info(`Backup created for environment: ${sanitizeForLog(environment)}`);
   }
 
   private async processTable(tableName: string, job: MaskingJob): Promise<void> {
-    logger.debug(`Processing table: ${tableName}`, { jobId: job.id });
+    logger.debug(`Processing table: ${sanitizeForLog(tableName)}`, { jobId: job.id });
 
     // Get applicable rules for this table
     const applicableRules = this.getApplicableRules(tableName, job);
-    
+
     if (applicableRules.length === 0) {
-      logger.debug(`No applicable rules for table: ${tableName}`);
+      logger.debug(`No applicable rules for table: ${sanitizeForLog(tableName)}`);
       return;
     }
 
     // Simulate processing records
     const recordCount = this.getTableRecordCount(tableName);
     const batchSize = job.configuration.batchSize;
-    
+
     for (let offset = 0; offset < recordCount; offset += batchSize) {
       const batch = this.getTableBatch(tableName, offset, batchSize);
-      
+
       for (const record of batch) {
         const maskedRecord = await this.maskRecord(record, tableName, applicableRules, job);
         await this.updateRecord(tableName, maskedRecord, job);
-        
+
         job.progress.processedRecords++;
-        
+
         // Count masked fields
         for (const rule of applicableRules) {
           if (this.recordHasField(record, rule.fieldPattern)) {
@@ -875,18 +877,18 @@ export class DataMaskingService {
       'stores': 1000,
       'products': 20000
     };
-    
+
     return counts[tableName as keyof typeof counts] || 1000;
   }
 
   private getTableBatch(tableName: string, offset: number, batchSize: number): any[] {
     // Simulate getting a batch of records
     const records: any[] = [];
-    
+
     for (let i = 0; i < batchSize; i++) {
       const recordId = offset + i + 1;
       const record: any = { id: recordId };
-      
+
       // Add table-specific fields
       switch (tableName) {
         case 'users':
@@ -910,10 +912,10 @@ export class DataMaskingService {
           record.business_address = `${recordId} Business Ave`;
           break;
       }
-      
+
       records.push(record);
     }
-    
+
     return records;
   }
 
@@ -940,7 +942,7 @@ export class DataMaskingService {
               rule,
               job
             );
-            
+
             maskedRecord[fieldName] = maskedValue;
 
             // Store consistency mapping if required
@@ -1057,7 +1059,7 @@ export class DataMaskingService {
     // Simple implementation - preserve format but replace characters
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let result = '';
-    
+
     for (let i = 0; i < value.length; i++) {
       const char = value[i];
       if (/[A-Za-z0-9]/.test(char)) {
@@ -1066,7 +1068,7 @@ export class DataMaskingService {
         result += char; // Keep formatting characters
       }
     }
-    
+
     return result;
   }
 
@@ -1091,25 +1093,25 @@ export class DataMaskingService {
   private applyRandomization(value: string, rule: MaskingRule): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     const length = rule.preserveLength ? value.length : 8;
-    
+
     let result = '';
     for (let i = 0; i < length; i++) {
       result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    
+
     return result;
   }
 
   private async applyHashing(value: string, rule: MaskingRule): Promise<string> {
     const algorithm = rule.hashAlgorithm || 'SHA-256';
     const saltLength = rule.saltLength || 16;
-    
+
     // Generate consistent salt for this rule
     const salt = crypto.createHash('md5').update(rule.id).digest('hex').substring(0, saltLength);
-    
+
     const hash = crypto.createHash(algorithm.toLowerCase().replace('-', ''));
     hash.update(value + salt);
-    
+
     return hash.digest('hex');
   }
 
@@ -1137,10 +1139,10 @@ export class DataMaskingService {
 
   private async validateReferentialIntegrity(job: MaskingJob): Promise<void> {
     logger.info('Validating referential integrity', { jobId: job.id });
-    
+
     // Simulate referential integrity validation
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     // In a real implementation, would check foreign key constraints
     logger.info('Referential integrity validation completed');
   }
@@ -1179,13 +1181,13 @@ export class DataMaskingService {
 
   private calculatePerformanceMetrics(job: MaskingJob): void {
     const durationSeconds = (job.duration || 0) / 1000;
-    
-    job.results.performanceMetrics.recordsPerSecond = 
+
+    job.results.performanceMetrics.recordsPerSecond =
       durationSeconds > 0 ? job.results.recordsProcessed / durationSeconds : 0;
-    
-    job.results.performanceMetrics.fieldsPerSecond = 
+
+    job.results.performanceMetrics.fieldsPerSecond =
       durationSeconds > 0 ? job.results.fieldsMasked / durationSeconds : 0;
-    
+
     // Simulate memory and CPU usage
     job.results.performanceMetrics.memoryUsageMB = Math.floor(Math.random() * 512) + 256;
     job.results.performanceMetrics.cpuUsagePercent = Math.floor(Math.random() * 60) + 20;
@@ -1244,9 +1246,9 @@ export class DataMaskingService {
     // Calculate scores
     const criticalIssues = validationResult.issues.filter(i => i.severity === 'CRITICAL').length;
     const highIssues = validationResult.issues.filter(i => i.severity === 'HIGH').length;
-    
+
     validationResult.qualityScore = Math.max(0, 100 - (criticalIssues * 30) - (highIssues * 15));
-    
+
     const complianceIssues = validationResult.issues.filter(i => i.category === 'compliance').length;
     validationResult.complianceScore = Math.max(0, 100 - (complianceIssues * 25));
 
@@ -1279,18 +1281,18 @@ export class DataMaskingService {
 
     const totalRecordsProcessed = completedJobs.reduce((sum, job) => sum + job.results.recordsProcessed, 0);
     const totalFieldsMasked = completedJobs.reduce((sum, job) => sum + job.results.fieldsMasked, 0);
-    
+
     const averagePerformance = completedJobs.length > 0
       ? completedJobs.reduce((sum, job) => sum + job.results.performanceMetrics.recordsPerSecond, 0) / completedJobs.length
       : 0;
 
-    const compliantJobs = completedJobs.filter(job => 
-      job.complianceValidation.gdprCompliant && 
+    const compliantJobs = completedJobs.filter(job =>
+      job.complianceValidation.gdprCompliant &&
       job.complianceValidation.ccpaCompliant
     ).length;
 
-    const complianceScore = completedJobs.length > 0 
-      ? (compliantJobs / completedJobs.length) * 100 
+    const complianceScore = completedJobs.length > 0
+      ? (compliantJobs / completedJobs.length) * 100
       : 100;
 
     return {
@@ -1312,17 +1314,17 @@ export class DataMaskingService {
     stats: any;
   }> {
     const stats = this.getStats();
-    
+
     let status = 'healthy';
-    
+
     if (stats.complianceScore < 95) {
       status = 'warning'; // Compliance issues
     }
-    
+
     if (stats.activeJobs > 3) {
       status = 'degraded'; // Too many active jobs
     }
-    
+
     if (stats.averagePerformance < 50) {
       status = 'warning'; // Performance issues
     }

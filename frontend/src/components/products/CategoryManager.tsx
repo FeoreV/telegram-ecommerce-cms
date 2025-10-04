@@ -1,44 +1,37 @@
-import React, { useState, useEffect } from 'react'
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  TextField,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
-  IconButton,
-  Box,
-  Typography,
-  Chip,
-  Paper,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Alert,
-  Divider,
-  Menu,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-} from '@mui/material'
-import {
-  Add,
-  Edit,
-  Delete,
-  MoreVert,
-  ExpandMore,
-  Category as CategoryIcon,
-  Folder,
-  FolderOpen,
+    Add,
+    Category as CategoryIcon,
+    Delete,
+    Edit,
+    MoreVert
 } from '@mui/icons-material'
-import { Category } from '../../types'
-import { productService } from '../../services/productService'
+import {
+    Alert,
+    Box,
+    Button,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    Divider,
+    FormControl,
+    IconButton,
+    InputLabel,
+    List,
+    ListItem,
+    ListItemSecondaryAction,
+    ListItemText,
+    Menu,
+    MenuItem,
+    Paper,
+    Select,
+    TextField,
+    Typography
+} from '@mui/material'
+import React, { useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
+import { productService } from '../../services/productService'
+import { Category } from '../../types'
 
 interface CategoryManagerProps {
   open: boolean
@@ -130,7 +123,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({
 
       // Обновляем список категорий
       if (editingCategory) {
-        setCategories(prev => prev.map(cat => 
+        setCategories(prev => prev.map(cat =>
           cat.id === editingCategory.id ? newCategory : cat
         ))
       } else {
@@ -163,7 +156,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({
     try {
       // Здесь должен быть метод удаления категории
       // await productService.deleteCategory(categoryToDelete.id)
-      
+
       setCategories(prev => prev.filter(cat => cat.id !== categoryToDelete.id))
       toast.success('Категория удалена!')
       setDeleteDialogOpen(false)
@@ -230,8 +223,8 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({
         secondary={`slug: ${category.slug}`}
       />
       <ListItemSecondaryAction>
-        <IconButton 
-          edge="end" 
+        <IconButton
+          edge="end"
           onClick={(e) => handleMenuClick(e, category)}
           size="small"
         >
@@ -243,10 +236,10 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({
 
   return (
     <>
-      <Dialog 
-        open={open} 
-        onClose={onClose} 
-        maxWidth="md" 
+      <Dialog
+        open={open}
+        onClose={onClose}
+        maxWidth="md"
         fullWidth
         PaperProps={{ sx: { height: '80vh' } }}
       >
@@ -256,14 +249,14 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({
             Управление категориями
           </Box>
         </DialogTitle>
-        
+
         <DialogContent dividers>
           {/* Форма создания/редактирования */}
           <Paper sx={{ p: 3, mb: 3 }}>
             <Typography variant="h6" gutterBottom color="primary">
               {editingCategory ? 'Редактировать категорию' : 'Создать новую категорию'}
             </Typography>
-            
+
             <Box display="flex" gap={2} mb={2}>
               <TextField
                 label="Название категории"
@@ -273,7 +266,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({
                 required
                 placeholder="Электроника, Одежда, Книги..."
               />
-              
+
               <TextField
                 label="URL slug"
                 value={formData.slug}
@@ -310,7 +303,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({
               >
                 {loading ? 'Сохранение...' : editingCategory ? 'Обновить' : 'Создать'}
               </Button>
-              
+
               {editingCategory && (
                 <Button
                   variant="outlined"
@@ -342,7 +335,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({
                     {index < getCategoryHierarchy().length - 1 && <Divider />}
                   </React.Fragment>
                 ))}
-                
+
                 {/* Категории без родителя, которые не попали в иерархию */}
                 {categories.filter(cat => !cat.parentId).length === 0 && (
                   categories.map(cat => renderCategoryItem(cat))
@@ -356,8 +349,8 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({
           <Button onClick={onClose} disabled={loading}>
             Закрыть
           </Button>
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             onClick={() => {
               onSuccess()
               onClose()
@@ -379,7 +372,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({
           <Edit fontSize="small" sx={{ mr: 1 }} />
           Редактировать
         </MenuItem>
-        <MenuItem 
+        <MenuItem
           onClick={() => selectedCategory && handleDeleteClick(selectedCategory)}
           sx={{ color: 'error.main' }}
         >
@@ -393,11 +386,11 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({
         <DialogTitle>Подтвердите удаление</DialogTitle>
         <DialogContent>
           <Typography>
-            Вы уверены, что хотите удалить категорию 
-            "<strong>{categoryToDelete?.name}</strong>"?
+            Вы уверены, что хотите удалить категорию
+            &quot;<strong>{categoryToDelete?.name}</strong>&quot;?
           </Typography>
           <Alert severity="warning" sx={{ mt: 2 }}>
-            Все товары в этой категории станут без категории. 
+            Все товары в этой категории станут без категории.
             Это действие необратимо.
           </Alert>
         </DialogContent>
@@ -405,9 +398,9 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({
           <Button onClick={() => setDeleteDialogOpen(false)} disabled={loading}>
             Отмена
           </Button>
-          <Button 
-            onClick={handleDeleteCategory} 
-            color="error" 
+          <Button
+            onClick={handleDeleteCategory}
+            color="error"
             variant="contained"
             disabled={loading}
           >

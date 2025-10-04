@@ -1,6 +1,6 @@
 import TelegramBot from 'node-telegram-bot-api';
-import { logger } from '../utils/logger';
 import { apiService } from '../services/apiService';
+import { logger } from '../utils/logger';
 import { userSessions } from '../utils/sessionManager';
 
 interface StoreCreationState {
@@ -28,7 +28,7 @@ const CURRENCY_SYMBOLS = {
 
 export async function startStoreCreation(bot: TelegramBot, chatId: number) {
   const session = userSessions.getSession(chatId.toString());
-  
+
   if (!session || !session.token) {
     await bot.sendMessage(chatId, '❌ Вы не авторизованы. Используйте /start для входа.');
     return;
@@ -234,7 +234,7 @@ async function showFinalConfirmation(bot: TelegramBot, chatId: number) {
 
 export async function handleStoreCreationMessage(bot: TelegramBot, chatId: number, text: string) {
   const session = userSessions.getSession(chatId.toString());
-  
+
   if (!session?.storeCreation) {
     return false; // Not in store creation flow
   }
@@ -245,7 +245,7 @@ export async function handleStoreCreationMessage(bot: TelegramBot, chatId: numbe
     switch (step) {
       case 1: // Store name
         if (!validateStoreName(text)) {
-          await bot.sendMessage(chatId, 
+          await bot.sendMessage(chatId,
             '❌ Некорректное название магазина.\n\n' +
             '• Длина должна быть от 3 до 50 символов\n' +
             '• Избегайте специальных символов\n\n' +
@@ -267,7 +267,7 @@ export async function handleStoreCreationMessage(bot: TelegramBot, chatId: numbe
         data.name = text;
         session.storeCreation.step = 2;
         userSessions.updateSession(chatId.toString(), { storeCreation: session.storeCreation });
-        
+
         await showStep2DescriptionInput(bot, chatId, text);
         return true;
 
@@ -284,13 +284,13 @@ export async function handleStoreCreationMessage(bot: TelegramBot, chatId: numbe
         data.description = text;
         session.storeCreation.step = 3;
         userSessions.updateSession(chatId.toString(), { storeCreation: session.storeCreation });
-        
+
         await showStep3SlugInput(bot, chatId, data.name!);
         return true;
 
       case 3: // Store slug
         const slug = text.toLowerCase().replace(/[^a-z0-9]/g, '');
-        
+
         if (!validateStoreSlug(slug)) {
           await bot.sendMessage(chatId,
             '❌ Некорректный адрес магазина.\n\n' +
@@ -314,17 +314,17 @@ export async function handleStoreCreationMessage(bot: TelegramBot, chatId: numbe
         data.slug = slug;
         session.storeCreation.step = 4;
         userSessions.updateSession(chatId.toString(), { storeCreation: session.storeCreation });
-        
+
         await showStep4CurrencySelection(bot, chatId);
         return true;
 
       case 5: // Contact info
         const contactInfo = parseContactInfo(text);
         data.contactInfo = contactInfo;
-        
+
         session.storeCreation.step = 6;
         userSessions.updateSession(chatId.toString(), { storeCreation: session.storeCreation });
-        
+
         await showFinalConfirmation(bot, chatId);
         return true;
     }
@@ -338,7 +338,7 @@ export async function handleStoreCreationMessage(bot: TelegramBot, chatId: numbe
 
 export async function handleStoreCreationCallback(bot: TelegramBot, chatId: number, callbackData: string) {
   const session = userSessions.getSession(chatId.toString());
-  
+
   if (!session?.storeCreation) {
     return false;
   }
@@ -397,7 +397,7 @@ export async function handleStoreCreationCallback(bot: TelegramBot, chatId: numb
 
 async function createStore(bot: TelegramBot, chatId: number, session: any) {
   const storeData = session.storeCreation?.data;
-  
+
   if (!storeData || !storeData.name || !storeData.description || !storeData.slug || !storeData.currency) {
     await bot.sendMessage(chatId, '❌ Не все обязательные поля заполнены.');
     return;
@@ -450,13 +450,17 @@ async function createStore(bot: TelegramBot, chatId: number, session: any) {
       reply_markup: keyboard
     });
 
-    logger.info(`Store created successfully: ${newStore.id} by user ${session.telegramId}`);
+    // Sanitize log data to prevent log injection
+    const sanitizedStoreId = String(newStore.id).replace(/[\r\n]/g, ' ');
+    const sanitizedUserId = String(session.telegramId).replace(/[\r\n]/g, ' ');
+    logger.info(`Store created successfully: ${sanitizedStoreId} by user ${sanitizedUserId}`);
 
   } catch (error: any) {
-    logger.error('Error creating store:', error);
-    
+    const sanitizedError = error instanceof Error ? error.message.replace(/[\r\n]/g, ' ') : String(error).replace(/[\r\n]/g, ' ');
+    logger.error('Error creating store:', sanitizedError);
+
     const errorMessage = error.response?.data?.message || 'Не удалось создать магазин';
-    
+
     await bot.editMessageText(
       `❌ Ошибка создания магазина: ${errorMessage}\n\n` +
       'Попробуйте еще раз или обратитесь к администратору.',
@@ -505,22 +509,22 @@ function generateSlugFromName(name: string): string {
 
 function parseContactInfo(text: string): any {
   const contactInfo: any = {};
-  
+
   const phoneMatch = text.match(/телефон:?\s*([+\d\s\-\(\)]+)/i);
   if (phoneMatch) {
     contactInfo.phone = phoneMatch[1].trim();
   }
-  
+
   const emailMatch = text.match(/email:?\s*([^\s]+@[^\s]+)/i);
   if (emailMatch) {
     contactInfo.email = emailMatch[1].trim();
   }
-  
+
   const addressMatch = text.match(/адрес:?\s*(.+?)(?=\n|email|телефон|$)/is);
   if (addressMatch) {
     contactInfo.address = addressMatch[1].trim();
   }
-  
+
   return contactInfo;
 }
 
@@ -553,9 +557,9 @@ async function checkStoreSlugAvailability(slug: string, token: string): Promise<
 async function navigateToStep(bot: TelegramBot, chatId: number, session: any, step: number) {
   session.storeCreation.step = step;
   userSessions.updateSession(chatId.toString(), { storeCreation: session.storeCreation });
-  
+
   const storeData = session.storeCreation.data;
-  
+
   switch (step) {
     case 1:
       await showStep1NameInput(bot, chatId);

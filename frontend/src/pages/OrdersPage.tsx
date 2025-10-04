@@ -1,70 +1,52 @@
-import React, { useState, useEffect } from 'react'
 import {
-  Typography,
-  Box,
-  Paper,
-  Grid,
-  TextField,
-  InputAdornment,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Button,
-  Chip,
-  CircularProgress,
-  Alert,
-  Tabs,
-  Tab,
-  Badge,
-  ToggleButtonGroup,
-  ToggleButton,
-} from '@mui/material'
-import {
-  Search,
-  FilterList,
-  Refresh,
-  Download,
-  ViewList,
-  ViewModule,
-  DateRange,
-  Assessment,
-  Dashboard,
-  ShoppingCart,
+    Assessment,
+    Dashboard,
+    Download,
+    Refresh,
+    Search,
+    ShoppingCart,
+    ViewList,
+    ViewModule
 } from '@mui/icons-material'
-import { format, startOfDay, endOfDay } from 'date-fns'
-import { Order, Store } from '../types'
-import { orderService, OrderFilters } from '../services/orderService'
-import { storeService } from '../services/storeService'
-import OrderCard from '../components/orders/OrderCard'
-import BulkOrderActions from '../components/orders/BulkOrderActions'
+import {
+    Badge,
+    Box,
+    Button,
+    Chip,
+    CircularProgress,
+    FormControl,
+    Grid,
+    InputAdornment,
+    InputLabel,
+    MenuItem,
+    Paper,
+    Select,
+    Tab,
+    Tabs,
+    TextField,
+    ToggleButton,
+    ToggleButtonGroup,
+    Typography
+} from '@mui/material'
+import { format } from 'date-fns'
+import React, { useCallback, useEffect, useState } from 'react'
+import { toast } from 'react-toastify'
 import OrderAnalytics from '../components/orders/OrderAnalytics'
+import OrderCard from '../components/orders/OrderCard'
 import OrderKPIDashboard from '../components/orders/OrderKPIDashboard'
 import PaymentVerificationScreen from '../components/orders/PaymentVerificationScreen'
-import { useAuth } from '../contexts/AuthContext'
-import { toast } from 'react-toastify'
-import { useOrdersRealTime } from '../hooks/useRealTimeUpdates'
-import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
+import PageHeader from '../components/ui/PageHeader'
+import { useAuth } from '../contexts/AuthContext'
+import { useOrdersRealTime } from '../hooks/useRealTimeUpdates'
+import { OrderFilters, orderService } from '../services/orderService'
+import { storeService } from '../services/storeService'
+import { Order, Store } from '../types'
 
 interface TabPanelProps {
   children?: React.ReactNode
   index: number
   value: number
-}
-
-const TabPanel: React.FC<TabPanelProps> = ({ children, value, index, ...other }) => {
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`orders-tabpanel-${index}`}
-      aria-labelledby={`orders-tab-${index}`}
-      {...other}
-    >
-      {value === index && children}
-    </div>
-  )
 }
 
 const OrdersPage: React.FC = () => {
@@ -76,8 +58,6 @@ const OrdersPage: React.FC = () => {
   const [mainTab, setMainTab] = useState(0) // 0: Orders, 1: Analytics, 2: KPI
   const [activeTab, setActiveTab] = useState(0) // For order status tabs
   const [viewMode, setViewMode] = useState<'list' | 'cards'>('cards')
-  const [bulkMode, setBulkMode] = useState(false)
-  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([])
   const [filters, setFilters] = useState<OrderFilters>({
     page: 1,
     limit: 20,
@@ -105,31 +85,19 @@ const OrdersPage: React.FC = () => {
     { key: 'all', label: 'Все', status: undefined },
     { key: 'pending', label: 'Ожидают', status: 'PENDING_ADMIN' },
     { key: 'paid', label: 'Оплачены', status: 'PAID' },
-    { key: 'shipped', label: 'Отправлены', status: 'SHIPPED' },
-    { key: 'delivered', label: 'Доставлены', status: 'DELIVERED' },
-    { key: 'rejected', label: 'Отклонены', status: 'REJECTED' },
-    { key: 'cancelled', label: 'Отменены', status: 'CANCELLED' },
+    { key: 'rejected_cancelled', label: 'Отклонены/Отменены', statuses: ['REJECTED', 'CANCELLED'] },
   ]
 
-  useEffect(() => {
-    loadInitialData()
-  }, [])
-
-  useEffect(() => {
-    if (mainTab === 0) { // Only load orders data when on orders tab
-      loadOrders()
+  const loadStatusCounts = useCallback(async () => {
+    try {
+      const stats = await orderService.getOrderStats(filters.storeId)
+      setStatusCounts(stats.statusCounts ? (stats.statusCounts as Record<string, number>) : {})
+    } catch (error) {
+      console.error('Error loading status counts:', error)
     }
-  }, [filters, activeTab, mainTab])
+  }, [filters.storeId])
 
-  // Real-time updates
-  useOrdersRealTime(() => {
-    if (mainTab === 0) { // Only update when on orders tab
-      loadOrders()
-      loadStatusCounts()
-    }
-  })
-
-  const loadInitialData = async () => {
+  const loadInitialData = useCallback(async () => {
     try {
       // Загрузка магазинов для фильтра
       if (user?.role === 'OWNER' || user?.role === 'ADMIN') {
@@ -140,26 +108,28 @@ const OrdersPage: React.FC = () => {
           setStores([])
         }
       }
-      
+
       // Загрузка статистики по статусам
       loadStatusCounts()
     } catch (error: any) {
       console.error('Error loading initial data:', error)
     }
-  }
+  }, [user?.role, loadStatusCounts])
 
-  const loadOrders = async () => {
+  const loadOrders = useCallback(async () => {
     setLoading(true)
     try {
+      const currentTab = statusTabs[activeTab]
       const currentFilters = {
         ...filters,
-        status: statusTabs[activeTab].status as any,
+        status: currentTab.status as any,
+        statuses: currentTab.statuses as any,
         dateFrom: dateRange.from?.toISOString().split('T')[0],
         dateTo: dateRange.to?.toISOString().split('T')[0],
       }
 
       const response = await orderService.getOrders(currentFilters)
-      
+
       // Check if response and items exist
       if (!response || !response.items || !Array.isArray(response.items)) {
         console.warn('Invalid response format for orders:', response)
@@ -168,7 +138,7 @@ const OrdersPage: React.FC = () => {
         setTotalCount(0)
         return
       }
-      
+
       setOrders(response.items)
       setTotalPages(response.pagination?.totalPages || 0)
       setTotalCount(response.pagination?.total || 0)
@@ -178,16 +148,25 @@ const OrdersPage: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [filters, activeTab, dateRange])
 
-  const loadStatusCounts = async () => {
-    try {
-      const stats = await orderService.getOrderStats(filters.storeId)
-      setStatusCounts(stats.statusCounts ? (stats.statusCounts as Record<string, number>) : {})
-    } catch (error) {
-      console.error('Error loading status counts:', error)
+  useEffect(() => {
+    loadInitialData()
+  }, [loadInitialData])
+
+  useEffect(() => {
+    if (mainTab === 0) { // Only load orders data when on orders tab
+      loadOrders()
     }
-  }
+  }, [filters, activeTab, mainTab, loadOrders])
+
+  // Real-time updates
+  useOrdersRealTime(() => {
+    if (mainTab === 0) { // Only update when on orders tab
+      loadOrders()
+      loadStatusCounts()
+    }
+  })
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -224,7 +203,7 @@ const OrdersPage: React.FC = () => {
       ...prev,
       [field]: date,
     }))
-    
+
     // Обновляем фильтры с задержкой
     setTimeout(() => {
       setFilters(prev => ({ ...prev, page: 1 }))
@@ -233,13 +212,15 @@ const OrdersPage: React.FC = () => {
 
   const handleExport = async () => {
     try {
+      const currentTab = statusTabs[activeTab]
       const blob = await orderService.exportOrders({
         ...filters,
-        status: statusTabs[activeTab].status as any,
+        status: currentTab.status as any,
+        statuses: currentTab.statuses as any,
         dateFrom: dateRange.from?.toISOString().split('T')[0],
         dateTo: dateRange.to?.toISOString().split('T')[0],
       })
-      
+
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -248,7 +229,7 @@ const OrdersPage: React.FC = () => {
       a.click()
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
-      
+
       toast.success('Экспорт завершен')
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Ошибка при экспорте')
@@ -262,27 +243,19 @@ const OrdersPage: React.FC = () => {
     }))
   }
 
-  const handleSelectionChange = (orderIds: string[]) => {
-    setSelectedOrderIds(orderIds)
-  }
-
-  const handleOrderSelectionChange = (orderId: string, selected: boolean) => {
-    setSelectedOrderIds(prev => 
-      selected 
-        ? [...prev, orderId]
-        : prev.filter(id => id !== orderId)
-    )
-  }
-
-  const toggleBulkMode = () => {
-    setBulkMode(!bulkMode)
-    setSelectedOrderIds([])
-  }
-
-  const selectedOrders = (orders || []).filter(order => selectedOrderIds.includes(order.id))
-
   const getTabLabel = (tab: any, index: number) => {
-    const count = index === 0 ? totalCount : statusCounts[tab.status] || 0
+    let count = 0
+    if (index === 0) {
+      count = totalCount
+    } else if (tab.statuses) {
+      // For merged tabs, sum up counts for all statuses
+      count = tab.statuses.reduce((sum: number, status: string) => {
+        return sum + (statusCounts[status] || 0)
+      }, 0)
+    } else {
+      count = statusCounts[tab.status] || 0
+    }
+
     return (
       <Badge badgeContent={count} color="primary" showZero={false}>
         {tab.label}
@@ -305,14 +278,6 @@ const OrdersPage: React.FC = () => {
           subtitle="Управление заказами и подтверждение платежей"
           actions={
             <Box display="flex" gap={2}>
-            <Button
-              variant={bulkMode ? "contained" : "outlined"}
-              startIcon={<ViewModule />}
-              onClick={toggleBulkMode}
-              color={bulkMode ? "primary" : "inherit"}
-            >
-              {bulkMode ? 'Выйти из режима выбора' : 'Режим выбора'}
-            </Button>
             <Button
               variant="outlined"
               startIcon={<Download />}
@@ -341,19 +306,19 @@ const OrdersPage: React.FC = () => {
             variant="fullWidth"
             sx={{ borderBottom: 1, borderColor: 'divider' }}
           >
-            <Tab 
-              label="Заказы" 
-              icon={<ShoppingCart />} 
+            <Tab
+              label="Заказы"
+              icon={<ShoppingCart />}
               iconPosition="start"
             />
-            <Tab 
-              label="Аналитика" 
-              icon={<Assessment />} 
+            <Tab
+              label="Аналитика"
+              icon={<Assessment />}
               iconPosition="start"
             />
-            <Tab 
-              label="KPI Dashboard" 
-              icon={<Dashboard />} 
+            <Tab
+              label="KPI Dashboard"
+              icon={<Dashboard />}
               iconPosition="start"
             />
           </Tabs>
@@ -380,7 +345,7 @@ const OrdersPage: React.FC = () => {
                 size="small"
               />
             </Grid>
-            
+
             {(stores && stores.length > 0) && (
               <Grid item xs={12} md={2}>
                 <FormControl fullWidth size="small">
@@ -506,16 +471,6 @@ const OrdersPage: React.FC = () => {
           </Tabs>
         </Paper>
 
-        {/* Bulk Actions */}
-        {bulkMode && (
-          <BulkOrderActions
-            selectedOrders={selectedOrders}
-            allOrders={orders}
-            onSelectionChange={handleSelectionChange}
-            onRefresh={loadOrders}
-          />
-        )}
-
         {/* Payment Verification or Orders List */}
         {statusTabs[activeTab]?.isVerification ? (
           <PaymentVerificationScreen
@@ -541,9 +496,6 @@ const OrdersPage: React.FC = () => {
                     order={order}
                     onRefresh={loadOrders}
                     compact={viewMode === 'list'}
-                    selected={selectedOrderIds.includes(order.id)}
-                    onSelectionChange={handleOrderSelectionChange}
-                    showCheckbox={bulkMode}
                   />
                 ))}
 

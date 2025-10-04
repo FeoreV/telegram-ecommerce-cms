@@ -35,10 +35,11 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.dataRetentionService = exports.DataRetentionService = void 0;
 const crypto = __importStar(require("crypto"));
-const logger_1 = require("../utils/logger");
 const errorUtils_1 = require("../utils/errorUtils");
-const SecurityLogService_1 = require("./SecurityLogService");
+const logger_1 = require("../utils/logger");
+const sanitizer_1 = require("../utils/sanitizer");
 const DataClassificationService_1 = require("./DataClassificationService");
+const SecurityLogService_1 = require("./SecurityLogService");
 class DataRetentionService {
     constructor() {
         this.retentionPolicies = new Map();
@@ -803,7 +804,7 @@ class DataRetentionService {
                 const interval = this.parseCronToInterval(policy.schedule);
                 const scheduledExecution = setInterval(() => {
                     this.executeRetentionPolicy(policyId, false).catch(error => {
-                        logger_1.logger.error(`Scheduled retention policy execution failed for ${policyId}:`, error);
+                        logger_1.logger.error(`Scheduled retention policy execution failed for ${(0, sanitizer_1.sanitizeForLog)(policyId)}:`, error);
                     });
                 }, interval);
                 this.executionScheduler.push(scheduledExecution);
