@@ -12,7 +12,6 @@ import {
     updateStore,
 } from '../controllers/storeController';
 import { requireRole, requireStoreAccess } from '../middleware/auth';
-import { csrfProtection } from '../middleware/csrfProtection';
 import { validate } from '../middleware/validation';
 import { UserRole } from '../utils/jwt';
 
@@ -58,10 +57,9 @@ router.get(
   getStore
 );
 
-// Create store (SECURITY: CSRF protected)
+// Create store (SECURITY: CSRF protected globally in index.ts)
 router.post(
   '/',
-  csrfProtection,
   requireRole([UserRole.OWNER, UserRole.ADMIN]),
   [
     body('name').notEmpty().withMessage('Store name is required'),
@@ -90,10 +88,9 @@ router.post(
   createStore
 );
 
-// Update store (SECURITY: CSRF protected)
+// Update store (SECURITY: CSRF protected globally in index.ts)
 router.put(
   '/:id',
-  csrfProtection,
   [
     param('id').isString().withMessage('Valid store ID required'),
     body('name').optional().notEmpty().withMessage('Store name cannot be empty'),
@@ -112,20 +109,18 @@ router.put(
   updateStore
 );
 
-// Delete store (SECURITY: CSRF protected)
+// Delete store (SECURITY: CSRF protected globally in index.ts)
 router.delete(
   '/:id',
-  csrfProtection,
   [param('id').isString().withMessage('Valid store ID required')],
   validate,
   requireStoreAccess,
   deleteStore
 );
 
-// Add store admin (SECURITY: CSRF protected)
+// Add store admin (SECURITY: CSRF protected globally in index.ts)
 router.post(
   '/:id/admins',
-  csrfProtection,
   requireRole([UserRole.OWNER, UserRole.ADMIN]),
   [
     param('id').isString().withMessage('Valid store ID required'),
@@ -136,10 +131,9 @@ router.post(
   addStoreAdmin
 );
 
-// Remove store admin (SECURITY: CSRF protected)
+// Remove store admin (SECURITY: CSRF protected globally in index.ts)
 router.delete(
   '/:id/admins/:userId',
-  csrfProtection,
   requireRole([UserRole.OWNER, UserRole.ADMIN]),
   [
     param('id').isString().withMessage('Valid store ID required'),

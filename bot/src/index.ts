@@ -20,8 +20,15 @@ const PORT = process.env.BOT_PORT || 3003;
 const isProduction = process.env.NODE_ENV === 'production';
 const useWebhook = !!WEBHOOK_BASE_URL;
 
-if (!BOT_TOKEN) {
-  throw new Error('TELEGRAM_BOT_TOKEN is required');
+if (!BOT_TOKEN || BOT_TOKEN === 'YOUR_BOT_TOKEN_FROM_BOTFATHER') {
+  logger.error('❌ TELEGRAM_BOT_TOKEN is not configured properly!');
+  logger.error('Please follow these steps:');
+  logger.error('1. Open @BotFather in Telegram');
+  logger.error('2. Create a new bot with /newbot or use existing bot');
+  logger.error('3. Copy the bot token');
+  logger.error('4. Set TELEGRAM_BOT_TOKEN in bot/.env file');
+  logger.error('5. Restart the bot service');
+  process.exit(1);
 }
 
 logger.info('Initializing Telegram Bot', {
