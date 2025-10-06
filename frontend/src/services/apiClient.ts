@@ -105,8 +105,9 @@ apiClient.interceptors.request.use(
       try {
         const currentToken = csrfToken || await ensureCsrfToken()
         if (currentToken) {
-          if (!config.headers['X-CSRF-Token'] && !(config.headers as any)['x-csrf-token']) {
-            ;(config.headers as any)['X-CSRF-Token'] = currentToken
+          // csrf-csrf library expects lowercase 'x-csrf-token' header
+          if (!config.headers['x-csrf-token'] && !(config.headers as any)['X-CSRF-Token']) {
+            ;(config.headers as any)['x-csrf-token'] = currentToken
           }
         }
       } catch {
@@ -196,7 +197,8 @@ apiClient.interceptors.response.use(
           const newToken = await ensureCsrfToken()
           if (newToken) {
             originalRequest.headers = originalRequest.headers || {}
-            originalRequest.headers['X-CSRF-Token'] = newToken
+            // Use lowercase header name for csrf-csrf library
+            originalRequest.headers['x-csrf-token'] = newToken
             return apiClient(originalRequest)
           }
         } catch (_csrfErr) {
