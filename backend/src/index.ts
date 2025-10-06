@@ -276,19 +276,28 @@ app.use('/api/*', (req, res, next) => {
     return next();
   }
 
-  // Apply CSRF protection with error logging
+  // Apply CSRF protection with detailed logging
   doubleCsrfProtection(req, res, (err) => {
     if (err) {
-      logger.error('CSRF validation failed', {
+      logger.error('CSRF validation failed - DETAILED DEBUG', {
         error: err.message,
+        errorStack: err.stack,
         path: req.path,
         method: req.method,
-        headers: {
-          'x-csrf-token': req.get('X-CSRF-Token'),
-          'csrf-token': req.get('csrf-token'),
+        allHeaders: req.headers,
+        allCookies: req.cookies,
+        cookiesCsrf: {
+          'csrf-token': req.cookies?.['csrf-token'],
+          '__Host-csrf.token': req.cookies?.['__Host-csrf.token'],
+          '_csrf': req.cookies?.['_csrf']
         },
-        cookies: Object.keys(req.cookies || {}),
-        ip: req.ip
+        headersCsrf: {
+          'x-csrf-token': req.get('x-csrf-token'),
+          'X-CSRF-Token': req.get('X-CSRF-Token'),
+          'csrf-token': req.get('csrf-token')
+        },
+        ip: req.ip,
+        user: (req as any).user?.id
       });
     }
     next(err);
