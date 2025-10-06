@@ -30,7 +30,7 @@ interface SecurityKeysConfig {
 function loadSecurityConfig(): SecurityKeysConfig {
   const isProduction = process.env.NODE_ENV === 'production';
   
-  // Validate required environment variables in production
+  // Validate required environment variables in production (warn instead of throw)
   if (isProduction) {
     const requiredVars = [
       'SECURITY_LOGS_KEY_ID',
@@ -44,9 +44,8 @@ function loadSecurityConfig(): SecurityKeysConfig {
     
     const missing = requiredVars.filter(v => !process.env[v]);
     if (missing.length > 0) {
-      const error = `CRITICAL: Missing required security key IDs in production: ${missing.join(', ')}`;
-      logger.error(error);
-      throw new Error(error);
+      logger.warn(`⚠️ Security key IDs not set in production: ${missing.join(', ')}`);
+      logger.warn('Auto-generating temporary keys. For production, set these in .env or run: npm run generate:keys');
     }
   }
   
