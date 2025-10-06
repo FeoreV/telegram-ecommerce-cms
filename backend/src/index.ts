@@ -232,16 +232,7 @@ const csrfProtection = doubleCsrf({
 
 const { doubleCsrfProtection } = csrfProtection;
 
-// CSRF token endpoint
-app.get('/api/csrf-token', (req, res) => {
-  // Generate and return CSRF token
-  const { generateToken } = csrfProtection;
-  const token = generateToken(req, res);
-  res.json({ 
-    csrfToken: token,
-    message: 'CSRF token generated successfully' 
-  });
-});
+// (Removed legacy CSRF token endpoint using double-csrf generateToken)
 
 // Apply CSRF protection to state-changing routes
 app.use('/api/*', (req, res, next) => {
