@@ -210,6 +210,8 @@ app.use(express.urlencoded({ limit: '1mb', extended: true }));
 app.use(cookieParser());
 
 // SECURITY: CSRF Protection (CWE-352)
+// Note: __Host- prefix requires HTTPS. Use regular name for development/HTTP
+const isProduction = process.env.NODE_ENV === 'production';
 const csrfProtection = doubleCsrf({
   getSecret: () => secretManager.getEncryptionSecrets().masterKey,
   getSessionIdentifier: (req) => {
@@ -217,11 +219,11 @@ const csrfProtection = doubleCsrf({
     const user = (req as AuthenticatedRequest).user;
     return user?.id || req.ip || 'anonymous';
   },
-  cookieName: '__Host-csrf.token',
+  cookieName: isProduction ? '__Host-csrf.token' : 'csrf-token',
   cookieOptions: {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    secure: isProduction,
+    sameSite: isProduction ? 'strict' : 'lax',
     path: '/',
   },
   size: 64,
@@ -232,8 +234,13 @@ const { doubleCsrfProtection } = csrfProtection;
 
 // CSRF token endpoint
 app.get('/api/csrf-token', (req, res) => {
-  // Token is automatically set in cookie by the middleware
-  res.json({ message: 'CSRF token set in cookie' });
+  // Generate and return CSRF token
+  const { generateToken } = csrfProtection;
+  const token = generateToken(req, res);
+  res.json({ 
+    csrfToken: token,
+    message: 'CSRF token generated successfully' 
+  });
 });
 
 // Apply CSRF protection to state-changing routes

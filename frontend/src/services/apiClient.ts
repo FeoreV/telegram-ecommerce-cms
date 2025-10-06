@@ -35,8 +35,19 @@ let csrfFetchingPromise: Promise<string | null> | null = null
 async function fetchCsrfToken(): Promise<string | null> {
   try {
     const response = await axios.get(`${API_BASE}/csrf-token`, { withCredentials: true })
-    const token = (response.data as any)?.csrfToken
+    // Token is set in cookie, but also check response body
+    const token = (response.data as any)?.csrfToken || (response.data as any)?.message
     csrfToken = typeof token === 'string' ? token : null
+    
+    // If no token in response, try to extract from cookie
+    if (!csrfToken) {
+      const cookieToken = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('csrf-token=') || row.startsWith('__Host-csrf.token='))
+        ?.split('=')[1]
+      csrfToken = cookieToken || null
+    }
+    
     return csrfToken
   } catch (_err) {
     csrfToken = null

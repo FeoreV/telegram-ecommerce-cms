@@ -103,10 +103,11 @@ export function csrfProtection(config?: Partial<CsrfConfig>) {
     
     // For state-changing methods, verify CSRF token
     if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
-      // Support both legacy and global CSRF cookie names
+      // Support both production and development CSRF cookie names
       const cookieToken =
         req.cookies?.[fullConfig.cookieName] ||
-        req.cookies?.['__Host-csrf.token'];
+        req.cookies?.['__Host-csrf.token'] ||
+        req.cookies?.['csrf-token'];
       const headerToken = req.headers[fullConfig.headerName.toLowerCase()] as string;
       const bodyToken = req.body?._csrf;
       
