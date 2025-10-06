@@ -28,6 +28,32 @@ export const apiClient: AxiosInstance = axios.create({
   },
 })
 
+// CSRF token management
+let csrfToken: string | null = null
+let csrfFetchingPromise: Promise<string | null> | null = null
+
+async function fetchCsrfToken(): Promise<string | null> {
+  try {
+    const response = await axios.get(`${API_BASE}/csrf-token`, { withCredentials: true })
+    const token = (response.data as any)?.csrfToken
+    csrfToken = typeof token === 'string' ? token : null
+    return csrfToken
+  } catch (_err) {
+    csrfToken = null
+    return null
+  } finally {
+    csrfFetchingPromise = null
+  }
+}
+
+async function ensureCsrfToken(): Promise<string | null> {
+  if (csrfToken) return csrfToken
+  if (!csrfFetchingPromise) {
+    csrfFetchingPromise = fetchCsrfToken()
+  }
+  return csrfFetchingPromise
+}
+
 // Store for managing refresh token attempts
 let isRefreshing = false
 
@@ -55,12 +81,26 @@ const enqueueFailedRequest = () =>
     failedQueue.push({ resolve, reject })
   })
 
-// Request interceptor to add auth token
+// Request interceptor to add auth token and CSRF token
 apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
+  async (config: InternalAxiosRequestConfig) => {
     const token = getAccessToken()
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
+    }
+
+    const method = (config.method || 'get').toLowerCase()
+    if (['post', 'put', 'patch', 'delete'].includes(method)) {
+      try {
+        const currentToken = csrfToken || await ensureCsrfToken()
+        if (currentToken) {
+          if (!config.headers['X-CSRF-Token'] && !(config.headers as any)['x-csrf-token']) {
+            ;(config.headers as any)['X-CSRF-Token'] = currentToken
+          }
+        }
+      } catch {
+        // Ignore CSRF retrieval errors; server will respond with 403 which we handle below
+      }
     }
     return config
   },
@@ -125,6 +165,32 @@ apiClient.interceptors.response.use(
         }
       } else {
         handleAuthFailure()
+      }
+    }
+
+    // Handle CSRF errors: refresh token and retry once
+    if (
+      error.response?.status === 403 &&
+      !(originalRequest as any)._csrfRetry
+    ) {
+      const errorData = error.response.data as any
+      const isCsrfIssue =
+        errorData?.code === 'CSRF_TOKEN_MISSING' ||
+        errorData?.code === 'CSRF_TOKEN_INVALID'
+
+      if (isCsrfIssue) {
+        try {
+          ;(originalRequest as any)._csrfRetry = true
+          csrfToken = null
+          const newToken = await ensureCsrfToken()
+          if (newToken) {
+            originalRequest.headers = originalRequest.headers || {}
+            originalRequest.headers['X-CSRF-Token'] = newToken
+            return apiClient(originalRequest)
+          }
+        } catch (_csrfErr) {
+          // fall through to default handler
+        }
       }
     }
 
