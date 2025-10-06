@@ -99,11 +99,33 @@ if ! command -v pnpm &> /dev/null; then
     npm install -g pnpm
 fi
 
-# Install and build
-pnpm -r install --frozen-lockfile 2>/dev/null || pnpm -r install
-pnpm -r build
+# Clean install without frozen lockfile (production servers often have issues)
+echo -e "${YELLOW}Installing dependencies (this may take a few minutes)...${NC}"
+pnpm install --no-frozen-lockfile || {
+    echo -e "${RED}pnpm install failed, trying npm...${NC}"
+    npm install
+}
 
-echo -e "${GREEN}✅ Build completed${NC}"
+# Build each project separately for better error tracking
+echo -e "${YELLOW}Building backend...${NC}"
+cd backend && pnpm build && cd .. || {
+    echo -e "${RED}Backend build failed!${NC}"
+    exit 1
+}
+
+echo -e "${YELLOW}Building bot...${NC}"
+cd bot && pnpm build && cd .. || {
+    echo -e "${RED}Bot build failed!${NC}"
+    exit 1
+}
+
+echo -e "${YELLOW}Building frontend...${NC}"
+cd frontend && pnpm build && cd .. || {
+    echo -e "${RED}Frontend build failed!${NC}"
+    exit 1
+}
+
+echo -e "${GREEN}✅ All builds completed${NC}"
 
 # 5. Update PM2 ecosystem config
 echo -e "\n${YELLOW}📝 Step 5: Updating PM2 configuration...${NC}"
