@@ -270,8 +270,29 @@ app.use('/api/*', (req, res, next) => {
     return next();
   }
 
-  // Apply CSRF protection
-  doubleCsrfProtection(req, res, next);
+  // TEMPORARY: Disable CSRF in development for debugging
+  if (process.env.NODE_ENV !== 'production' && process.env.DISABLE_CSRF === 'true') {
+    logger.warn('⚠️ CSRF protection disabled in development mode');
+    return next();
+  }
+
+  // Apply CSRF protection with error logging
+  doubleCsrfProtection(req, res, (err) => {
+    if (err) {
+      logger.error('CSRF validation failed', {
+        error: err.message,
+        path: req.path,
+        method: req.method,
+        headers: {
+          'x-csrf-token': req.get('X-CSRF-Token'),
+          'csrf-token': req.get('csrf-token'),
+        },
+        cookies: Object.keys(req.cookies || {}),
+        ip: req.ip
+      });
+    }
+    next(err);
+  });
 });
 
 // Static files for uploads
