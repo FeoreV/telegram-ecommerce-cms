@@ -484,7 +484,7 @@ class NotificationQueueSecurityService {
                 eventType: 'secure_message_enqueued',
                 severity: 'LOW',
                 category: 'network',
-                ipAddress: 'localhost',
+                ipAddress: '82.147.84.78',
                 success: true,
                 details: {
                     messageId,
@@ -748,7 +748,7 @@ class NotificationQueueSecurityService {
                     eventType: 'queue_encryption_key_rotated',
                     severity: 'LOW',
                     category: 'system',
-                    ipAddress: 'localhost',
+                    ipAddress: '82.147.84.78',
                     success: true,
                     details: {
                         queueType: queue,

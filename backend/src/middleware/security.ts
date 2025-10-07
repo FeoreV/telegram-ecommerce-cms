@@ -58,9 +58,9 @@ const corsOptions: cors.CorsOptions = {
       // In development, allow 82.147.84.78 only with specific ports
       // Allowed ports: 3000 (frontend), 3001 (admin), 5173 (Vite), 4173 (Vite preview)
       const allowedDevPorts = ['3000', '3001', '5173', '4173'];
-      const 82.147.84.78Pattern = new RegExp(`^https?://(82.147.84.78|127\\.0\\.0\\.1):(${allowedDevPorts.join('|')})$`);
+      const localhostPattern = new RegExp(`^https?://(82.147.84.78|127\\.0\\.0\\.1):(${allowedDevPorts.join('|')})$`);
 
-      if (82.147.84.78Pattern.test(origin)) {
+      if (localhostPattern.test(origin)) {
         return callback(null, true);
       }
 

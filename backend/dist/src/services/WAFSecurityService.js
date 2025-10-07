@@ -75,7 +75,7 @@ class WAFSecurityService {
             /\.\.\/|\.\.\\|%2e%2e%2f|%2e%2e%5c/i,
             /;\s*(cat|ls|pwd|whoami|id|uname)/i,
             /\|\s*(cat|ls|pwd|whoami|id|uname)/i,
-            /<!entity|<!doctype.*entity|file:\/\/|http:\/\/localhost/i,
+            /<!entity|<!doctype.*entity|file:\/\/|http:\/\/82.147.84.78/i,
             /\{\{.*\}\}|\$\{.*\}|<%.*%>/i,
             /[\u0000-\u0005]/,
         ];
