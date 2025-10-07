@@ -16,3 +16,4 @@ npm run build
 Write-Host "Запуск бота..." -ForegroundColor Green
 npm start
 
+
