@@ -79,7 +79,7 @@ router.get(
 // Update user role (OWNER only)
 router.put(
   '/:id/role',
-  csrfProtection,
+  csrfProtection(),
   requirePermission(Permission.USER_UPDATE),
   [
     param('id')
@@ -108,7 +108,7 @@ router.put(
 // Toggle user active status
 router.patch(
   '/:id/status',
-  csrfProtection,
+  csrfProtection(),
   requirePermission(Permission.USER_UPDATE),
   [
     param('id')
@@ -122,7 +122,7 @@ router.patch(
 // Assign user to store (SECURITY: CSRF protected)
 router.post(
   '/assign-store',
-  csrfProtection,
+  csrfProtection(),
   requirePermission(Permission.USER_UPDATE),
   [
     body('userId')
@@ -142,7 +142,7 @@ router.post(
 // Remove user from store (SECURITY: CSRF protected)
 router.delete(
   '/remove-store',
-  csrfProtection,
+  csrfProtection(),
   requirePermission(Permission.USER_UPDATE),
   [
     body('userId')
@@ -196,7 +196,7 @@ router.get(
 // Ban user (SECURITY: CSRF protected)
 router.post(
   '/:id/ban',
-  csrfProtection,
+  csrfProtection(),
   requirePermission(Permission.USER_UPDATE),
   [
     param('id')
@@ -215,7 +215,7 @@ router.post(
 // Unban user (SECURITY: CSRF protected)
 router.post(
   '/:id/unban',
-  csrfProtection,
+  csrfProtection(),
   requirePermission(Permission.USER_UPDATE),
   [
     param('id')
@@ -229,7 +229,7 @@ router.post(
 // Delete user (SECURITY: CSRF protected)
 router.delete(
   '/:id',
-  csrfProtection,
+  csrfProtection(),
   requirePermission(Permission.USER_DELETE),
   [
     param('id')
@@ -243,7 +243,7 @@ router.delete(
 // Bulk actions on users (SECURITY: CSRF protected)
 router.post(
   '/bulk-action',
-  csrfProtection,
+  csrfProtection(),
   requirePermission(Permission.USER_UPDATE),
   [
     body('action')

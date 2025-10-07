@@ -48,7 +48,7 @@ router.get('/:id', authMiddleware, asyncHandler(async (req: AuthenticatedRequest
 }));
 
 // Create new category (SECURITY: CSRF protected)
-router.post('/', csrfProtection, authMiddleware, asyncHandler(async (req: AuthenticatedRequest, res: express.Response) => {
+router.post('/', csrfProtection(), authMiddleware, asyncHandler(async (req: AuthenticatedRequest, res: express.Response) => {
   const { name } = req.body;
 
   if (!name) {
@@ -75,7 +75,7 @@ router.post('/', csrfProtection, authMiddleware, asyncHandler(async (req: Authen
 }));
 
 // Update category (SECURITY: CSRF protected)
-router.put('/:id', csrfProtection, authMiddleware, asyncHandler(async (req: AuthenticatedRequest, res: express.Response) => {
+router.put('/:id', csrfProtection(), authMiddleware, asyncHandler(async (req: AuthenticatedRequest, res: express.Response) => {
   const { id } = req.params;
   const { name } = req.body;
 
@@ -100,7 +100,7 @@ router.put('/:id', csrfProtection, authMiddleware, asyncHandler(async (req: Auth
 }));
 
 // Delete category (SECURITY: CSRF protected)
-router.delete('/:id', csrfProtection, authMiddleware, asyncHandler(async (req: AuthenticatedRequest, res: express.Response) => {
+router.delete('/:id', csrfProtection(), authMiddleware, asyncHandler(async (req: AuthenticatedRequest, res: express.Response) => {
   const { id } = req.params;
 
   // Check if category has products

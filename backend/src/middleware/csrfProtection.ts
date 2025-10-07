@@ -88,6 +88,11 @@ export function csrfProtection(config?: Partial<CsrfConfig>) {
   };
   
   return (req: Request, res: Response, next: NextFunction) => {
+    // Skip CSRF protection in development mode or if explicitly disabled
+    if (process.env.NODE_ENV === 'development' || process.env.ENABLE_CSRF_PROTECTION === 'false') {
+      return next();
+    }
+    
     // Skip CSRF protection for excluded methods
     if (fullConfig.excludeMethods.includes(req.method)) {
       return next();

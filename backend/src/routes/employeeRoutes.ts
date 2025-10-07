@@ -35,7 +35,7 @@ router.get(
  */
 router.post(
   '/invite',
-  csrfProtection,
+  csrfProtection(),
   requirePermission(Permission.USER_CREATE),
   inviteEmployee
 );
@@ -48,7 +48,7 @@ router.post(
  */
 router.put(
   '/role',
-  csrfProtection,
+  csrfProtection(),
   requirePermission(Permission.USER_UPDATE),
   updateEmployeeRole
 );
@@ -61,7 +61,7 @@ router.put(
  */
 router.delete(
   '/stores/:storeId/users/:userId',
-  csrfProtection,
+  csrfProtection(),
   requirePermission(Permission.USER_DELETE),
   requireStoreAccess('write'),
   removeEmployee

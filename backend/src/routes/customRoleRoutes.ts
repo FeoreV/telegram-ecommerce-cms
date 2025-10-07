@@ -36,7 +36,7 @@ router.get(
  */
 router.post(
   '/',
-  csrfProtection,
+  csrfProtection(),
   requirePermission(Permission.USER_CREATE),
   createCustomRole
 );
@@ -71,7 +71,7 @@ router.get(
  */
 router.put(
   '/:id',
-  csrfProtection,
+  csrfProtection(),
   requirePermission(Permission.USER_UPDATE),
   updateCustomRole
 );
@@ -84,7 +84,7 @@ router.put(
  */
 router.delete(
   '/:id',
-  csrfProtection,
+  csrfProtection(),
   requirePermission(Permission.USER_DELETE),
   deleteCustomRole
 );
@@ -97,7 +97,7 @@ router.delete(
  */
 router.post(
   '/assign',
-  csrfProtection,
+  csrfProtection(),
   requirePermission(Permission.USER_UPDATE),
   assignCustomRole
 );

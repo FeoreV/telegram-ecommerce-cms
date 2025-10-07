@@ -28,7 +28,7 @@ router.get('/', requireRole([UserRole.OWNER, UserRole.ADMIN]), listBackups);
 // Create new backup (SECURITY: CSRF protected)
 router.post(
   '/',
-  csrfProtection,
+  csrfProtection(),
   requireRole([UserRole.OWNER]),
   [
     body('includeUploads').optional().isBoolean().withMessage('includeUploads must be boolean'),
@@ -53,7 +53,7 @@ router.get(
 // Restore from backup (DANGEROUS - OWNER only) (SECURITY: CSRF protected)
 router.post(
   '/restore/:filename',
-  csrfProtection,
+  csrfProtection(),
   requireRole([UserRole.OWNER]),
   [
     param('filename').isString().notEmpty().withMessage('Filename is required'),
@@ -73,7 +73,7 @@ router.post(
 // Delete backup (SECURITY: CSRF protected)
 router.delete(
   '/:filename',
-  csrfProtection,
+  csrfProtection(),
   requireRole([UserRole.OWNER]),
   [
     param('filename').isString().notEmpty().withMessage('Filename is required'),
@@ -85,7 +85,7 @@ router.delete(
 // Schedule automatic backups (SECURITY: CSRF protected)
 router.put(
   '/schedule',
-  csrfProtection,
+  csrfProtection(),
   requireRole([UserRole.OWNER]),
   [
     body('enabled').isBoolean().withMessage('enabled must be boolean'),

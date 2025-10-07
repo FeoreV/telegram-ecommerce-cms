@@ -51,7 +51,7 @@ router.get('/currencies/:code', asyncHandler(async (req: AuthenticatedRequest, r
 }));
 
 // Format currency value
-router.post('/currencies/:code/format', csrfProtection, asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.post('/currencies/:code/format', csrfProtection(), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { code } = req.params;
   const { amount, showDecimals, useLocale, customSymbol } = req.body;
 
@@ -122,7 +122,7 @@ router.get('/inventory/stores/:storeId',
 
 // Update store inventory configuration
 router.put('/inventory/stores/:storeId',
-  csrfProtection,
+  csrfProtection(),
   requireRole([UserRole.OWNER, UserRole.ADMIN]),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { storeId } = req.params;
@@ -241,7 +241,7 @@ router.get('/inventory/products/:productId',
 
 // Update product inventory configuration
 router.put('/inventory/products/:productId',
-  csrfProtection,
+  csrfProtection(),
   requireRole([UserRole.OWNER, UserRole.ADMIN, UserRole.VENDOR]),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { productId } = req.params;

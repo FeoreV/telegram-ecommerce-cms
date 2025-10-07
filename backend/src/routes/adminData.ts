@@ -302,7 +302,7 @@ router.get('/stats', async (req, res) => {
 });
 
 // Update user (SECURITY: CSRF protected)
-router.patch('/users/:id', csrfProtection, requirePermission(Permission.USER_UPDATE), async (req, res) => {
+router.patch('/users/:id', csrfProtection(), requirePermission(Permission.USER_UPDATE), async (req, res) => {
   try {
     const { id } = req.params;
     const { role, isActive, email } = req.body;
@@ -336,7 +336,7 @@ router.patch('/users/:id', csrfProtection, requirePermission(Permission.USER_UPD
 });
 
 // Update order status (SECURITY: CSRF protected)
-router.patch('/orders/:id', csrfProtection, requirePermission(Permission.ORDER_UPDATE), async (req, res) => {
+router.patch('/orders/:id', csrfProtection(), requirePermission(Permission.ORDER_UPDATE), async (req, res) => {
   try {
     const { id } = req.params;
     const { status, notes, trackingNumber, carrier } = req.body;

@@ -46,7 +46,7 @@ router.get(
 // Update user status - user management (SECURITY: CSRF protected)
 router.patch(
   '/users/:userId/status',
-  csrfProtection,
+  csrfProtection(),
   requirePermission(Permission.USER_UPDATE),
   [
     param('userId').isString().withMessage('Valid user ID required'),

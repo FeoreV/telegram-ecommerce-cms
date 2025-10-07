@@ -32,7 +32,7 @@ router.get('/:token', getInvitationInfo);
  * @access Public
  * @security CSRF protected (uses invitation token)
  */
-router.post('/accept', csrfProtection, acceptInvitation);
+router.post('/accept', csrfProtection(), acceptInvitation);
 
 /**
  * @route POST /api/invitations/reject
@@ -40,7 +40,7 @@ router.post('/accept', csrfProtection, acceptInvitation);
  * @access Public
  * @security CSRF protected (uses invitation token)
  */
-router.post('/reject', csrfProtection, rejectInvitation);
+router.post('/reject', csrfProtection(), rejectInvitation);
 
 // Защищенные маршруты (требуют аутентификации)
 router.use(authMiddleware);

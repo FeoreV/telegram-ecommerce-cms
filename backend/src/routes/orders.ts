@@ -44,7 +44,7 @@ router.get(
 // Create order (SECURITY: CSRF protected)
 router.post(
   '/',
-  csrfProtection,
+  csrfProtection(),
   [
     body('storeId').isString().withMessage('Store ID is required'),
     body('items').isArray({ min: 1 }).withMessage('Order items are required'),
@@ -61,7 +61,7 @@ router.post(
 // Confirm payment (Admin only) - with audit logging (SECURITY: CSRF protected)
 router.post(
   '/:id/confirm-payment',
-  csrfProtection,
+  csrfProtection(),
   requireRole([UserRole.OWNER, UserRole.ADMIN]),
   [param('id').isString().withMessage('Valid order ID required')],
   validate,
@@ -72,7 +72,7 @@ router.post(
 // Reject order (Admin only) - with audit logging (SECURITY: CSRF protected)
 router.post(
   '/:id/reject',
-  csrfProtection,
+  csrfProtection(),
   requireRole([UserRole.OWNER, UserRole.ADMIN]),
   [
     param('id').isString().withMessage('Valid order ID required'),
@@ -86,7 +86,7 @@ router.post(
 // Upload payment proof (Customer only) with rate limiting (SECURITY: CSRF protected)
 router.post(
   '/:id/payment-proof',
-  csrfProtection,
+  csrfProtection(),
   uploadRateLimitMiddleware, // Apply rate limiting first
   [param('id').isString().withMessage('Valid order ID required')],
   validate,
@@ -99,7 +99,7 @@ router.post(
 // Ship order (Admin only) - with audit logging (SECURITY: CSRF protected)
 router.post(
   '/:id/ship',
-  csrfProtection,
+  csrfProtection(),
   requireRole([UserRole.OWNER, UserRole.ADMIN]),
   [
     param('id').isString().withMessage('Valid order ID required'),
@@ -114,7 +114,7 @@ router.post(
 // Mark order as delivered (Admin only) - with audit logging (SECURITY: CSRF protected)
 router.post(
   '/:id/deliver',
-  csrfProtection,
+  csrfProtection(),
   requireRole([UserRole.OWNER, UserRole.ADMIN]),
   [
     param('id').isString().withMessage('Valid order ID required'),
@@ -128,7 +128,7 @@ router.post(
 // Cancel order (Admin only) - with audit logging (SECURITY: CSRF protected)
 router.post(
   '/:id/cancel',
-  csrfProtection,
+  csrfProtection(),
   requireRole([UserRole.OWNER, UserRole.ADMIN]),
   [
     param('id').isString().withMessage('Valid order ID required'),

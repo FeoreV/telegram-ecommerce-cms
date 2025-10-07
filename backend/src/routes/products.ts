@@ -37,7 +37,7 @@ router.get(
 // Create product (SECURITY: CSRF protected)
 router.post(
   '/',
-  csrfProtection,
+  csrfProtection(),
   requireRole([UserRole.OWNER, UserRole.ADMIN, UserRole.VENDOR]),
   [
     body('name').notEmpty().withMessage('Product name is required'),
@@ -57,7 +57,7 @@ router.post(
 // Update product (SECURITY: CSRF protected)
 router.put(
   '/:id',
-  csrfProtection,
+  csrfProtection(),
   requireRole([UserRole.OWNER, UserRole.ADMIN, UserRole.VENDOR]),
   [
     param('id').isString().withMessage('Valid product ID required'),
@@ -78,7 +78,7 @@ router.put(
 // Delete product (SECURITY: CSRF protected)
 router.delete(
   '/:id',
-  csrfProtection,
+  csrfProtection(),
   requireRole([UserRole.OWNER, UserRole.ADMIN, UserRole.VENDOR]),
   [param('id').isString().withMessage('Valid product ID required')],
   validate,
@@ -88,7 +88,7 @@ router.delete(
 // Bulk update products (SECURITY: CSRF protected)
 router.patch(
   '/bulk',
-  csrfProtection,
+  csrfProtection(),
   requireRole([UserRole.OWNER, UserRole.ADMIN, UserRole.VENDOR]),
   [
     body('productIds').isArray({ min: 1 }).withMessage('Product IDs array is required'),
@@ -116,7 +116,7 @@ router.get(
 // Create a new variant for a product (SECURITY: CSRF protected)
 router.post(
   '/:productId/variants',
-  csrfProtection,
+  csrfProtection(),
   requireRole([UserRole.OWNER, UserRole.ADMIN, UserRole.VENDOR]),
   [
     param('productId').isString().withMessage('Valid product ID required'),
@@ -133,7 +133,7 @@ router.post(
 // Update a variant (SECURITY: CSRF protected)
 router.put(
   '/:productId/variants/:variantId',
-  csrfProtection,
+  csrfProtection(),
   requireRole([UserRole.OWNER, UserRole.ADMIN, UserRole.VENDOR]),
   [
     param('productId').isString().withMessage('Valid product ID required'),
@@ -151,7 +151,7 @@ router.put(
 // Delete a variant (SECURITY: CSRF protected)
 router.delete(
   '/:productId/variants/:variantId',
-  csrfProtection,
+  csrfProtection(),
   requireRole([UserRole.OWNER, UserRole.ADMIN, UserRole.VENDOR]),
   [
     param('productId').isString().withMessage('Valid product ID required'),

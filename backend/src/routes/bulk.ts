@@ -29,7 +29,7 @@ router.get(
 // Import products from CSV (SECURITY: CSRF protected)
 router.post(
   '/import/products',
-  csrfProtection,
+  csrfProtection(),
   requirePermission(Permission.PRODUCT_CREATE),
   upload.single('csv'),
   [
@@ -55,7 +55,7 @@ router.get(
 // Bulk update products (SECURITY: CSRF protected)
 router.patch(
   '/update/products',
-  csrfProtection,
+  csrfProtection(),
   requirePermission(Permission.PRODUCT_UPDATE),
   [
     body('storeId').isString().withMessage('Store ID is required'),
@@ -70,7 +70,7 @@ router.patch(
 // Bulk delete products (SECURITY: CSRF protected)
 router.delete(
   '/delete/products',
-  csrfProtection,
+  csrfProtection(),
   requirePermission(Permission.PRODUCT_DELETE),
   [
     body('storeId').isString().withMessage('Store ID is required'),

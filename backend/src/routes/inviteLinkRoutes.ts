@@ -34,7 +34,7 @@ router.get('/info/:token', getInviteLinkInfo);
  * @access Public
  * @security CSRF protected
  */
-router.post('/use', csrfProtection, useInviteLink);
+router.post('/use', csrfProtection(), useInviteLink);
 
 // Защищенные маршруты (требуют аутентификации)
 router.use(authMiddleware);
@@ -47,7 +47,7 @@ router.use(authMiddleware);
  */
 router.post(
   '/',
-  csrfProtection,
+  csrfProtection(),
   requirePermission(Permission.USER_CREATE),
   createInviteLink
 );
@@ -71,7 +71,7 @@ router.get(
  */
 router.put(
   '/:id',
-  csrfProtection,
+  csrfProtection(),
   requirePermission(Permission.USER_UPDATE),
   updateInviteLink
 );
@@ -84,7 +84,7 @@ router.put(
  */
 router.delete(
   '/:id',
-  csrfProtection,
+  csrfProtection(),
   requirePermission(Permission.USER_DELETE),
   deleteInviteLink
 );

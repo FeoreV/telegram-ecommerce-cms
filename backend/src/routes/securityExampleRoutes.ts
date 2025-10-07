@@ -49,7 +49,7 @@ router.post('/register',
  */
 router.post('/product',
   authMiddleware,                                // Require authentication
-  csrfProtection,                                // CSRF protection
+  csrfProtection(),                                // CSRF protection
   sanitizeBody,                                  // Sanitize inputs
   validateRequired('name', 'price', 'category'), // Required fields
   validateStringLength('name', 2, 200),          // Name length
@@ -72,7 +72,7 @@ router.post('/product',
  */
 router.post('/batch-update',
   authMiddleware,
-  csrfProtection,
+  csrfProtection(),
   sanitizeBody,
   validateRequired('updates'),
   validateArrayField('updates', 100),  // Max 100 items
@@ -148,7 +148,7 @@ router.post('/upload',
  */
 router.post('/review',
   authMiddleware,
-  csrfProtection,
+  csrfProtection(),
   sanitizeBody,
   validateRequired('productId', 'rating', 'comment'),
   validateIntegerField('rating', 1, 5),       // Rating 1-5
@@ -170,7 +170,7 @@ router.post('/review',
  */
 router.put('/settings',
   authMiddleware,
-  csrfProtection,
+  csrfProtection(),
   sanitizeBody,
   validateEnum('theme', ['light', 'dark', 'auto']),
   validateEnum('language', ['en', 'ru', 'uk']),

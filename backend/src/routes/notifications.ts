@@ -36,19 +36,19 @@ router.get('/stats', getNotificationStats);
 // Mark notification as read (SECURITY: CSRF protected)
 router.patch(
   '/:id/read',
-  csrfProtection,
+  csrfProtection(),
   [param('id').isString().withMessage('Valid notification ID required')],
   validate,
   markNotificationAsRead
 );
 
 // Mark all notifications as read (SECURITY: CSRF protected)
-router.patch('/read-all', csrfProtection, markAllNotificationsAsRead);
+router.patch('/read-all', csrfProtection(), markAllNotificationsAsRead);
 
 // Delete notification (SECURITY: CSRF protected)
 router.delete(
   '/:id',
-  csrfProtection,
+  csrfProtection(),
   [param('id').isString().withMessage('Valid notification ID required')],
   validate,
   deleteNotification

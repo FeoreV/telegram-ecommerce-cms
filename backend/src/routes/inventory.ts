@@ -41,7 +41,7 @@ router.get(
 // Update stock levels (SECURITY: CSRF protected)
 router.post(
   '/stock/update',
-  csrfProtection,
+  csrfProtection(),
   requirePermission(Permission.PRODUCT_UPDATE),
   [
     body('productId')
@@ -93,7 +93,7 @@ router.get(
 // Set stock alerts configuration for store (SECURITY: CSRF protected)
 router.post(
   '/alerts/config',
-  csrfProtection,
+  csrfProtection(),
   requirePermission(Permission.STORE_UPDATE),
   [
     body('storeId')

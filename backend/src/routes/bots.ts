@@ -49,7 +49,7 @@ router.get('/', requireRole(['OWNER', 'ADMIN']), getUserBots);
  * @access Private (OWNER, ADMIN)
  * @security CSRF protected
  */
-router.post('/', csrfProtection, requireRole(['OWNER', 'ADMIN']), createBot);
+router.post('/', csrfProtection(), requireRole(['OWNER', 'ADMIN']), createBot);
 
 /**
  * @route DELETE /api/bots/:storeId
@@ -57,7 +57,7 @@ router.post('/', csrfProtection, requireRole(['OWNER', 'ADMIN']), createBot);
  * @access Private (OWNER, ADMIN)
  * @security CSRF protected
  */
-router.delete('/:storeId', csrfProtection, requireRole(['OWNER', 'ADMIN']), removeBot);
+router.delete('/:storeId', csrfProtection(), requireRole(['OWNER', 'ADMIN']), removeBot);
 
 /**
  * @route PUT /api/bots/:storeId/settings
@@ -65,7 +65,7 @@ router.delete('/:storeId', csrfProtection, requireRole(['OWNER', 'ADMIN']), remo
  * @access Private (OWNER, ADMIN)
  * @security CSRF protected
  */
-router.put('/:storeId/settings', csrfProtection, requireRole(['OWNER', 'ADMIN']), updateBotSettings);
+router.put('/:storeId/settings', csrfProtection(), requireRole(['OWNER', 'ADMIN']), updateBotSettings);
 
 /**
  * @route GET /api/bots/:storeId/stats
@@ -87,7 +87,7 @@ router.get('/:storeId/settings', requireRole(['OWNER', 'ADMIN']), getBotSettings
  * @access Private (OWNER, ADMIN)
  * @security CSRF protected
  */
-router.post('/:storeId/restart', csrfProtection, requireRole(['OWNER', 'ADMIN']), restartBot);
+router.post('/:storeId/restart', csrfProtection(), requireRole(['OWNER', 'ADMIN']), restartBot);
 
 /**
  * @route GET /api/bots/global/stats
@@ -102,7 +102,7 @@ router.get('/global/stats', requireRole(['OWNER']), getGlobalBotStats);
  * @access Private (OWNER, ADMIN)
  * @security CSRF protected
  */
-router.post('/:storeId/webhook/enable', csrfProtection, requireRole(['OWNER', 'ADMIN']), enableWebhook);
+router.post('/:storeId/webhook/enable', csrfProtection(), requireRole(['OWNER', 'ADMIN']), enableWebhook);
 
 /**
  * @route POST /api/bots/:storeId/webhook/disable
@@ -110,7 +110,7 @@ router.post('/:storeId/webhook/enable', csrfProtection, requireRole(['OWNER', 'A
  * @access Private (OWNER, ADMIN)
  * @security CSRF protected
  */
-router.post('/:storeId/webhook/disable', csrfProtection, requireRole(['OWNER', 'ADMIN']), disableWebhook);
+router.post('/:storeId/webhook/disable', csrfProtection(), requireRole(['OWNER', 'ADMIN']), disableWebhook);
 
 /**
  * @route GET /api/bots/:storeId/webhook/status
