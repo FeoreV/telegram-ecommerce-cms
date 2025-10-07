@@ -53,13 +53,16 @@ fi
 
 # Reset log files (they shouldn't be tracked)
 print_info "Resetting log files..."
-git checkout HEAD -- backend/logs/audit.json 2>/dev/null || true
-git checkout HEAD -- bot/logs/bot-combined.log 2>/dev/null || true
-git checkout HEAD -- bot/logs/bot-error.log 2>/dev/null || true
+git reset HEAD backend/logs/audit.json 2>/dev/null || true
+git reset HEAD bot/logs/bot-combined.log 2>/dev/null || true
+git reset HEAD bot/logs/bot-error.log 2>/dev/null || true
+git checkout -- backend/logs/audit.json 2>/dev/null || true
+git checkout -- bot/logs/bot-combined.log 2>/dev/null || true
+git checkout -- bot/logs/bot-error.log 2>/dev/null || true
 
-# Stash .env changes temporarily
+# Stash .env changes temporarily (including logs just in case)
 print_info "Stashing local changes..."
-git stash push -m "Auto-stash before pull $(date)" -- backend/.env bot/.env frontend/.env || true
+git stash push -m "Auto-stash before pull $(date)" -- backend/.env bot/.env frontend/.env backend/logs/ bot/logs/ 2>/dev/null || git stash
 
 # Pull latest changes
 print_info "Pulling latest changes from origin/main..."
