@@ -34,8 +34,13 @@ export async function handleStores(
       const storeId = callbackQuery.data.replace('store_select_', '');
       await showStore(bot, chatId, session, storeId);
     } else if (callbackQuery?.data?.startsWith('store_products_')) {
-      const storeId = callbackQuery.data.replace('store_products_', '');
-      await showStoreProducts(bot, chatId, session, storeId);
+      // Extract storeId and optional page number from callback data
+      const matches = callbackQuery.data.match(/^store_products_([^_]+)(?:_page_(\d+))?$/);
+      if (matches) {
+        const storeId = matches[1];
+        const page = matches[2] ? parseInt(matches[2], 10) : 1;
+        await showStoreProducts(bot, chatId, session, storeId, page);
+      }
     } else if (callbackQuery?.data === 'store_create') {
       await showCreateStoreForm(bot, chatId, session);
     } else if (callbackQuery?.data === 'store_create_start') {
@@ -218,7 +223,7 @@ async function showStore(bot: TelegramBot, chatId: number, session: any, storeId
   }
 }
 
-async function showStoreProducts(bot: TelegramBot, chatId: number, session: any, storeId: string) {
+async function showStoreProducts(bot: TelegramBot, chatId: number, session: any, storeId: string, page: number = 1) {
   const loadingMsg = await bot.sendMessage(chatId, '🔄 Загружаю каталог товаров...');
 
   try {
@@ -236,11 +241,12 @@ async function showStoreProducts(bot: TelegramBot, chatId: number, session: any,
       (async () => {
         const cmsBase = process.env.CMS_BASE_URL;
         if (!cmsBase) {
-          return apiService.getProducts(storeId, session.token, 1, 10);
+          return apiService.getProducts(storeId, session.token, page, 10);
         }
         try {
-          const data = await ttlCache.wrap(`cms:products:store:${storeId}:p1`, 10000, async () => {
-            const resp = await cmsService.listProducts({ limit: 10, offset: 0 });
+          const offset = (page - 1) * 10;
+          const data = await ttlCache.wrap(`cms:products:store:${storeId}:p${page}`, 10000, async () => {
+            const resp = await cmsService.listProducts({ limit: 10, offset });
             return resp;
           });
           // Normalize to backend shape for UI
@@ -252,13 +258,13 @@ async function showStoreProducts(bot: TelegramBot, chatId: number, session: any,
               price: p?.variants?.[0]?.prices?.[0]?.amount ? (p.variants[0].prices[0].amount / 100) : 0,
               stock: p?.variants?.[0]?.inventory_quantity ?? 0,
             })),
-            pagination: { page: 1, totalPages: 1 },
+            pagination: { page, totalPages: Math.ceil((data.count || 10) / 10) },
             source: 'cms'
           };
           return normalized;
         } catch (e) {
           logger.warn('CMS product listing failed, falling back to backend', e);
-          return apiService.getProducts(storeId, session.token, 1, 10);
+          return apiService.getProducts(storeId, session.token, page, 10);
         }
       })()
     ]);
