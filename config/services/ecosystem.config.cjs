@@ -1,26 +1,24 @@
 module.exports = {
   apps: [
     {
-      name: 'telegram-ecommerce-backend',
+      name: 'telegram-backend',
       cwd: './backend',
-      script: 'dist/index.js',
+      script: 'dist/src/index.js',
       instances: 1,
       autorestart: true,
       watch: false,
       max_memory_restart: '1G',
       env: {
         NODE_ENV: 'production',
-        PORT: 3001
-        // ADMIN_COOKIE_SECRET and SESSION_SECRET should be set via environment variables or .env file
+        PORT: 3002
       },
       env_production: {
         NODE_ENV: 'production',
-        PORT: 3001
-        // ADMIN_COOKIE_SECRET and SESSION_SECRET should be set via environment variables or .env file
+        PORT: 3002
       }
     },
     {
-      name: 'telegram-ecommerce-bot',
+      name: 'telegram-bot',
       cwd: './bot',
       script: 'dist/index.js',
       instances: 1,
@@ -28,12 +26,26 @@ module.exports = {
       watch: false,
       max_memory_restart: '512M',
       env: {
-        NODE_ENV: 'production',
-        BOT_PORT: 3002
+        NODE_ENV: 'production'
       },
       env_production: {
-        NODE_ENV: 'production',
-        BOT_PORT: 3002
+        NODE_ENV: 'production'
+      }
+    },
+    {
+      name: 'frontend',
+      cwd: './frontend',
+      script: 'node_modules/.bin/vite',
+      args: 'preview --host --port 3000',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '512M',
+      env: {
+        NODE_ENV: 'production'
+      },
+      env_production: {
+        NODE_ENV: 'production'
       }
     }
   ],
