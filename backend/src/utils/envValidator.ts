@@ -61,10 +61,21 @@ export class EnvValidator {
       errors.push('DATABASE_URL is required');
     } else {
       // Validate database URL format
-      try {
-        new URL(env.DATABASE_URL);
-      } catch (_error) {
-        errors.push('DATABASE_URL must be a valid URL');
+      const dbUrl = env.DATABASE_URL;
+      const provider = process.env.DATABASE_PROVIDER;
+      
+      // SQLite uses file: URLs which don't need full URL validation
+      if (provider === 'sqlite' || dbUrl.startsWith('file:')) {
+        if (!dbUrl.startsWith('file:')) {
+          errors.push('DATABASE_URL for SQLite must start with file:');
+        }
+      } else {
+        // For other databases (MySQL, PostgreSQL), validate as URL
+        try {
+          new URL(dbUrl);
+        } catch (_error) {
+          errors.push('DATABASE_URL must be a valid URL');
+        }
       }
     }
 

@@ -1,9 +1,0 @@
-{"error":{"code":"ECONNREFUSED"},"level":"error","message":"Bot Redis client error","service":"telegram-bot","timestamp":"2025-10-04T13:02:04.814Z"}
-{"error":{"code":"ECONNREFUSED"},"level":"error","message":"Bot Redis client error","service":"telegram-bot","timestamp":"2025-10-04T13:02:04.832Z"}
-{"error":{"code":"ECONNREFUSED"},"level":"error","message":"Bot Redis client error","service":"telegram-bot","timestamp":"2025-10-04T13:02:04.942Z"}
-{"error":{"code":"ECONNREFUSED"},"level":"error","message":"Bot Redis client error","service":"telegram-bot","timestamp":"2025-10-04T13:02:05.145Z"}
-{"error":{"code":"ECONNREFUSED"},"level":"error","message":"Bot Redis client error","service":"telegram-bot","timestamp":"2025-10-04T13:02:05.454Z"}
-{"error":{"code":"ECONNREFUSED"},"level":"error","message":"Failed to initialize bot Redis session store","service":"telegram-bot","timestamp":"2025-10-04T13:02:05.454Z"}
-{"address":"127.0.0.1","code":"ECONNREFUSED","errno":-4078,"level":"error","message":"Redis connection error in bot security: connect ECONNREFUSED 127.0.0.1:6379","port":6379,"service":"telegram-bot","stack":"Error: connect ECONNREFUSED 127.0.0.1:6379\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)","syscall":"connect","timestamp":"2025-10-04T13:02:05.480Z"}
-{"address":"127.0.0.1","code":"ECONNREFUSED","errno":-4078,"level":"error","message":"Redis connection error in bot security: connect ECONNREFUSED 127.0.0.1:6379","port":6379,"service":"telegram-bot","stack":"Error: connect ECONNREFUSED 127.0.0.1:6379\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)","syscall":"connect","timestamp":"2025-10-04T13:02:05.593Z"}
-{"error":{"code":"ETELEGRAM","message":"ETELEGRAM: 404 Not Found"},"level":"error","message":"Failed to start webhook service","service":"telegram-webhook","timestamp":"2025-10-04T13:02:05.763Z"}

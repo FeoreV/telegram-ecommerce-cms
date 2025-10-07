@@ -97,6 +97,8 @@ const initializeCriticalServices = async () => {
 const envValidation = EnvValidator.validate();
 if (!envValidation.isValid) {
   console.error('Environment validation failed. Exiting...');
+  console.error('Errors:', envValidation.errors);
+  console.error('Warnings:', envValidation.warnings);
   process.exit(1);
 }
 
