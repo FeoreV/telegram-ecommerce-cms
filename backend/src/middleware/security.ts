@@ -45,6 +45,7 @@ const corsOptions: cors.CorsOptions = {
           logger.warn('CORS blocked request from origin in production:', { origin, allowedOrigins: productionOrigins });
           return callback(new Error('Not allowed by CORS policy'));
         }
+        return callback(null, true);
       }
     }
 
@@ -91,7 +92,9 @@ const corsOptions: cors.CorsOptions = {
     'Authorization',
     'Cache-Control',
     'X-API-Key',
-    'X-Request-ID'
+    'X-Request-ID',
+    'x-csrf-token',
+    'X-CSRF-Token'
   ],
   exposedHeaders: [
     'X-Total-Count',
