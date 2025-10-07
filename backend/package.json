@@ -4,6 +4,8 @@
   "description": "Backend API for Telegram ecommerce bot",
   "main": "dist/src/index.js",
   "scripts": {
+    "setup:env": "node setup-env.js",
+    "check:env": "node check-env.js",
     "dev": "cross-env ADMIN_JS_SKIP_BUNDLE=true tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/src/index.js",
