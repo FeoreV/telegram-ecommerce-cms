@@ -1,0 +1,106 @@
+# Caddy Configuration Example for Telegram E-commerce CMS
+# Caddy automatically handles HTTPS with Let's Encrypt
+# Replace 'yourdomain.com' with your actual domain
+
+# Frontend - Main domain
+yourdomain.com, www.yourdomain.com {
+    # Reverse proxy to frontend (port 3000)
+    reverse_proxy localhost:3000
+    
+    # Security headers
+    header {
+        # HSTS
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        # Prevent clickjacking
+        X-Frame-Options "SAMEORIGIN"
+        # Prevent MIME sniffing
+        X-Content-Type-Options "nosniff"
+        # XSS Protection
+        X-XSS-Protection "1; mode=block"
+        # Referrer Policy
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # Remove server info
+        -Server
+    }
+    
+    # Gzip compression
+    encode gzip
+    
+    # Logging
+    log {
+        output file /var/log/caddy/frontend-access.log
+        format json
+    }
+}
+
+# Backend API - API subdomain
+api.yourdomain.com {
+    # Reverse proxy to backend (port 3001)
+    reverse_proxy localhost:3001 {
+        # WebSocket support
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+    
+    # CORS headers
+    @cors {
+        header Origin https://yourdomain.com
+    }
+    
+    header @cors {
+        Access-Control-Allow-Origin "https://yourdomain.com"
+        Access-Control-Allow-Credentials "true"
+        Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization, x-csrf-token, X-CSRF-Token, X-API-Key, X-Request-ID"
+    }
+    
+    # Handle OPTIONS requests
+    @options {
+        method OPTIONS
+    }
+    respond @options 204
+    
+    # Security headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+    
+    # Increase upload size
+    request_body {
+        max_size 10MB
+    }
+    
+    # Gzip compression
+    encode gzip
+    
+    # Logging
+    log {
+        output file /var/log/caddy/api-access.log
+        format json
+    }
+}
+
+# Optional: Admin subdomain (if you want separate admin panel)
+# admin.yourdomain.com {
+#     reverse_proxy localhost:3001/admin
+#     
+#     # Restrict access by IP (optional)
+#     @allowed {
+#         remote_ip 82.147.84.78 192.168.1.0/24
+#     }
+#     
+#     handle @allowed {
+#         reverse_proxy localhost:3001
+#     }
+#     
+#     handle {
+#         respond "Access Denied" 403
+#     }
+# }
+
