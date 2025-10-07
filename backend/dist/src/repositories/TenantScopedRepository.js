@@ -19,7 +19,7 @@ class TenantScopedRepository {
             });
         }
         catch (error) {
-            logger_1.logger.error('Failed to set tenant context:', error);
+            logger_1.logger.error('Failed to set tenant context:', (0, logger_1.toLogMetadata)(error));
             throw error;
         }
     }
@@ -28,7 +28,7 @@ class TenantScopedRepository {
             return await MultiTenantSecurityService_1.multiTenantSecurityService.validateStoreAccess(userId, storeId, operation);
         }
         catch (error) {
-            logger_1.logger.error('Failed to validate tenant access:', error);
+            logger_1.logger.error('Failed to validate tenant access:', (0, logger_1.toLogMetadata)(error));
             return false;
         }
     }
@@ -75,7 +75,7 @@ class TenantScopedRepository {
             return result;
         }
         catch (error) {
-            logger_1.logger.error(`Failed to find many ${this.tableName}:`, error);
+            logger_1.logger.error(`Failed to find many ${this.tableName}:`, (0, logger_1.toLogMetadata)(error));
             throw error;
         }
     }
@@ -103,7 +103,7 @@ class TenantScopedRepository {
             return result;
         }
         catch (error) {
-            logger_1.logger.error(`Failed to find unique ${this.tableName}:`, error);
+            logger_1.logger.error(`Failed to find unique ${this.tableName}:`, (0, logger_1.toLogMetadata)(error));
             throw error;
         }
     }
@@ -130,7 +130,7 @@ class TenantScopedRepository {
             return result;
         }
         catch (error) {
-            logger_1.logger.error(`Failed to create ${this.tableName}:`, error);
+            logger_1.logger.error(`Failed to create ${this.tableName}:`, (0, logger_1.toLogMetadata)(error));
             throw error;
         }
     }
@@ -159,7 +159,7 @@ class TenantScopedRepository {
             return result;
         }
         catch (error) {
-            logger_1.logger.error(`Failed to update ${this.tableName}:`, error);
+            logger_1.logger.error(`Failed to update ${this.tableName}:`, (0, logger_1.toLogMetadata)(error));
             throw error;
         }
     }
@@ -186,7 +186,7 @@ class TenantScopedRepository {
             return result;
         }
         catch (error) {
-            logger_1.logger.error(`Failed to delete ${this.tableName}:`, error);
+            logger_1.logger.error(`Failed to delete ${this.tableName}:`, (0, logger_1.toLogMetadata)(error));
             throw error;
         }
     }
@@ -212,7 +212,7 @@ class TenantScopedRepository {
             return result;
         }
         catch (error) {
-            logger_1.logger.error(`Failed to count ${this.tableName}:`, error);
+            logger_1.logger.error(`Failed to count ${this.tableName}:`, (0, logger_1.toLogMetadata)(error));
             throw error;
         }
     }
@@ -227,7 +227,7 @@ class TenantScopedRepository {
             return result;
         }
         catch (error) {
-            logger_1.logger.error(`Failed to execute raw query on ${this.tableName}:`, error);
+            logger_1.logger.error(`Failed to execute raw query on ${this.tableName}:`, (0, logger_1.toLogMetadata)(error));
             throw error;
         }
     }
@@ -265,7 +265,7 @@ class TenantScopedRepository {
             return results;
         }
         catch (error) {
-            logger_1.logger.error(`Failed to execute batch operation on ${this.tableName}:`, error);
+            logger_1.logger.error(`Failed to execute batch operation on ${this.tableName}:`, (0, logger_1.toLogMetadata)(error));
             throw error;
         }
     }
@@ -306,7 +306,7 @@ class TenantScopedRepository {
             };
         }
         catch (error) {
-            logger_1.logger.error(`Failed to get table stats for ${this.tableName}:`, error);
+            logger_1.logger.error(`Failed to get table stats for ${this.tableName}:`, (0, logger_1.toLogMetadata)(error));
             return {
                 totalRecords: 0,
                 tenantRecords: 0,

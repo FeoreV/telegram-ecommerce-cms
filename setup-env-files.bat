@@ -40,8 +40,8 @@ echo ✅ Setup Complete!
 echo ============================
 echo.
 echo 📝 Configuration:
-echo    Frontend: http://localhost:3000
-echo    Backend:  http://localhost:3001
+echo    Frontend: http://82.147.84.78:3000
+echo    Backend:  http://82.147.84.78:3001
 echo    Bot:      Port 3003
 echo.
 echo ⚠️  IMPORTANT: Edit .env files and add:

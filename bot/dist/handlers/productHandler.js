@@ -18,6 +18,10 @@ async function handleProducts(bot, msg, callbackQuery) {
             const productId = callbackQuery.data.replace('product_view_', '');
             await showProduct(bot, chatId, session, productId);
         }
+        else if (callbackQuery.data.startsWith('product_variants_detail_')) {
+            const productId = callbackQuery.data.replace('product_variants_detail_', '');
+            await showVariantDetails(bot, chatId, session, productId);
+        }
         else if (callbackQuery.data.startsWith('cms_product_view_')) {
             const cmsProductId = callbackQuery.data.replace('cms_product_view_', '');
             await showCMSProduct(bot, chatId, session, cmsProductId);
@@ -79,44 +83,108 @@ async function showProduct(bot, chatId, session, productId) {
         }
         const keyboard = { inline_keyboard: [] };
         if (product.variants && product.variants.length > 0) {
-            text += '\n*🎨 Доступные варианты:*\n';
-            product.variants.forEach((variant, index) => {
-                const variantPrice = variant.price || product.price;
-                const variantStock = variant.stock ?? product.stock;
-                const emoji = index === 0 ? '🟦' : index === 1 ? '🟩' : index === 2 ? '🟨' : '🟪';
-                text += `${emoji} ${variant.name}: *${variant.value}*`;
-                if (variant.price && variant.price !== product.price) {
-                    text += ` - ${variantPrice} ${product.store.currency}`;
+            const variantGroups = {};
+            product.variants.forEach((variant) => {
+                const groupName = variant.name || 'Другое';
+                if (!variantGroups[groupName]) {
+                    variantGroups[groupName] = [];
                 }
-                text += `\n`;
-                if (variantStock > 0) {
-                    keyboard.inline_keyboard.push([
-                        {
-                            text: `🛒 Купить ${variant.value}`,
-                            callback_data: `product_variant_${productId}_${variant.id}`
+                variantGroups[groupName].push(variant);
+            });
+            text += '\n*🎨 Доступные варианты:*\n';
+            const getVariantEmoji = (groupName) => {
+                const name = groupName.toLowerCase();
+                if (name.includes('цвет') || name.includes('color'))
+                    return '🎨';
+                if (name.includes('размер') || name.includes('size'))
+                    return '📏';
+                if (name.includes('вес') || name.includes('weight'))
+                    return '⚖️';
+                if (name.includes('объем') || name.includes('volume'))
+                    return '📦';
+                if (name.includes('вкус') || name.includes('taste') || name.includes('flavor'))
+                    return '🍬';
+                if (name.includes('материал') || name.includes('material'))
+                    return '🧵';
+                return '🔹';
+            };
+            Object.entries(variantGroups).forEach(([groupName, variants]) => {
+                const emoji = getVariantEmoji(groupName);
+                text += `\n${emoji} *${groupName}*\n`;
+                variants.forEach((variant) => {
+                    const variantPrice = variant.price || product.price;
+                    const variantStock = variant.stock ?? product.stock;
+                    const stockIcon = variantStock > 10 ? '✅' : variantStock > 0 ? '⚠️' : '❌';
+                    text += `  ${stockIcon} ${variant.value}`;
+                    if (variant.price && variant.price !== product.price) {
+                        text += ` - *${variantPrice} ${product.store.currency}*`;
+                    }
+                    text += ` (${variantStock} шт.)\n`;
+                });
+            });
+            text += '\n💡 *Выберите нужный вариант:*\n';
+            Object.entries(variantGroups).forEach(([groupName, variants]) => {
+                const emoji = getVariantEmoji(groupName);
+                const maxButtonsPerRow = variants.some((v) => v.value.length > 10) ? 2 : 3;
+                for (let i = 0; i < variants.length; i += maxButtonsPerRow) {
+                    const row = [];
+                    for (let j = i; j < Math.min(i + maxButtonsPerRow, variants.length); j++) {
+                        const variant = variants[j];
+                        const variantStock = variant.stock ?? product.stock;
+                        const variantPrice = variant.price || product.price;
+                        if (variantStock > 0) {
+                            let buttonText = `${emoji} ${variant.value}`;
+                            if (variant.price && variant.price !== product.price) {
+                                buttonText += ` (${variantPrice} ${product.store.currency})`;
+                            }
+                            row.push({
+                                text: buttonText,
+                                callback_data: `product_variant_${productId}_${variant.id}`
+                            });
                         }
-                    ]);
+                    }
+                    if (row.length > 0) {
+                        keyboard.inline_keyboard.push(row);
+                    }
                 }
             });
+            keyboard.inline_keyboard.push([
+                {
+                    text: '📋 Подробнее о вариантах',
+                    callback_data: `product_variants_detail_${productId}`
+                }
+            ]);
         }
         else {
             if (product.stock > 0) {
-                text += '\n*💰 Быстрая покупка:*\n';
-                const quantityRow = [];
-                const maxQty = Math.min(5, product.stock);
-                for (let i = 1; i <= maxQty; i++) {
-                    quantityRow.push({
-                        text: `${i} шт.`,
-                        callback_data: `buy_simple_${productId}_${i}`
-                    });
+                text += '\n*🛒 Выберите количество:*\n';
+                const maxQty = Math.min(10, product.stock);
+                if (maxQty >= 1) {
+                    const row1 = [];
+                    for (let i = 1; i <= Math.min(5, maxQty); i++) {
+                        const totalPrice = (product.price * i).toFixed(2);
+                        row1.push({
+                            text: `${i} шт. (${totalPrice} ${product.store.currency})`,
+                            callback_data: `buy_simple_${productId}_${i}`
+                        });
+                    }
+                    keyboard.inline_keyboard.push(row1);
                 }
-                if (quantityRow.length > 0) {
-                    keyboard.inline_keyboard.push(quantityRow);
+                if (maxQty > 5) {
+                    const row2 = [];
+                    for (let i = 6; i <= Math.min(10, maxQty); i++) {
+                        const totalPrice = (product.price * i).toFixed(2);
+                        row2.push({
+                            text: `${i} шт. (${totalPrice} ${product.store.currency})`,
+                            callback_data: `buy_simple_${productId}_${i}`
+                        });
+                    }
+                    keyboard.inline_keyboard.push(row2);
                 }
-                if (product.stock > 5) {
+                if (product.stock > 10) {
                     keyboard.inline_keyboard.push([
                         {
-                            text: '📝 Указать количество',
+                            text: '📝 Указать другое количество',
                             callback_data: `buy_custom_${productId}`
                         }
                     ]);
@@ -172,6 +240,76 @@ async function showProduct(bot, chatId, session, productId) {
     catch (error) {
         await bot.editMessageText('Ошибка при загрузке информации о товаре.', { chat_id: chatId, message_id: loadingMsg.message_id });
         throw error;
+    }
+}
+async function showVariantDetails(bot, chatId, session, productId) {
+    const loadingMsg = await bot.sendMessage(chatId, '🔄 Загружаю информацию...');
+    try {
+        if (!session.token) {
+            await bot.editMessageText('Необходимо авторизоваться. Нажмите /start', { chat_id: chatId, message_id: loadingMsg.message_id });
+            return;
+        }
+        const productResponse = await apiService_1.apiService.getProduct(productId, session.token);
+        const product = productResponse.product;
+        if (!product.variants || product.variants.length === 0) {
+            await bot.editMessageText('У этого товара нет вариантов.', { chat_id: chatId, message_id: loadingMsg.message_id });
+            return;
+        }
+        const variantGroups = {};
+        product.variants.forEach((variant) => {
+            const groupName = variant.name || 'Другое';
+            if (!variantGroups[groupName]) {
+                variantGroups[groupName] = [];
+            }
+            variantGroups[groupName].push(variant);
+        });
+        let text = `📋 *Детальная информация о вариантах*\n\n`;
+        text += `🛍️ Товар: *${product.name}*\n`;
+        text += `💰 Базовая цена: ${product.price} ${product.store.currency}\n\n`;
+        Object.entries(variantGroups).forEach(([groupName, variants]) => {
+            text += `━━━━━━━━━━━━━━━━\n`;
+            text += `📌 *${groupName}* (${variants.length} вариантов)\n\n`;
+            variants.forEach((variant, index) => {
+                const variantPrice = variant.price || product.price;
+                const variantStock = variant.stock ?? product.stock;
+                const priceDiff = variant.price ? (variant.price - product.price) : 0;
+                const stockStatus = variantStock > 10 ? '✅ В наличии' :
+                    variantStock > 0 ? `⚠️ Осталось ${variantStock}` :
+                        '❌ Нет в наличии';
+                text += `${index + 1}. *${variant.value}*\n`;
+                text += `   💵 Цена: ${variantPrice} ${product.store.currency}`;
+                if (priceDiff !== 0) {
+                    text += ` (${priceDiff > 0 ? '+' : ''}${priceDiff.toFixed(2)})`;
+                }
+                text += `\n   📦 ${stockStatus}\n`;
+                if (variant.sku) {
+                    text += `   🏷️ SKU: \`${variant.sku}\`\n`;
+                }
+                text += `\n`;
+            });
+        });
+        text += `━━━━━━━━━━━━━━━━\n`;
+        text += `\n💡 Выберите нужный вариант на странице товара для заказа.`;
+        const keyboard = {
+            inline_keyboard: [
+                [
+                    { text: '🔙 Назад к товару', callback_data: `product_view_${productId}` }
+                ],
+                [
+                    { text: '🏪 К товарам магазина', callback_data: `store_products_${product.store.id}` }
+                ]
+            ]
+        };
+        await bot.editMessageText(text, {
+            chat_id: chatId,
+            message_id: loadingMsg.message_id,
+            parse_mode: 'Markdown',
+            reply_markup: keyboard
+        });
+    }
+    catch (error) {
+        logger_1.logger.error('Show variant details error:', error);
+        await bot.editMessageText('Ошибка при загрузке информации о вариантах.', { chat_id: chatId, message_id: loadingMsg.message_id });
     }
 }
 async function showCMSProduct(bot, chatId, session, cmsProductId) {
@@ -322,25 +460,48 @@ async function showVariantQuantitySelector(bot, chatId, session, productId, vari
         const variantStock = variant?.stock ?? null;
         const baseStock = product.stock ?? 0;
         const availableStock = variantStock !== null ? variantStock : baseStock;
-        let text = `*Выберите количество:*\n\n`;
-        text += `🛍️ ${product.name}\n`;
-        text += `🎨 ${variant.name}: ${variant.value}\n`;
-        text += `💰 ${variant.price || product.price} ${product.store.currency}\n`;
-        text += `📦 Доступно: ${availableStock}`;
+        const price = variant.price || product.price;
+        const currency = product.store.currency;
+        let text = `🛒 *Выберите количество*\n\n`;
+        text += `🛍️ Товар: *${product.name}*\n`;
+        text += `🎨 Вариант: *${variant.name}: ${variant.value}*\n`;
+        text += `💰 Цена за 1 шт: *${price} ${currency}*\n`;
+        text += `📦 В наличии: *${availableStock} шт.*\n\n`;
         const keyboard = { inline_keyboard: [] };
-        const quantityRow = [];
-        const maxSelectable = Math.min(5, availableStock);
-        for (let i = 1; i <= maxSelectable; i++) {
-            quantityRow.push({
-                text: i.toString(),
-                callback_data: `buy_variant_${productId}_${variantId}_${i}`
-            });
+        const maxSelectable = Math.min(10, availableStock);
+        if (maxSelectable >= 1) {
+            const row1 = [];
+            for (let i = 1; i <= Math.min(5, maxSelectable); i++) {
+                const totalPrice = (price * i).toFixed(2);
+                row1.push({
+                    text: `${i} шт. (${totalPrice} ${currency})`,
+                    callback_data: `buy_variant_${productId}_${variantId}_${i}`
+                });
+            }
+            keyboard.inline_keyboard.push(row1);
         }
-        if (quantityRow.length > 0) {
-            keyboard.inline_keyboard.push(quantityRow);
+        if (maxSelectable > 5) {
+            const row2 = [];
+            for (let i = 6; i <= Math.min(10, maxSelectable); i++) {
+                const totalPrice = (price * i).toFixed(2);
+                row2.push({
+                    text: `${i} шт. (${totalPrice} ${currency})`,
+                    callback_data: `buy_variant_${productId}_${variantId}_${i}`
+                });
+            }
+            keyboard.inline_keyboard.push(row2);
+        }
+        if (availableStock > 10) {
+            keyboard.inline_keyboard.push([
+                {
+                    text: '📝 Указать другое количество',
+                    callback_data: `buy_custom_variant_${productId}_${variantId}`
+                }
+            ]);
         }
         keyboard.inline_keyboard.push([
-            { text: '⬅️ Назад к товару', callback_data: `product_view_${productId}` }
+            { text: '⬅️ Назад к товару', callback_data: `product_view_${productId}` },
+            { text: '🏪 К товарам', callback_data: `store_products_${product.store.id}` }
         ]);
         await bot.sendMessage(chatId, text, {
             parse_mode: 'Markdown',
@@ -487,13 +648,12 @@ async function handleBuyConfirmation(bot, chatId, session, data) {
         else {
             payText += `❗️ Реквизиты не настроены. Обратитесь к администратору.\n`;
         }
-        payText += `\n📱 *После оплаты свяжитесь с администратором и предоставьте скриншот чека.*\n`;
+        payText += `\n📸 *После оплаты загрузите скриншот чека (кнопка ниже)*\n`;
         payText += `📋 Ваш номер заказа: ${orderNumber}\n`;
         const keyboard = {
             inline_keyboard: [
                 [
-                    { text: '📱 QR-код для оплаты', callback_data: `generate_qr_${orderSummary.id}` },
-                    { text: '📸 Загрузить чек', callback_data: `upload_proof_${orderSummary.id}` }
+                    { text: '📸 Загрузить чек оплаты', callback_data: `upload_proof_${orderSummary.id}` }
                 ],
                 [
                     { text: '📋 Мои заказы', callback_data: 'order_list' },
@@ -702,7 +862,8 @@ async function handleCMSPurchaseConfirmation(bot, chatId, session, data) {
             parse_mode: 'Markdown',
             reply_markup: keyboard
         });
-        logger_1.logger.info(`CMS order created: ${order.id} for product ${cmsProductId} by user ${session.telegramId}`);
+        const { sanitizeForLog } = require('../utils/sanitizer');
+        logger_1.logger.info(`CMS order created: ${sanitizeForLog(order.id)} for product ${sanitizeForLog(cmsProductId)} by user ${sanitizeForLog(session.telegramId)}`);
     }
     catch (error) {
         logger_1.logger.error('CMS purchase confirmation error:', error);

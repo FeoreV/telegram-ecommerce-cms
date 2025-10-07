@@ -6,9 +6,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ownerAuthMiddlewareStack = exports.adminAuthMiddlewareStack = exports.authMiddlewareStack = exports.securityMiddlewareStack = exports.securityLoggingMiddleware = exports.requireStoreAccess = exports.requirePermission = exports.requireRole = exports.optionalAuthMiddleware = exports.secureAuthMiddleware = exports.generalRateLimit = exports.loginSlowDown = exports.authRateLimit = void 0;
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const express_slow_down_1 = __importDefault(require("express-slow-down"));
-const SecureAuthSystem_1 = require("./SecureAuthSystem");
-const logger_1 = require("../utils/logger");
 const permissions_1 = require("../middleware/permissions");
+const logger_1 = require("../utils/logger");
+const SecureAuthSystem_1 = require("./SecureAuthSystem");
 exports.authRateLimit = (0, express_rate_limit_1.default)({
     windowMs: 15 * 60 * 1000,
     max: 5,
@@ -95,7 +95,7 @@ const secureAuthMiddleware = async (req, res, next) => {
             });
         }
         await SecureAuthSystem_1.SecureAuthSystem.updateSessionActivity(tokenPayload.sessionId, tokenPayload.userId);
-        const { prisma } = await import('../lib/prisma');
+        const { prisma } = await import('../lib/prisma.js');
         const user = await prisma.user.findUnique({
             where: { id: tokenPayload.userId },
             select: {
@@ -144,13 +144,15 @@ const secureAuthMiddleware = async (req, res, next) => {
         };
         req.sessionId = tokenPayload.sessionId;
         req.token = token;
-        logger_1.logger.debug('User authenticated successfully', {
-            userId: user.id,
-            role: user.role,
-            ip: req.ip,
-            endpoint: req.originalUrl,
-            userAgent: req.get('User-Agent')
-        });
+        if (process.env.NODE_ENV === 'production') {
+            logger_1.logger.debug('User authenticated successfully', {
+                userId: user.id,
+                role: user.role,
+                ip: req.ip,
+                endpoint: req.originalUrl,
+                userAgent: req.get('User-Agent')
+            });
+        }
         next();
     }
     catch (error) {
@@ -178,7 +180,7 @@ const optionalAuthMiddleware = async (req, res, next) => {
             const tokenPayload = await SecureAuthSystem_1.SecureAuthSystem.verifyAccessToken(token);
             const sessionValid = await SecureAuthSystem_1.SecureAuthSystem.validateSession(tokenPayload.sessionId, tokenPayload.userId);
             if (sessionValid) {
-                const { prisma } = await import('../lib/prisma');
+                const { prisma } = await import('../lib/prisma.js');
                 const user = await prisma.user.findUnique({
                     where: { id: tokenPayload.userId },
                     select: {
@@ -310,7 +312,7 @@ const requireStoreAccess = (storeIdParam = 'storeId') => {
             if (req.user.role === SecureAuthSystem_1.UserRole.OWNER) {
                 return next();
             }
-            const { prisma } = await import('../lib/prisma');
+            const { prisma } = await import('../lib/prisma.js');
             const hasAccess = await prisma.user.findFirst({
                 where: {
                     id: req.user.id,

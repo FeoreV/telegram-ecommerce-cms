@@ -4,13 +4,40 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.backupEncryptionService = exports.BackupEncryptionService = void 0;
-const child_process_1 = require("child_process");
 const crypto_1 = __importDefault(require("crypto"));
 const promises_1 = __importDefault(require("fs/promises"));
 const path_1 = __importDefault(require("path"));
+const util_1 = require("util");
+const zlib_1 = __importDefault(require("zlib"));
 const logger_1 = require("../utils/logger");
 const EncryptionService_1 = require("./EncryptionService");
 const VaultService_1 = require("./VaultService");
+const gzipAsync = (0, util_1.promisify)(zlib_1.default.gzip);
+const gunzipAsync = (0, util_1.promisify)(zlib_1.default.gunzip);
+function safePathJoin(basePath, ...paths) {
+    for (const p of paths) {
+        if (p.includes('..') || p.includes('/') || p.includes('\\')) {
+            throw new Error('SECURITY: Path traversal detected in path component');
+        }
+    }
+    const joined = path_1.default.join(basePath, ...paths);
+    const normalized = path_1.default.normalize(joined);
+    if (!normalized.startsWith(path_1.default.normalize(basePath))) {
+        throw new Error('SECURITY: Path traversal attempt detected');
+    }
+    return normalized;
+}
+function validateBackupId(backupId) {
+    if (!backupId || typeof backupId !== 'string') {
+        throw new Error('Invalid backup ID: must be a non-empty string');
+    }
+    if (!/^[a-zA-Z0-9_-]+$/.test(backupId)) {
+        throw new Error('Invalid backup ID format: only alphanumeric, hyphens, and underscores allowed');
+    }
+    if (backupId.includes('..') || backupId.includes('/') || backupId.includes('\\')) {
+        throw new Error('SECURITY: Path traversal detected in backup ID');
+    }
+}
 class BackupEncryptionService {
     constructor() {
         this.config = {
@@ -232,45 +259,12 @@ class BackupEncryptionService {
         }
     }
     async compressData(sourcePath) {
-        const { sanitizeFilePath, sanitizeFlagValue } = await import('../utils/commandSanitizer');
-        const safePath = sanitizeFilePath(sourcePath);
-        const safeCompressionLevel = sanitizeFlagValue(this.config.compressionLevel);
-        return new Promise((resolve, reject) => {
-            const gzip = (0, child_process_1.spawn)('gzip', ['-c', `-${safeCompressionLevel}`, safePath]);
-            const chunks = [];
-            gzip.stdout.on('data', (chunk) => {
-                chunks.push(chunk);
-            });
-            gzip.on('close', (code) => {
-                if (code === 0) {
-                    resolve(Buffer.concat(chunks));
-                }
-                else {
-                    reject(new Error(`Compression failed with code ${code}`));
-                }
-            });
-            gzip.on('error', reject);
-        });
+        const data = await promises_1.default.readFile(sourcePath);
+        const level = Math.max(0, Math.min(9, this.config.compressionLevel));
+        return await gzipAsync(data, { level });
     }
     async decompressData(compressedData) {
-        return new Promise((resolve, reject) => {
-            const gunzip = (0, child_process_1.spawn)('gunzip', ['-c']);
-            const chunks = [];
-            gunzip.stdout.on('data', (chunk) => {
-                chunks.push(chunk);
-            });
-            gunzip.on('close', (code) => {
-                if (code === 0) {
-                    resolve(Buffer.concat(chunks));
-                }
-                else {
-                    reject(new Error(`Decompression failed with code ${code}`));
-                }
-            });
-            gunzip.on('error', reject);
-            gunzip.stdin.write(compressedData);
-            gunzip.stdin.end();
-        });
+        return await gunzipAsync(compressedData);
     }
     generateBackupId() {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -278,17 +272,19 @@ class BackupEncryptionService {
         return `backup-${timestamp}-${random}`;
     }
     async storeBackupMetadata(metadata) {
-        const metadataPath = path_1.default.join(this.config.encryptedBackupPath, 'metadata', `${metadata.backupId}.json`);
+        validateBackupId(metadata.backupId);
+        const metadataPath = safePathJoin(this.config.encryptedBackupPath, 'metadata', `${metadata.backupId}.json`);
         await promises_1.default.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
     }
     async loadBackupMetadata(backupId) {
-        const metadataPath = path_1.default.join(this.config.encryptedBackupPath, 'metadata', `${backupId}.json`);
+        validateBackupId(backupId);
+        const metadataPath = safePathJoin(this.config.encryptedBackupPath, 'metadata', `${backupId}.json`);
         const metadataContent = await promises_1.default.readFile(metadataPath, 'utf8');
         return JSON.parse(metadataContent);
     }
     async listBackups(backupType) {
         try {
-            const metadataDir = path_1.default.join(this.config.encryptedBackupPath, 'metadata');
+            const metadataDir = safePathJoin(this.config.encryptedBackupPath, 'metadata');
             const files = await promises_1.default.readdir(metadataDir);
             const metadataFiles = files.filter(file => file.endsWith('.json'));
             const backupList = [];

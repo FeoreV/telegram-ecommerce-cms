@@ -4,9 +4,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.inputValidationService = exports.validateFileUpload = exports.strictValidation = exports.validateInput = exports.InputValidationService = void 0;
-const zod_1 = require("zod");
 const isomorphic_dompurify_1 = __importDefault(require("isomorphic-dompurify"));
 const validator_1 = __importDefault(require("validator"));
+const zod_1 = require("zod");
 const logger_1 = require("../utils/logger");
 class InputValidationService {
     constructor() {
@@ -147,6 +147,18 @@ class InputValidationService {
         this.traverseData(data, (value) => {
             if (typeof value !== 'string')
                 return;
+            const MAX_REGEX_INPUT_LENGTH = 10 * 1024;
+            if (value.length > MAX_REGEX_INPUT_LENGTH) {
+                logger_1.logger.warn('String too long for regex validation, rejecting', {
+                    length: value.length,
+                    maxLength: MAX_REGEX_INPUT_LENGTH,
+                    truncated: value.substring(0, 100) + '...'
+                });
+                result.threats?.push('oversized_input_redos_risk');
+                result.isValid = false;
+                result.errors.push(`Input too large for safe regex validation (max ${MAX_REGEX_INPUT_LENGTH} bytes)`);
+                return;
+            }
             if (this.config.enableSQLInjectionProtection) {
                 for (const pattern of this.sqlInjectionPatterns) {
                     if (pattern.test(value)) {
@@ -197,9 +209,8 @@ class InputValidationService {
         if (typeof str !== 'string')
             return str;
         let sanitized = str;
-        sanitized = sanitized.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
         sanitized = sanitized.normalize('NFKC');
-        sanitized = validator_1.default.escape(sanitized);
+        sanitized = sanitized.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
         if (this.config.enableXSSProtection) {
             sanitized = isomorphic_dompurify_1.default.sanitize(sanitized, {
                 ALLOWED_TAGS: [],
@@ -207,6 +218,7 @@ class InputValidationService {
                 KEEP_CONTENT: true
             });
         }
+        sanitized = validator_1.default.escape(sanitized);
         return sanitized;
     }
     traverseData(data, callback) {
@@ -263,6 +275,14 @@ class InputValidationService {
     containsThreats(str) {
         if (typeof str !== 'string')
             return false;
+        const MAX_REGEX_INPUT_LENGTH = 10 * 1024;
+        if (str.length > MAX_REGEX_INPUT_LENGTH) {
+            logger_1.logger.warn('String too long for threat detection regex', {
+                length: str.length,
+                maxLength: MAX_REGEX_INPUT_LENGTH
+            });
+            return true;
+        }
         const allPatterns = [
             ...this.sqlInjectionPatterns,
             ...this.xssPatterns,

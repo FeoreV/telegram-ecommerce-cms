@@ -1,12 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.removeEmployee = exports.updateEmployeeRole = exports.inviteEmployee = exports.getStoreEmployees = void 0;
+const crypto_1 = require("crypto");
 const prisma_1 = require("../lib/prisma");
 const errorHandler_1 = require("../middleware/errorHandler");
-const logger_1 = require("../utils/logger");
 const employeeSchemas_1 = require("../schemas/employeeSchemas");
 const notificationService_1 = require("../services/notificationService");
-const crypto_1 = require("crypto");
+const logger_1 = require("../utils/logger");
 exports.getStoreEmployees = (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { storeId } = req.params;
     const searchParams = employeeSchemas_1.EmployeeSearchSchema.parse(req.query);
@@ -267,7 +267,11 @@ exports.updateEmployeeRole = (0, errorHandler_1.asyncHandler)(async (req, res) =
             }
         });
     });
-    logger_1.logger.info(`Employee role updated: user ${userId} -> ${role} in store ${storeId} by ${req.user.id}`);
+    const sanitizedUserId = String(userId).replace(/[\r\n]/g, ' ');
+    const sanitizedRole = String(role).replace(/[\r\n]/g, ' ');
+    const sanitizedStoreId = String(storeId).replace(/[\r\n]/g, ' ');
+    const sanitizedAdminId = String(req.user.id).replace(/[\r\n]/g, ' ');
+    logger_1.logger.info(`Employee role updated: user ${sanitizedUserId} -> ${sanitizedRole} in store ${sanitizedStoreId} by ${sanitizedAdminId}`);
     res.json({
         success: true,
         message: 'Роль сотрудника обновлена'

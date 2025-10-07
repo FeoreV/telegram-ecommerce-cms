@@ -360,7 +360,7 @@ exports.handleInvitationAcceptance = (0, errorHandler_1.asyncHandler)(async (req
     }
 });
 async function getInvitationByToken(token) {
-    const { prisma } = await import('../lib/prisma');
+    const { prisma } = await import('../lib/prisma.js');
     return await prisma.employeeInvitation.findUnique({
         where: { token },
         include: {

@@ -16,7 +16,7 @@ npx prisma generate
 ### 2. Fix Environment Loading
 Ensure the `.env` file exists in the backend directory with:
 ```env
-DATABASE_URL=mysql://root:@localhost:3306/telegram_ecommerce
+DATABASE_URL=mysql://root:@82.147.84.78:3306/telegram_ecommerce
 NODE_ENV=development
 JWT_SECRET=dev-jwt-secret-change-in-production
 PORT=3001
@@ -51,7 +51,7 @@ npm start
 ## Verification
 Test authentication:
 ```bash
-curl -X POST http://localhost:3001/api/auth/telegram \
+curl -X POST http://82.147.84.78:3001/api/auth/telegram \
   -H "Content-Type: application/json" \
   -d '{"telegramId":"123456789","username":"test"}'
 ```

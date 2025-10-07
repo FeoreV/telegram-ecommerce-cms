@@ -258,7 +258,10 @@ exports.updateUserStatus = (0, errorHandler_1.asyncHandler)(async (req, res) => 
             isActive: true,
         },
     });
-    res.json({ user, message: `User ${isActive ? 'activated' : 'deactivated'} successfully` });
+    res.json({
+        user,
+        message: isActive ? 'User activated successfully' : 'User deactivated successfully'
+    });
 });
 exports.getRevenueStats = (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { period = 'daily', days = 30 } = req.query;
@@ -673,52 +676,52 @@ exports.getKPIMetrics = (0, errorHandler_1.asyncHandler)(async (req, res) => {
             }),
             storeFilter.storeId ? prisma_1.prisma.$queryRaw `
         SELECT AVG(JULIANDAY(paid_at) - JULIANDAY(created_at)) * 24 as avg_hours
-        FROM orders 
-        WHERE paid_at IS NOT NULL 
+        FROM orders
+        WHERE paid_at IS NOT NULL
         AND created_at >= ${startDate.toISOString()}
         AND store_id = ${storeFilter.storeId}
       ` : prisma_1.prisma.$queryRaw `
         SELECT AVG(JULIANDAY(paid_at) - JULIANDAY(created_at)) * 24 as avg_hours
-        FROM orders 
-        WHERE paid_at IS NOT NULL 
+        FROM orders
+        WHERE paid_at IS NOT NULL
         AND created_at >= ${startDate.toISOString()}
       `,
             storeFilter.storeId ? prisma_1.prisma.$queryRaw `
         SELECT AVG(JULIANDAY(paid_at) - JULIANDAY(created_at)) * 24 as avg_hours
-        FROM orders 
-        WHERE paid_at IS NOT NULL 
+        FROM orders
+        WHERE paid_at IS NOT NULL
         AND created_at >= ${new Date(startDate.getTime() - (endDate.getTime() - startDate.getTime())).toISOString()}
         AND created_at < ${startDate.toISOString()}
         AND store_id = ${storeFilter.storeId}
       ` : prisma_1.prisma.$queryRaw `
         SELECT AVG(JULIANDAY(paid_at) - JULIANDAY(created_at)) * 24 as avg_hours
-        FROM orders 
-        WHERE paid_at IS NOT NULL 
+        FROM orders
+        WHERE paid_at IS NOT NULL
         AND created_at >= ${new Date(startDate.getTime() - (endDate.getTime() - startDate.getTime())).toISOString()}
         AND created_at < ${startDate.toISOString()}
       `,
             storeFilter.storeId ? prisma_1.prisma.$queryRaw `
         SELECT AVG(JULIANDAY(delivered_at) - JULIANDAY(paid_at)) * 24 as avg_hours
-        FROM orders 
+        FROM orders
         WHERE delivered_at IS NOT NULL AND paid_at IS NOT NULL
         AND paid_at >= ${startDate.toISOString()}
         AND store_id = ${storeFilter.storeId}
       ` : prisma_1.prisma.$queryRaw `
         SELECT AVG(JULIANDAY(delivered_at) - JULIANDAY(paid_at)) * 24 as avg_hours
-        FROM orders 
+        FROM orders
         WHERE delivered_at IS NOT NULL AND paid_at IS NOT NULL
         AND paid_at >= ${startDate.toISOString()}
       `,
             storeFilter.storeId ? prisma_1.prisma.$queryRaw `
         SELECT AVG(JULIANDAY(delivered_at) - JULIANDAY(paid_at)) * 24 as avg_hours
-        FROM orders 
+        FROM orders
         WHERE delivered_at IS NOT NULL AND paid_at IS NOT NULL
         AND paid_at >= ${new Date(startDate.getTime() - (endDate.getTime() - startDate.getTime())).toISOString()}
         AND paid_at < ${startDate.toISOString()}
         AND store_id = ${storeFilter.storeId}
       ` : prisma_1.prisma.$queryRaw `
         SELECT AVG(JULIANDAY(delivered_at) - JULIANDAY(paid_at)) * 24 as avg_hours
-        FROM orders 
+        FROM orders
         WHERE delivered_at IS NOT NULL AND paid_at IS NOT NULL
         AND paid_at >= ${new Date(startDate.getTime() - (endDate.getTime() - startDate.getTime())).toISOString()}
         AND paid_at < ${startDate.toISOString()}

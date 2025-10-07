@@ -45,7 +45,7 @@ router.post('/:id/cancel', csrfProtection_1.csrfProtection, (0, auth_1.requireRo
     (0, express_validator_1.param)('id').isString().withMessage('Valid order ID required'),
     (0, express_validator_1.body)('reason').isString().isLength({ min: 1 }).withMessage('Cancellation reason is required'),
 ], validation_1.validate, (0, auditLog_1.auditOrderAction)(auditLog_1.AuditAction.ORDER_STATUS_CHANGED), orderController_1.cancelOrder);
-router.get('/:id/payment-proof', [(0, express_validator_1.param)('id').isString().withMessage('Valid order ID required')], validation_1.validate, orderController_1.getPaymentProof);
+router.get('/:id/payment-proof', (0, auth_1.requireRole)([jwt_1.UserRole.OWNER, jwt_1.UserRole.ADMIN, jwt_1.UserRole.VENDOR, jwt_1.UserRole.CUSTOMER]), [(0, express_validator_1.param)('id').isString().withMessage('Valid order ID required')], validation_1.validate, orderController_1.getPaymentProof);
 router.get('/upload-stats', (0, auth_1.requireRole)([jwt_1.UserRole.OWNER]), uploadRateLimit_1.getUploadStats);
 exports.default = router;
 //# sourceMappingURL=orders.js.map

@@ -53,10 +53,10 @@ if [ ! -f "bot/.env" ]; then
 TELEGRAM_BOT_TOKEN=
 
 # API Configuration
-API_URL=http://localhost:3001
+API_URL=http://82.147.84.78:3001
 
 # Redis Configuration (optional for development)
-REDIS_URL=redis://localhost:6379
+REDIS_URL=redis://82.147.84.78:6379
 
 # Bot Port
 BOT_PORT=3003

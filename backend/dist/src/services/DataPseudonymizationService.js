@@ -35,10 +35,10 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.dataPseudonymizationService = exports.DataPseudonymizationService = exports.ReversibilityLevel = exports.PseudonymizationMethod = void 0;
 const crypto = __importStar(require("crypto"));
-const logger_1 = require("../utils/logger");
 const errorUtils_1 = require("../utils/errorUtils");
-const SecurityLogService_1 = require("./SecurityLogService");
+const logger_1 = require("../utils/logger");
 const EncryptionService_1 = require("./EncryptionService");
+const SecurityLogService_1 = require("./SecurityLogService");
 const VaultService_1 = require("./VaultService");
 const vaultService = (0, VaultService_1.getVaultService)();
 var PseudonymizationMethod;

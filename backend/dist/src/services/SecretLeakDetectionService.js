@@ -259,7 +259,8 @@ class SecretLeakDetectionService {
         try {
             const stats = fs.statSync(filepath);
             if (stats.size > this.config.maxFileSize) {
-                logger_1.logger.debug(`Skipping large file: ${filepath} (${stats.size} bytes)`);
+                const sanitizedFilepath = String(filepath).replace(/[\r\n]/g, ' ');
+                logger_1.logger.debug(`Skipping large file: ${sanitizedFilepath} (${stats.size} bytes)`, { filepath: sanitizedFilepath, fileSize: stats.size });
                 return [];
             }
             const content = fs.readFileSync(filepath, 'utf-8');
@@ -271,7 +272,9 @@ class SecretLeakDetectionService {
             });
         }
         catch (_error) {
-            logger_1.logger.error(`Error scanning log file ${filepath}:`, _error);
+            const sanitizedFilepath = String(filepath).replace(/[\r\n]/g, ' ');
+            const sanitizedError = _error instanceof Error ? _error.message.replace(/[\r\n]/g, ' ') : String(_error).replace(/[\r\n]/g, ' ');
+            logger_1.logger.error(`Error scanning log file ${sanitizedFilepath}:`, { error: sanitizedError, filepath: sanitizedFilepath });
             return [];
         }
     }
@@ -296,7 +299,9 @@ class SecretLeakDetectionService {
             });
         }
         catch (_error) {
-            logger_1.logger.error(`Error scanning source file ${filepath}:`, _error);
+            const sanitizedFilepath = String(filepath).replace(/[\r\n]/g, ' ');
+            const sanitizedError = _error instanceof Error ? _error.message.replace(/[\r\n]/g, ' ') : String(_error).replace(/[\r\n]/g, ' ');
+            logger_1.logger.error(`Error scanning source file ${sanitizedFilepath}:`, { error: sanitizedError, filepath: sanitizedFilepath });
             return [];
         }
     }
@@ -324,9 +329,14 @@ class SecretLeakDetectionService {
         const matches = [];
         const lines = content.split('\n');
         let globalIndex = 0;
+        const isPredefinedPattern = Array.from(this.secretPatterns.values()).some(p => p.pattern.source === pattern.pattern.source);
+        if (!isPredefinedPattern) {
+            logger_1.logger.warn('Attempted to use non-predefined pattern', { patternName: pattern.name });
+            return matches;
+        }
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
             const line = lines[lineIndex];
-            const regex = new RegExp(pattern.pattern.source, pattern.pattern.flags);
+            const regex = pattern.pattern;
             let match;
             while ((match = regex.exec(line)) !== null) {
                 matches.push({

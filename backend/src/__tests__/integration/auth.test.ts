@@ -1,5 +1,16 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, jest } from '@jest/globals';
 import request from 'supertest';
+
+// Mock services with .js imports to avoid module resolution issues in tests
+jest.mock('../../services/botFactoryService', () => ({
+  botFactoryService: {
+    createBot: jest.fn(),
+    removeBot: jest.fn(),
+    initializeFromDatabase: jest.fn(),
+    getBotStats: jest.fn(),
+  },
+}));
+
 import { app } from '../../index';
 import { prisma } from '../../lib/prisma';
 

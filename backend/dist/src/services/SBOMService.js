@@ -41,8 +41,9 @@ const child_process_1 = require("child_process");
 const crypto_1 = __importDefault(require("crypto"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
-const logger_1 = require("../utils/logger");
 const securityKeys_1 = require("../config/securityKeys");
+const inputSanitizer_1 = require("../utils/inputSanitizer");
+const logger_1 = require("../utils/logger");
 class SBOMService {
     constructor() {
         this.vulnerabilityDatabases = new Map();
@@ -163,12 +164,12 @@ class SBOMService {
     async analyzeNPMDependencies(projectPath, includeDevDependencies) {
         const components = [];
         try {
-            const { sanitizeFilePath } = await import('../utils/commandSanitizer');
+            const { sanitizeFilePath } = await import('../utils/commandSanitizer.js');
             const safePath = sanitizeFilePath(projectPath);
             const npmArgs = includeDevDependencies
                 ? ['list', '--json', '--all']
                 : ['list', '--json', '--prod', '--all'];
-            const { prepareSafeCommand } = await import('../utils/commandSanitizer');
+            const { prepareSafeCommand } = await import('../utils/commandSanitizer.js');
             const { command, args } = prepareSafeCommand('npm', npmArgs);
             const npmResult = (0, child_process_1.spawnSync)(command, args, {
                 cwd: safePath,
@@ -213,10 +214,10 @@ class SBOMService {
         const purl = `pkg:npm/${name}@${info.version}`;
         let packageInfo = {};
         try {
-            const { sanitizePackageName, sanitizeVersion } = await import('../utils/commandSanitizer');
+            const { sanitizePackageName, sanitizeVersion } = await import('../utils/commandSanitizer.js');
             const safeName = sanitizePackageName(name);
             const safeVersion = sanitizeVersion(info.version);
-            const { prepareSafeCommand } = await import('../utils/commandSanitizer');
+            const { prepareSafeCommand } = await import('../utils/commandSanitizer.js');
             const { command, args } = prepareSafeCommand('npm', ['view', `${safeName}@${safeVersion}`, '--json']);
             const packageResult = (0, child_process_1.spawnSync)(command, args, {
                 encoding: 'utf8',
@@ -227,7 +228,7 @@ class SBOMService {
             }
         }
         catch (error) {
-            logger_1.logger.warn(`Failed to get package info for ${name}@${info.version}`, error);
+            logger_1.logger.warn(`Failed to get package info for ${(0, inputSanitizer_1.sanitizeForLog)(name)}@${(0, inputSanitizer_1.sanitizeForLog)(info.version)}`, error);
         }
         const hash = crypto_1.default.createHash('sha256')
             .update(`${name}@${info.version}`)
@@ -594,7 +595,7 @@ class SBOMService {
                 }
             }
             catch (err) {
-                logger_1.logger.warn(`Failed to check vulnerabilities for ${component.name}:`, err);
+                logger_1.logger.warn(`Failed to check vulnerabilities for ${(0, inputSanitizer_1.sanitizeForLog)(component.name)}:`, err);
             }
         }
         const totalVulnerabilities = components.reduce((sum, comp) => sum + comp.vulnerabilities.length, 0);
@@ -634,7 +635,7 @@ class SBOMService {
             }
         }
         catch (error) {
-            logger_1.logger.debug(`No NPM vulnerabilities found for ${component.name}`, error);
+            logger_1.logger.debug(`No NPM vulnerabilities found for ${(0, inputSanitizer_1.sanitizeForLog)(component.name)}`, error);
         }
         return vulnerabilities;
     }
@@ -653,7 +654,7 @@ class SBOMService {
     async checkDockerVulnerabilities(component) {
         const vulnerabilities = [];
         try {
-            const { sanitizeImageRef } = await import('../utils/commandSanitizer');
+            const { sanitizeImageRef } = await import('../utils/commandSanitizer.js');
             const image = `${component.name}:${component.version}`;
             const safeImage = sanitizeImageRef(image);
             const result = (0, child_process_1.spawnSync)('trivy', ['image', '--format', 'json', '--quiet', safeImage], {
@@ -688,7 +689,7 @@ class SBOMService {
             }
         }
         catch (err) {
-            logger_1.logger.debug(`Trivy scan failed for ${component.name}:`, err);
+            logger_1.logger.debug(`Trivy scan failed for ${(0, inputSanitizer_1.sanitizeForLog)(component.name)}:`, err);
         }
         return vulnerabilities;
     }

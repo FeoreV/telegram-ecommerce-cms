@@ -225,7 +225,7 @@ docker stats
 ./tools/database/optimize-database.sh --analyze
 
 # 3. Check application metrics
-curl http://localhost:3001/metrics
+curl http://82.147.84.78:3001/metrics
 
 # 4. Review slow queries
 ./tools/database/slow-query-log.sh
@@ -261,7 +261,7 @@ Health check script exposes metrics compatible with Prometheus:
 scrape_configs:
   - job_name: 'health-check'
     static_configs:
-      - targets: ['localhost:3001']
+      - targets: ['82.147.84.78:3001']
     metrics_path: '/metrics'
 ```
 

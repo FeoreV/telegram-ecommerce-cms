@@ -16,11 +16,11 @@ if not exist backend\.env (
     echo PORT=3001
     echo NODE_ENV=development
     echo JWT_SECRET=dev-jwt-secret-change-in-production
-    echo DATABASE_URL=mysql://telegram_user:telegram_pass@localhost:3306/telegram_ecommerce
-    echo REDIS_URL=redis://localhost:6379
-    echo FRONTEND_URL=http://localhost:3000
+    echo DATABASE_URL=mysql://telegram_user:telegram_pass@82.147.84.78:3306/telegram_ecommerce
+    echo REDIS_URL=redis://82.147.84.78:6379
+    echo FRONTEND_URL=http://82.147.84.78:3000
     echo ENABLE_ADMINJS=true
-    echo MEDUSA_BASE_URL=http://localhost:9000
+    echo MEDUSA_BASE_URL=http://82.147.84.78:9000
     echo MEDUSA_WEBHOOK_TOKEN=dev-webhook-token
     ) > backend\.env
     echo ✅ Created backend\.env
@@ -29,8 +29,8 @@ if not exist backend\.env (
 if not exist frontend\.env (
     echo 📝 Creating frontend .env file...
     (
-    echo VITE_API_URL=http://localhost:3001/api
-    echo VITE_SOCKET_URL=http://localhost:3001
+    echo VITE_API_URL=http://82.147.84.78:3001/api
+    echo VITE_SOCKET_URL=http://82.147.84.78:3001
     ) > frontend\.env
     echo ✅ Created frontend\.env
 )

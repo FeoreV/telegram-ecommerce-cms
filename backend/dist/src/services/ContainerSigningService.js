@@ -121,7 +121,7 @@ class ContainerSigningService {
             if (this.config.cosignPassword) {
                 env.COSIGN_PASSWORD = this.config.cosignPassword;
             }
-            const { sanitizeImageRef } = await import('../utils/commandSanitizer');
+            const { sanitizeImageRef } = await import('../utils/commandSanitizer.js');
             const safeImageRef = sanitizeImageRef(imageRef);
             const signResult = (0, child_process_1.spawnSync)('cosign', [
                 'sign',
@@ -201,7 +201,7 @@ class ContainerSigningService {
                 DOCKER_CONTENT_TRUST: '1',
                 DOCKER_CONTENT_TRUST_SERVER: this.config.notaryServer || 'https://notary.docker.io'
             };
-            const { sanitizeImageRef } = await import('../utils/commandSanitizer');
+            const { sanitizeImageRef } = await import('../utils/commandSanitizer.js');
             const safeImageRef = sanitizeImageRef(imageRef);
             const pushResult = (0, child_process_1.spawnSync)('docker', ['push', safeImageRef], {
                 env,
@@ -334,7 +334,7 @@ class ContainerSigningService {
     }
     async generateSBOMAttestation(imageRef, _buildContext) {
         try {
-            const { sanitizeImageRef } = await import('../utils/commandSanitizer');
+            const { sanitizeImageRef } = await import('../utils/commandSanitizer.js');
             const safeImageRef = sanitizeImageRef(imageRef);
             const sbomResult = (0, child_process_1.spawnSync)('syft', [safeImageRef, '-o', 'cyclonedx-json'], {
                 encoding: 'utf8',
@@ -401,7 +401,7 @@ class ContainerSigningService {
     }
     async generateVulnerabilityScanAttestation(imageRef) {
         try {
-            const { sanitizeImageRef } = await import('../utils/commandSanitizer');
+            const { sanitizeImageRef } = await import('../utils/commandSanitizer.js');
             const safeImageRef = sanitizeImageRef(imageRef);
             const scanResult = (0, child_process_1.spawnSync)('trivy', ['image', '--format', 'json', '--quiet', safeImageRef], {
                 encoding: 'utf8',
@@ -479,7 +479,7 @@ class ContainerSigningService {
                 if (this.config.cosignPassword) {
                     env.COSIGN_PASSWORD = this.config.cosignPassword;
                 }
-                const { sanitizeImageRef } = await import('../utils/commandSanitizer');
+                const { sanitizeImageRef } = await import('../utils/commandSanitizer.js');
                 const safeImageRef = sanitizeImageRef(imageRef);
                 const attestResult = (0, child_process_1.spawnSync)('cosign', [
                     'attest',
@@ -552,7 +552,7 @@ class ContainerSigningService {
                 result.errors.push('Cosign not available');
                 return result;
             }
-            const { sanitizeImageRef } = await import('../utils/commandSanitizer');
+            const { sanitizeImageRef } = await import('../utils/commandSanitizer.js');
             const safeImageRef = sanitizeImageRef(imageRef);
             const verifyResult = (0, child_process_1.spawnSync)('cosign', [
                 'verify',

@@ -30,7 +30,7 @@ cp config/environments/backend.env.example backend/.env
 Отредактируй `backend/.env`:
 ```env
 PORT=3001
-FRONTEND_URL=http://localhost:3000
+FRONTEND_URL=http://82.147.84.78:3000
 TELEGRAM_BOT_TOKEN=получи_от_@BotFather
 ```
 
@@ -41,8 +41,8 @@ cp config/environments/frontend.env.example frontend/.env
 
 Отредактируй `frontend/.env`:
 ```env
-VITE_API_URL=http://localhost:3001/api
-VITE_SOCKET_URL=http://localhost:3001
+VITE_API_URL=http://82.147.84.78:3001/api
+VITE_SOCKET_URL=http://82.147.84.78:3001
 ```
 
 ### 3. Bot (.env)
@@ -53,7 +53,7 @@ cp config/environments/bot.env.production.example bot/.env
 Отредактируй `bot/.env`:
 ```env
 PORT=3003
-BACKEND_URL=http://localhost:3001
+BACKEND_URL=http://82.147.84.78:3001
 TELEGRAM_BOT_TOKEN=твой_бот_токен
 ```
 
@@ -154,8 +154,8 @@ npm run dev
 ```
 
 Проверь:
-- Frontend: http://localhost:3000
-- Backend: http://localhost:3001/health
+- Frontend: http://82.147.84.78:3000
+- Backend: http://82.147.84.78:3001/health
 - Bot: Проверь логи в консоли
 
 ---
@@ -174,14 +174,14 @@ PORT=3002
 ### CORS ошибки?
 Проверь `backend/.env`:
 ```env
-FRONTEND_URL=http://localhost:3000
-CORS_WHITELIST=http://localhost:3000,http://localhost:5173
+FRONTEND_URL=http://82.147.84.78:3000
+CORS_WHITELIST=http://82.147.84.78:3000,http://82.147.84.78:5173
 ```
 
 ### Bot не подключается?
 Проверь `bot/.env`:
 ```env
-BACKEND_URL=http://localhost:3001
+BACKEND_URL=http://82.147.84.78:3001
 TELEGRAM_BOT_TOKEN=правильный_токен
 USE_POLLING=true  # для разработки
 ```
@@ -192,8 +192,8 @@ USE_POLLING=true  # для разработки
 
 | Сервис   | Порт | URL                      |
 |----------|------|--------------------------|
-| Frontend | 3000 | http://localhost:3000    |
-| Backend  | 3001 | http://localhost:3001    |
+| Frontend | 3000 | http://82.147.84.78:3000    |
+| Backend  | 3001 | http://82.147.84.78:3001    |
 | Bot      | 3003 | (внутренний)             |
 
 ---

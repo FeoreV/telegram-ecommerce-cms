@@ -83,7 +83,8 @@ class CMSWebhookService {
             logger_1.logger.info(`Product mapping deactivated for CMS product: ${productData.id}`);
         }
         catch (error) {
-            logger_1.logger.error('Failed to handle product deletion:', error);
+            const sanitizedError = error instanceof Error ? error.message.replace(/[\r\n]/g, ' ') : String(error).replace(/[\r\n]/g, ' ');
+            logger_1.logger.error('Failed to handle product deletion:', sanitizedError);
             throw error;
         }
     }
@@ -142,7 +143,8 @@ class CMSWebhookService {
             const adminToken = await this.getAdminToken();
             if (adminToken) {
                 await apiService_1.apiService.rejectOrder(localOrder.id, orderData.reason || 'Cancelled in CMS', adminToken);
-                logger_1.logger.info(`Order ${localOrder.orderNumber} cancelled successfully from CMS webhook`);
+                const sanitizedOrderNumber = String(localOrder.orderNumber).replace(/[\r\n]/g, ' ');
+                logger_1.logger.info(`Order ${sanitizedOrderNumber} cancelled successfully from CMS webhook`);
                 await this.notifyCustomerCancellation(localOrder, orderData.reason || 'Cancelled in CMS');
             }
             else {
@@ -286,7 +288,9 @@ class CMSWebhookService {
             return response.order;
         }
         catch (error) {
-            logger_1.logger.error(`Error fetching order ${orderId}:`, error);
+            const sanitizedOrderId = String(orderId).replace(/[\r\n]/g, ' ');
+            const sanitizedError = error instanceof Error ? error.message.replace(/[\r\n]/g, ' ') : String(error).replace(/[\r\n]/g, ' ');
+            logger_1.logger.error(`Error fetching order ${sanitizedOrderId}:`, sanitizedError);
             return null;
         }
     }

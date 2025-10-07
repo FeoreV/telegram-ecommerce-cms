@@ -36,8 +36,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.dataRetentionService = exports.DataRetentionService = void 0;
 const crypto = __importStar(require("crypto"));
 const errorUtils_1 = require("../utils/errorUtils");
+const inputSanitizer_1 = require("../utils/inputSanitizer");
 const logger_1 = require("../utils/logger");
-const sanitizer_1 = require("../utils/sanitizer");
 const DataClassificationService_1 = require("./DataClassificationService");
 const SecurityLogService_1 = require("./SecurityLogService");
 class DataRetentionService {
@@ -546,34 +546,11 @@ class DataRetentionService {
         logger_1.logger.debug('Exporting retention data', { jobId: job.id, config });
     }
     async identifyRetentionCandidates(policy) {
-        const candidates = [];
         const currentDate = new Date();
         const cutoffDate = new Date(currentDate.getTime() - (policy.retentionPeriod * 24 * 60 * 60 * 1000));
-        for (let i = 0; i < 10; i++) {
-            candidates.push({
-                id: `record_${i}`,
-                table: policy.tableName || 'users',
-                createdAt: new Date(cutoffDate.getTime() - (Math.random() * 365 * 24 * 60 * 60 * 1000)),
-                lastAccessed: new Date(cutoffDate.getTime() - (Math.random() * 30 * 24 * 60 * 60 * 1000)),
-                dataCategory: policy.dataCategory[0],
-                userStatus: Math.random() > 0.5 ? 'inactive' : 'active'
-            });
-        }
-        return candidates.filter(record => {
-            const age = (currentDate.getTime() - record.createdAt.getTime()) / (1000 * 60 * 60 * 24);
-            const lastAccessAge = (currentDate.getTime() - record.lastAccessed.getTime()) / (1000 * 60 * 60 * 24);
-            let matches = true;
-            if (policy.conditions.age && age < policy.conditions.age) {
-                matches = false;
-            }
-            if (policy.conditions.lastAccess && lastAccessAge < policy.conditions.lastAccess) {
-                matches = false;
-            }
-            if (policy.conditions.userStatus && record.userStatus !== policy.conditions.userStatus) {
-                matches = false;
-            }
-            return matches;
-        });
+        logger_1.logger.warn(`identifyRetentionCandidates called for policy ${policy.id} but not implemented - returning empty array`);
+        logger_1.logger.info(`Would query table: ${policy.tableName || 'unknown'}, cutoff date: ${cutoffDate.toISOString()}`);
+        return [];
     }
     async shouldRetainRecord(record, policy) {
         if (await this.hasLegalHold(record)) {
@@ -804,7 +781,7 @@ class DataRetentionService {
                 const interval = this.parseCronToInterval(policy.schedule);
                 const scheduledExecution = setInterval(() => {
                     this.executeRetentionPolicy(policyId, false).catch(error => {
-                        logger_1.logger.error(`Scheduled retention policy execution failed for ${(0, sanitizer_1.sanitizeForLog)(policyId)}:`, error);
+                        logger_1.logger.error(`Scheduled retention policy execution failed for ${(0, inputSanitizer_1.sanitizeForLog)(policyId)}:`, error);
                     });
                 }, interval);
                 this.executionScheduler.push(scheduledExecution);

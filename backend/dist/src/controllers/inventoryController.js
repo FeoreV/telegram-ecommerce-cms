@@ -3,8 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.setStockAlertsConfig = exports.getStockHistory = exports.updateStock = exports.getInventoryAlerts = void 0;
 const prisma_1 = require("../lib/prisma");
 const errorHandler_1 = require("../middleware/errorHandler");
-const logger_1 = require("../utils/logger");
 const notificationService_1 = require("../services/notificationService");
+const logger_1 = require("../utils/logger");
 const sanitizer_1 = require("../utils/sanitizer");
 exports.getInventoryAlerts = (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { storeId, severity, limit = 50 } = req.query;
@@ -312,7 +312,7 @@ exports.updateStock = (0, errorHandler_1.asyncHandler)(async (req, res) => {
             change: stock - oldStock,
             updatedBy: req.user.id
         });
-        logger_1.logger.info(`Stock updated for ${(0, sanitizer_1.sanitizeForLog)(productName)}: ${oldStock} -> ${stock} by user ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
+        logger_1.logger.info('Stock updated', { product: (0, sanitizer_1.sanitizeForLog)(productName), oldStock, newStock: stock, userId: (0, sanitizer_1.sanitizeForLog)(req.user.id) });
         res.json({
             success: true,
             message: 'Stock updated successfully',
@@ -444,7 +444,7 @@ exports.setStockAlertsConfig = (0, errorHandler_1.asyncHandler)(async (req, res)
                 enableStockAlerts: enableAlerts !== false
             }
         });
-        logger_1.logger.info(`Stock alerts config updated for store ${(0, sanitizer_1.sanitizeForLog)(storeId)} by user ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
+        logger_1.logger.info('Stock alerts config updated', { storeId: (0, sanitizer_1.sanitizeForLog)(storeId), userId: (0, sanitizer_1.sanitizeForLog)(req.user.id) });
         res.json({
             success: true,
             message: 'Stock alerts configuration updated',

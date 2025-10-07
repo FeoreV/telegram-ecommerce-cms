@@ -1,9 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SocketRoomService = void 0;
+const prisma_1 = require("../lib/prisma");
 const socket_1 = require("../lib/socket");
 const logger_1 = require("../utils/logger");
-const prisma_1 = require("../lib/prisma");
+const sanitizer_1 = require("../utils/sanitizer");
 class SocketRoomService {
     static async joinUserToRooms(socket) {
         if (!socket.user) {
@@ -69,7 +70,7 @@ class SocketRoomService {
                     logger_1.logger.info(`CUSTOMER ${userId} joined personal room only`);
                     break;
                 default:
-                    logger_1.logger.warn(`Unknown role ${role} for user ${userId}`);
+                    logger_1.logger.warn(`Unknown role ${(0, sanitizer_1.sanitizeForLog)(role)} for user ${(0, sanitizer_1.sanitizeForLog)(userId)}`);
             }
             socket.emit('rooms_joined', {
                 userId,
@@ -78,7 +79,7 @@ class SocketRoomService {
             });
         }
         catch (error) {
-            logger_1.logger.error(`Error joining user ${userId} to rooms:`, error);
+            logger_1.logger.error(`Error joining user ${(0, sanitizer_1.sanitizeForLog)(userId)} to rooms:`, (0, logger_1.toLogMetadata)(error));
             socket.emit('room_join_error', {
                 error: 'Failed to join rooms',
                 timestamp: new Date().toISOString()
@@ -102,7 +103,7 @@ class SocketRoomService {
             logger_1.logger.info(`Broadcasted ${event} to room ${room}`);
         }
         catch (error) {
-            logger_1.logger.error(`Failed to broadcast to room ${room}:`, error);
+            logger_1.logger.error(`Failed to broadcast to room ${(0, sanitizer_1.sanitizeForLog)(room)}:`, (0, logger_1.toLogMetadata)(error));
         }
     }
     static notifyUser(userId, event, data) {
@@ -134,7 +135,7 @@ class SocketRoomService {
             };
         }
         catch (error) {
-            logger_1.logger.error(`Failed to get room info for ${room}:`, error);
+            logger_1.logger.error(`Failed to get room info for ${(0, sanitizer_1.sanitizeForLog)(room)}:`, (0, logger_1.toLogMetadata)(error));
             return { memberCount: 0, members: [] };
         }
     }
@@ -169,7 +170,7 @@ class SocketRoomService {
             };
         }
         catch (error) {
-            logger_1.logger.error('Failed to get socket stats:', error);
+            logger_1.logger.error('Failed to get socket stats:', (0, logger_1.toLogMetadata)(error));
             return {
                 totalConnections: 0,
                 adminConnections: 0,

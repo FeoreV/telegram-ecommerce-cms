@@ -1,13 +1,51 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BotHandlerService = void 0;
+const prisma_js_1 = require("../lib/prisma.js");
 const i18n_js_1 = require("../utils/i18n.js");
 const logger_js_1 = require("../utils/logger.js");
 const sanitizer_js_1 = require("../utils/sanitizer.js");
 const botDataService_js_1 = __importDefault(require("./botDataService.js"));
+const EncryptionService_js_1 = require("./EncryptionService.js");
+const path_1 = __importDefault(require("path"));
+const fs = __importStar(require("fs/promises"));
+const node_fetch_1 = __importDefault(require("node-fetch"));
 class BotHandlerService {
     constructor(storeId) {
         this.sessions = new Map();
@@ -42,6 +80,11 @@ class BotHandlerService {
                 session = await this.createSession(userId, message.from);
             }
             await this.dataService.updateStoreStats();
+            if ((message.photo || message.document) && session.paymentProofFlow?.awaitingPhoto) {
+                await this.handlePaymentProofUpload(bot, chatId, message, session);
+                this.saveSession(userId, session);
+                return;
+            }
             if (text.startsWith('/')) {
                 await this.handleCommand(bot, chatId, text, session);
             }
@@ -610,6 +653,21 @@ class BotHandlerService {
                     await this.createOrderFromDirect(bot, chatId, productId, quantity, session);
                 }
             }
+            else if (data.startsWith('upload_proof_')) {
+                const orderId = data.replace('upload_proof_', '');
+                await this.initiatePaymentProofFlow(bot, chatId, orderId, session);
+            }
+            else if (data === 'cancel_payment_proof') {
+                session.paymentProofFlow = undefined;
+                await bot.sendMessage(chatId, '❌ Загрузка чека отменена', {
+                    reply_markup: {
+                        inline_keyboard: [
+                            [{ text: '📋 Мои заказы', callback_data: 'orders' }],
+                            [{ text: '🏠 Главное меню', callback_data: 'start' }]
+                        ]
+                    }
+                });
+            }
             this.saveSession(userId, session);
         }
         catch (error) {
@@ -861,11 +919,14 @@ class BotHandlerService {
             else {
                 message += `❗ Реквизиты уточните у администратора\n\n`;
             }
-            message += `📱 После оплаты свяжитесь с администратором и предоставьте скриншот чека.\n`;
+            message += `📸 **После оплаты загрузите скриншот чека (кнопка ниже)**\n`;
             message += `📋 Ваш номер заказа: **#${order.orderNumber || order.id}**`;
             const keyboard = {
                 reply_markup: {
                     inline_keyboard: [
+                        [
+                            { text: '📸 Загрузить чек оплаты', callback_data: `upload_proof_${order.id}` }
+                        ],
                         [
                             { text: '📋 Мои заказы', callback_data: 'orders' }
                         ],
@@ -881,11 +942,169 @@ class BotHandlerService {
                 parse_mode: 'Markdown',
                 ...keyboard
             });
-            logger_js_1.logger.info(`Order created for store ${(0, sanitizer_js_1.sanitizeForLog)(this.storeId)}: ${order.id}`);
+            const sanitizedOrderId = String(order.id).replace(/[\r\n]/g, ' ');
+            logger_js_1.logger.info(`Order created for store ${(0, sanitizer_js_1.sanitizeForLog)(this.storeId)}: ${sanitizedOrderId}`, { storeId: (0, sanitizer_js_1.sanitizeForLog)(this.storeId), orderId: sanitizedOrderId });
         }
         catch (error) {
-            logger_js_1.logger.error(`Error creating order for store ${(0, sanitizer_js_1.sanitizeForLog)(this.storeId)}:`, error);
+            const sanitizedError = error instanceof Error ? error.message.replace(/[\r\n]/g, ' ') : String(error).replace(/[\r\n]/g, ' ');
+            logger_js_1.logger.error(`Error creating order for store ${(0, sanitizer_js_1.sanitizeForLog)(this.storeId)}:`, { error: sanitizedError, storeId: (0, sanitizer_js_1.sanitizeForLog)(this.storeId) });
             await bot.sendMessage(chatId, '❌ Ошибка при создании заказа. Попробуйте позже.');
+        }
+    }
+    async handlePaymentProofUpload(bot, chatId, message, session) {
+        try {
+            const orderId = session.paymentProofFlow?.orderId;
+            if (!orderId) {
+                await bot.sendMessage(chatId, '❌ Ошибка: заказ не найден');
+                return;
+            }
+            const processingMsg = await bot.sendMessage(chatId, '⏳ Загружаю чек...');
+            try {
+                logger_js_1.logger.info('Starting payment proof upload process', { orderId: (0, sanitizer_js_1.sanitizeForLog)(orderId) });
+                const photo = message.photo?.[message.photo.length - 1];
+                const document = message.document;
+                const fileId = photo?.file_id || document?.file_id;
+                if (!fileId) {
+                    logger_js_1.logger.error('No fileId found in message');
+                    await bot.editMessageText('❌ Не удалось получить файл', {
+                        chat_id: chatId,
+                        message_id: processingMsg.message_id
+                    });
+                    return;
+                }
+                logger_js_1.logger.info('Getting file info from Telegram', { fileId: (0, sanitizer_js_1.sanitizeForLog)(fileId) });
+                const fileInfo = await bot.getFile(fileId);
+                const filePath = fileInfo.file_path;
+                if (!filePath) {
+                    logger_js_1.logger.error('No filePath in fileInfo');
+                    throw new Error('Failed to get file path');
+                }
+                logger_js_1.logger.info('File path received', { filePath: (0, sanitizer_js_1.sanitizeForLog)(filePath) });
+                const store = await prisma_js_1.prisma.store.findUnique({
+                    where: { id: this.storeId },
+                    select: { botToken: true }
+                });
+                if (!store?.botToken) {
+                    logger_js_1.logger.error('Bot token not found in database');
+                    throw new Error('Bot token not found');
+                }
+                logger_js_1.logger.info('Bot token found, attempting decryption');
+                let decryptedToken;
+                try {
+                    decryptedToken = await EncryptionService_js_1.encryptionService.decryptData(store.botToken);
+                    logger_js_1.logger.info('Bot token decrypted successfully');
+                }
+                catch (error) {
+                    logger_js_1.logger.warn('Failed to decrypt token, trying as plaintext', { error });
+                    decryptedToken = store.botToken;
+                }
+                logger_js_1.logger.info('Downloading file from Telegram');
+                const fileUrl = `https://api.telegram.org/file/bot${decryptedToken}/${filePath}`;
+                const response = await (0, node_fetch_1.default)(fileUrl);
+                if (!response.ok) {
+                    logger_js_1.logger.error('Failed to download file', { status: response.status, statusText: response.statusText });
+                    throw new Error(`Failed to download file: ${response.status} ${response.statusText}`);
+                }
+                logger_js_1.logger.info('File downloaded successfully, saving to disk');
+                const buffer = await response.arrayBuffer();
+                const fileExtension = path_1.default.extname(filePath) || '.jpg';
+                const fileName = `payment_proof_${orderId}_${Date.now()}${fileExtension}`;
+                const uploadsDir = path_1.default.join(process.cwd(), 'uploads', 'payment-proofs');
+                await fs.mkdir(uploadsDir, { recursive: true });
+                const localFilePath = path_1.default.join(uploadsDir, fileName);
+                await fs.writeFile(localFilePath, Buffer.from(buffer));
+                logger_js_1.logger.info('File saved to disk', { localFilePath: (0, sanitizer_js_1.sanitizeForLog)(localFilePath) });
+                const relativePath = path_1.default.relative(process.cwd(), localFilePath);
+                await prisma_js_1.prisma.order.update({
+                    where: { id: orderId },
+                    data: { paymentProof: relativePath }
+                });
+                logger_js_1.logger.info('Order updated with payment proof');
+                const order = await prisma_js_1.prisma.order.findUnique({
+                    where: { id: orderId }
+                });
+                session.paymentProofFlow = undefined;
+                await bot.editMessageText(`✅ *Чек успешно загружен!*\n\n` +
+                    `📋 Заказ: #${order?.orderNumber}\n` +
+                    `💰 Сумма: ${order?.totalAmount} ${order?.currency}\n\n` +
+                    `👤 Ваш чек отправлен администратору на проверку.\n` +
+                    `⏱️ Вы получите уведомление о результате в ближайшее время.`, {
+                    chat_id: chatId,
+                    message_id: processingMsg.message_id,
+                    parse_mode: 'Markdown',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                { text: '📋 Мои заказы', callback_data: 'orders' },
+                                { text: '🏠 Главное меню', callback_data: 'start' }
+                            ]
+                        ]
+                    }
+                });
+                logger_js_1.logger.info(`Payment proof uploaded successfully for order ${(0, sanitizer_js_1.sanitizeForLog)(orderId)}`);
+            }
+            catch (error) {
+                logger_js_1.logger.error(`Payment proof processing failed:`, {
+                    error: error instanceof Error ? error.message : String(error),
+                    stack: error instanceof Error ? error.stack : undefined,
+                    storeId: (0, sanitizer_js_1.sanitizeForLog)(this.storeId),
+                    orderId: (0, sanitizer_js_1.sanitizeForLog)(orderId)
+                });
+                await bot.editMessageText('❌ Ошибка при обработке чека. Попробуйте еще раз или обратитесь в поддержку.', {
+                    chat_id: chatId,
+                    message_id: processingMsg.message_id
+                });
+            }
+        }
+        catch (error) {
+            logger_js_1.logger.error(`Payment proof upload error for store ${(0, sanitizer_js_1.sanitizeForLog)(this.storeId)}:`, error);
+            await bot.sendMessage(chatId, '❌ Ошибка при загрузке файла');
+        }
+    }
+    async initiatePaymentProofFlow(bot, chatId, orderId, session) {
+        try {
+            const order = await prisma_js_1.prisma.order.findUnique({
+                where: { id: orderId },
+                include: {
+                    store: true
+                }
+            });
+            if (!order) {
+                await bot.sendMessage(chatId, '❌ Заказ не найден');
+                return;
+            }
+            session.paymentProofFlow = {
+                orderId,
+                awaitingPhoto: true
+            };
+            this.saveSession(session.userId, session);
+            let instructionText = `📸 *Загрузка чека оплаты*\n\n`;
+            instructionText += `📋 Заказ: #${order.orderNumber}\n`;
+            instructionText += `💰 Сумма: ${order.totalAmount} ${order.currency}\n\n`;
+            instructionText += `Для подтверждения оплаты, пожалуйста, отправьте:\n\n`;
+            instructionText += `• Фото чека или квитанции об оплате\n`;
+            instructionText += `• Скриншот перевода\n`;
+            instructionText += `• Любой документ, подтверждающий оплату\n\n`;
+            instructionText += `⚠️ *Важно:* Убедитесь, что на изображении четко видны:\n`;
+            instructionText += `- Сумма перевода\n`;
+            instructionText += `- Дата и время операции\n`;
+            instructionText += `- Реквизиты получателя`;
+            const keyboard = {
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '❌ Отменить', callback_data: 'cancel_payment_proof' }]
+                    ]
+                }
+            };
+            await bot.sendMessage(chatId, instructionText, {
+                parse_mode: 'Markdown',
+                ...keyboard
+            });
+            logger_js_1.logger.info(`Payment proof flow initiated for order ${(0, sanitizer_js_1.sanitizeForLog)(orderId)} in store ${(0, sanitizer_js_1.sanitizeForLog)(this.storeId)}`);
+        }
+        catch (error) {
+            logger_js_1.logger.error(`Error initiating payment proof flow for store ${(0, sanitizer_js_1.sanitizeForLog)(this.storeId)}:`, error);
+            await bot.sendMessage(chatId, '❌ Ошибка при инициализации загрузки чека');
         }
     }
     async handleDirectPurchase(bot, chatId, productId, quantity, session) {

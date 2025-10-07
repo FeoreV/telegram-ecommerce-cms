@@ -176,7 +176,8 @@ class TelegramBotSecurity {
         }
         if (userLimit.count >= this.config.rateLimit.maxRequests) {
             this.blockedUsers.set(userId, now + this.config.rateLimit.blockDuration);
-            logger_1.logger.warn(`Rate limit exceeded for user ${userId}`);
+            const sanitizedUserId = String(userId).replace(/[\r\n]/g, ' ');
+            logger_1.logger.warn(`Rate limit exceeded for user ${sanitizedUserId}`);
             return false;
         }
         userLimit.count++;
@@ -200,9 +201,11 @@ class TelegramBotSecurity {
             }
         }
         catch (error) {
-            logger_1.logger.warn('Failed to clear Redis rate limit during unblock', error);
+            const sanitizedError = error instanceof Error ? error.message.replace(/[\r\n]/g, ' ') : String(error).replace(/[\r\n]/g, ' ');
+            logger_1.logger.warn('Failed to clear Redis rate limit during unblock', sanitizedError);
         }
-        logger_1.logger.info(`User ${userId} unblocked via security service`);
+        const sanitizedUserId = String(userId).replace(/[\r\n]/g, ' ');
+        logger_1.logger.info(`User ${sanitizedUserId} unblocked via security service`);
     }
     checkSpam(userId, message) {
         if (!this.config.spamDetection.enabled) {

@@ -147,7 +147,7 @@ echo -e "   ${GREEN}pm2 logs frontend --lines 20${NC}"
 echo ""
 
 echo -e "${BLUE}🌐 Access frontend at:${NC}"
-echo -e "   ${GREEN}http://localhost:3000${NC}"
+echo -e "   ${GREEN}http://82.147.84.78:3000${NC}"
 echo ""
 
 echo -e "${YELLOW}💡 If issues persist:${NC}"

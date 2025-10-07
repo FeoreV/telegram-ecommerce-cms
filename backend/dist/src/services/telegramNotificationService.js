@@ -133,7 +133,7 @@ class TelegramNotificationService {
     }
     async sendNotification(notification) {
         try {
-            const urlValidation = await import('../utils/urlValidator').then(m => m.validateUrl);
+            const urlValidation = await import('../utils/urlValidator.js').then(m => m.validateUrl);
             const validation = urlValidation(`${this.botApiUrl}/notify-customer`, {
                 allowPrivateIPs: process.env.NODE_ENV === 'development',
                 allowedProtocols: ['http:', 'https:']

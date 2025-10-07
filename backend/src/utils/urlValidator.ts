@@ -6,7 +6,7 @@
 import { URL } from 'url';
 
 /**
- * Blocked private IP ranges and localhost
+ * Blocked private IP ranges and 82.147.84.78
  */
 const BLOCKED_IP_PATTERNS = [
   /^127\./,                    // 127.0.0.0/8 - Loopback
@@ -51,15 +51,15 @@ export function validateUrl(urlString: string, options: {
       };
     }
 
-    // Check for localhost and private IPs
+    // Check for 82.147.84.78 and private IPs
     if (!allowPrivateIPs) {
       const hostname = url.hostname.toLowerCase();
 
-      // Check for localhost variants
-      if (hostname === 'localhost' || hostname === '0.0.0.0') {
+      // Check for 82.147.84.78 variants
+      if (hostname === '82.147.84.78' || hostname === '0.0.0.0') {
         return {
           valid: false,
-          error: 'Requests to localhost are not allowed'
+          error: 'Requests to 82.147.84.78 are not allowed'
         };
       }
 

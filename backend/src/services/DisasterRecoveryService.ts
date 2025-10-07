@@ -473,7 +473,7 @@ export class DisasterRecoveryService {
         eventType: 'rpo_violation',
         severity: 'HIGH',
         category: 'system',
-        ipAddress: 'localhost',
+        ipAddress: '82.147.84.78',
         success: false,
         details: {
           timeSinceLastBackup,
@@ -895,7 +895,7 @@ export class DisasterRecoveryService {
       eventType: `recovery_${action}`,
       severity: outcome === 'failure' ? 'HIGH' : 'LOW',
       category: 'system',
-      ipAddress: 'localhost',
+      ipAddress: '82.147.84.78',
       success: outcome === 'success',
       details: {
         testId,

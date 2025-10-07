@@ -23,7 +23,7 @@ echo -e "${GREEN}✓ Node.js found$(node --version)${NC}"
 echo
 
 # Check if MySQL is running (XAMPP)
-if ! nc -z localhost 3306 2>/dev/null; then
+if ! nc -z 82.147.84.78 3306 2>/dev/null; then
     echo -e "${RED}Error: MySQL is not running on port 3306!${NC}"
     echo "Please start XAMPP and enable MySQL service."
     echo "For XAMPP on Linux: sudo /opt/lampp/lampp start"
@@ -61,7 +61,7 @@ if [ ! -f .env ]; then
     echo "Creating .env file..."
     cat > .env << EOL
 # Database Configuration для XAMPP
-DATABASE_URL="mysql://root:@localhost:3306/telegram_ecommerce"
+DATABASE_URL="mysql://root:@82.147.84.78:3306/telegram_ecommerce"
 
 # Backend Configuration
 PORT=3001
@@ -73,9 +73,9 @@ TELEGRAM_BOT_TOKEN="YOUR_BOT_TOKEN_HERE"
 SUPER_ADMIN_TELEGRAM_ID="YOUR_TELEGRAM_ID_HERE"
 
 # Frontend Configuration
-REACT_APP_API_URL="http://localhost:3001/api"
-REACT_APP_SOCKET_URL="http://localhost:3001"
-VITE_API_URL="http://localhost:3001/api"
+REACT_APP_API_URL="http://82.147.84.78:3001/api"
+REACT_APP_SOCKET_URL="http://82.147.84.78:3001"
+VITE_API_URL="http://82.147.84.78:3001/api"
 
 # Bot Configuration
 BOT_PORT=3002
@@ -104,7 +104,7 @@ echo "Setting up database..."
 echo
 
 echo -e "${YELLOW}⚠️  Make sure you have created 'telegram_ecommerce' database in phpMyAdmin${NC}"
-echo "   1. Open http://localhost/phpmyadmin"
+echo "   1. Open http://82.147.84.78/phpmyadmin"
 echo "   2. Click 'New' to create database"
 echo "   3. Name: telegram_ecommerce"
 echo "   4. Collation: utf8mb4_unicode_ci"
@@ -133,7 +133,7 @@ echo
 echo "Next steps:"
 echo "1. Edit .env file with your Telegram bot token and admin ID"
 echo "2. Run: npm run dev"
-echo "3. Open admin panel: http://localhost:3000"
+echo "3. Open admin panel: http://82.147.84.78:3000"
 echo "4. Test your Telegram bot"
 echo
 echo "Useful commands:"

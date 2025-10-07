@@ -9,20 +9,22 @@ const httpLogger = (req, res, next) => {
     if (skipPaths.includes(req.path) || isStaticAsset) {
         return next();
     }
-    loggerEnhanced_1.logger.http('Incoming request', {
-        category: loggerEnhanced_1.LogCategory.API,
-        method: req.method,
-        url: req.originalUrl || req.url,
-        path: req.path,
-        ip: getClientIP(req),
-        userAgent: req.get('User-Agent') || 'Unknown',
-        requestId: req.requestId,
-        contentLength: req.get('Content-Length'),
-        referer: req.get('Referer'),
-        acceptEncoding: req.get('Accept-Encoding'),
-        acceptLanguage: req.get('Accept-Language'),
-        host: req.get('Host'),
-    });
+    if (process.env.NODE_ENV === 'production') {
+        loggerEnhanced_1.logger.http('Incoming request', {
+            category: loggerEnhanced_1.LogCategory.API,
+            method: req.method,
+            url: req.originalUrl || req.url,
+            path: req.path,
+            ip: getClientIP(req),
+            userAgent: req.get('User-Agent') || 'Unknown',
+            requestId: req.requestId,
+            contentLength: req.get('Content-Length'),
+            referer: req.get('Referer'),
+            acceptEncoding: req.get('Accept-Encoding'),
+            acceptLanguage: req.get('Accept-Language'),
+            host: req.get('Host'),
+        });
+    }
     const originalSend = res.send;
     res.send = function (data) {
         return originalSend.call(this, data);
@@ -63,7 +65,7 @@ const httpLogger = (req, res, next) => {
         else if (logLevel === 'warn') {
             loggerEnhanced_1.logger.warn('Request warning', logData);
         }
-        else {
+        else if (process.env.NODE_ENV === 'production') {
             loggerEnhanced_1.logger.http('Request completed', logData);
         }
         if (duration > 1000) {

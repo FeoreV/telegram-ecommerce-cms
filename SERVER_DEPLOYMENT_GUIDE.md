@@ -4,7 +4,7 @@
 
 ### Системные требования
 - **OS**: Ubuntu 20.04/22.04 или Debian 11+
-- **Node.js**: >= 18.0.0
+- **Node.js**: >= 20.0.0 (обязательно! Vite 7 требует Node 20+)
 - **Memory**: минимум 2GB RAM (рекомендуется 4GB+)
 - **Disk**: минимум 10GB свободного места
 - **Права**: root или sudo доступ
@@ -80,7 +80,7 @@ nano backend/.env
 
 ```bash
 # Database (если используете PostgreSQL)
-DATABASE_URL="postgresql://user:password@localhost:5432/telegram_ecommerce"
+DATABASE_URL="postgresql://user:password@82.147.84.78:5432/telegram_ecommerce"
 
 # Admin Credentials (ИЗМЕНИТЕ!)
 ADMIN_EMAIL=admin@yourdomain.com
@@ -98,7 +98,7 @@ SMTP_PASS=your_app_password
 EMAIL_FROM=noreply@yourdomain.com
 
 # Redis (если установлен)
-REDIS_URL=redis://localhost:6379
+REDIS_URL=redis://82.147.84.78:6379
 ```
 
 **Ключи безопасности** уже сгенерированы автоматически ✅
@@ -113,7 +113,7 @@ nano bot/.env
 
 ```bash
 NODE_ENV=production
-API_URL=http://localhost:3002
+API_URL=http://82.147.84.78:3002
 TELEGRAM_BOT_TOKEN=YOUR_BOT_TOKEN_FROM_BOTFATHER
 ```
 
@@ -160,10 +160,10 @@ pm2 status
 
 ```bash
 # Backend (порт 3002)
-curl http://localhost:3002
+curl http://82.147.84.78:3002
 
 # Frontend (порт 3000)
-curl http://localhost:3000
+curl http://82.147.84.78:3000
 
 # Проверка занятых портов
 netstat -tulpn | grep -E ':(3000|3002|3003)'
@@ -211,7 +211,7 @@ server {
     server_name yourdomain.com www.yourdomain.com;
 
     location / {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://82.147.84.78:3000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -229,7 +229,7 @@ server {
     server_name api.yourdomain.com;
 
     location / {
-        proxy_pass http://localhost:3002;
+        proxy_pass http://82.147.84.78:3002;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -518,8 +518,8 @@ sudo tail -f /var/log/nginx/error.log  # Логи ошибок
 Ваш сервер настроен и готов к работе!
 
 **Доступ к приложению:**
-- Frontend: `http://localhost:3000` (или `https://yourdomain.com`)
-- Backend API: `http://localhost:3002` (или `https://api.yourdomain.com`)
+- Frontend: `http://82.147.84.78:3000` (или `https://yourdomain.com`)
+- Backend API: `http://82.147.84.78:3002` (или `https://api.yourdomain.com`)
 - Telegram Bot: работает автоматически
 
 **Первый вход:**

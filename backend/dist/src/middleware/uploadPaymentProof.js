@@ -42,8 +42,16 @@ const multer_1 = __importDefault(require("multer"));
 const path = __importStar(require("path"));
 const fileValidator_1 = require("../utils/fileValidator");
 const errorHandler_1 = require("./errorHandler");
-const projectRoot = path.resolve(process.cwd());
-const uploadDir = path.resolve(projectRoot, 'storage', 'secure', 'payment-proofs');
+function safePathResolve(...paths) {
+    const resolved = path.resolve(...paths);
+    const normalized = path.normalize(resolved);
+    if (normalized.includes('..')) {
+        throw new Error('SECURITY: Path traversal detected in resolved path');
+    }
+    return normalized;
+}
+const projectRoot = safePathResolve(process.cwd());
+const uploadDir = safePathResolve(projectRoot, 'storage', 'secure', 'payment-proofs');
 if (!uploadDir.startsWith(projectRoot)) {
     throw new Error('SECURITY: Upload directory path traversal detected');
 }
@@ -60,10 +68,15 @@ const storage = multer_1.default.diskStorage({
             const err = new Error('SECURITY: Invalid filename detected');
             return cb(err, secureFilename);
         }
-        const finalPath = path.resolve(uploadDir, secureFilename);
-        if (!finalPath.startsWith(uploadDir)) {
-            const err = new Error('SECURITY: Path traversal attempt detected');
-            return cb(err, secureFilename);
+        try {
+            const finalPath = safePathResolve(uploadDir, secureFilename);
+            if (!finalPath.startsWith(uploadDir + path.sep) && finalPath !== uploadDir) {
+                const err = new Error('SECURITY: Path traversal attempt detected');
+                return cb(err, secureFilename);
+            }
+        }
+        catch (error) {
+            return cb(error, secureFilename);
         }
         cb(null, secureFilename);
     }

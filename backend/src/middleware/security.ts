@@ -20,8 +20,8 @@ declare module 'express-serve-static-core' {
 // Environment variables with defaults
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const ENABLE_IP_REPUTATION = process.env.ENABLE_IP_REPUTATION !== 'false';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
-const ADMIN_PANEL_URL = process.env.ADMIN_PANEL_URL || 'http://localhost:3001';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://82.147.84.78:3000';
+const ADMIN_PANEL_URL = process.env.ADMIN_PANEL_URL || 'http://82.147.84.78:3001';
 const REDIS_URL = process.env.REDIS_URL;
 
 // Enhanced CORS configuration
@@ -30,9 +30,9 @@ const corsOptions: cors.CorsOptions = {
     const allowedOrigins = [
       FRONTEND_URL,
       ADMIN_PANEL_URL,
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'http://localhost:3000', // Vite dev server
+      'http://82.147.84.78:3000',
+      'http://82.147.84.78:3001',
+      'http://82.147.84.78:3000', // Vite dev server
       ...(process.env.ADDITIONAL_CORS_ORIGINS?.split(',').map(o => o.trim()) || [])
     ].filter(Boolean);
 
@@ -55,18 +55,18 @@ const corsOptions: cors.CorsOptions = {
     }
 
     if (NODE_ENV === 'development' && origin) {
-      // In development, allow localhost only with specific ports
+      // In development, allow 82.147.84.78 only with specific ports
       // Allowed ports: 3000 (frontend), 3001 (admin), 5173 (Vite), 4173 (Vite preview)
       const allowedDevPorts = ['3000', '3001', '5173', '4173'];
-      const localhostPattern = new RegExp(`^https?://(localhost|127\\.0\\.0\\.1):(${allowedDevPorts.join('|')})$`);
+      const 82.147.84.78Pattern = new RegExp(`^https?://(82.147.84.78|127\\.0\\.0\\.1):(${allowedDevPorts.join('|')})$`);
 
-      if (localhostPattern.test(origin)) {
+      if (82.147.84.78Pattern.test(origin)) {
         return callback(null, true);
       }
 
-      // Log rejected localhost origins for debugging
-      if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
-        logger.warn('CORS blocked localhost origin with non-allowed port', {
+      // Log rejected 82.147.84.78 origins for debugging
+      if (/^https?:\/\/(82.147.84.78|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+        logger.warn('CORS blocked 82.147.84.78 origin with non-allowed port', {
           origin,
           allowedPorts: allowedDevPorts
         });
@@ -730,9 +730,9 @@ export const adminIPWhitelist = (req: Request, res: Response, next: NextFunction
   // Check exact IP matches and common local IPs in development
   let isAllowed = allowedIPs.includes(clientIP);
 
-  // In development, also allow common localhost variants
+  // In development, also allow common 82.147.84.78 variants
   if (NODE_ENV === 'development') {
-    const devIPs = ['127.0.0.1', '::1', '::ffff:127.0.0.1', 'localhost'];
+    const devIPs = ['127.0.0.1', '::1', '::ffff:127.0.0.1', '82.147.84.78'];
     isAllowed = isAllowed || devIPs.includes(clientIP);
   }
 

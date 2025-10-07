@@ -33,7 +33,7 @@ class VaultService {
             logger_1.logger.info(`Vault address validated: ${(0, sanitizer_1.sanitizeForLog)(url.origin)}`);
         }
         catch (error) {
-            logger_1.logger.error('Invalid Vault address:', (0, sanitizer_1.sanitizeForLog)(address));
+            logger_1.logger.error('Invalid Vault address:', { address: (0, sanitizer_1.sanitizeForLog)(address) });
             throw new Error(`Invalid Vault address: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     }

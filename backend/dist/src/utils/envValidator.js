@@ -48,11 +48,20 @@ class EnvValidator {
             errors.push('DATABASE_URL is required');
         }
         else {
-            try {
-                new URL(env_1.env.DATABASE_URL);
+            const dbUrl = env_1.env.DATABASE_URL;
+            const provider = process.env.DATABASE_PROVIDER;
+            if (provider === 'sqlite' || dbUrl.startsWith('file:')) {
+                if (!dbUrl.startsWith('file:')) {
+                    errors.push('DATABASE_URL for SQLite must start with file:');
+                }
             }
-            catch (_error) {
-                errors.push('DATABASE_URL must be a valid URL');
+            else {
+                try {
+                    new URL(dbUrl);
+                }
+                catch (_error) {
+                    errors.push('DATABASE_URL must be a valid URL');
+                }
             }
         }
         const dbUrl = env_1.env.DATABASE_URL || '';
@@ -151,12 +160,10 @@ class EnvValidator {
             errors.push('TELEGRAM_BOT_TOKEN is required in production');
         }
         if (env_1.env.SUPER_ADMIN_TELEGRAM_ID) {
-            if (!env_1.env.SUPER_ADMIN_TELEGRAM_ID.match(/^\d+$/)) {
-                errors.push('SUPER_ADMIN_TELEGRAM_ID must be a numeric Telegram user ID');
-            }
-        }
-        else {
-            warnings.push('SUPER_ADMIN_TELEGRAM_ID should be set to ensure proper admin access');
+            warnings.push('⚠️  SUPER_ADMIN_TELEGRAM_ID is DEPRECATED and IGNORED for security');
+            warnings.push('✅ Automatic OWNER creation is DISABLED - all new users are CUSTOMER by default');
+            warnings.push('📝 To create OWNER users, use: node backend/tools/admin/promote_user.js <telegram-id> OWNER');
+            warnings.push('📖 See SECURITY_OWNER_CREATION.md for details');
         }
     }
     static validateLoggingConfig(warnings) {
@@ -302,7 +309,7 @@ class EnvValidator {
             frontendUrl: env_1.env.FRONTEND_URL,
             logLevel: env_1.env.LOG_LEVEL || 'info',
             adminJsEnabled: false,
-            superAdminSet: !!env_1.env.SUPER_ADMIN_TELEGRAM_ID,
+            superAdminSet: false,
             httpsEnabled: process.env.USE_HTTPS === 'true' || process.env.HTTPS === 'true',
             securityHeadersEnabled: process.env.ENABLE_SECURITY_HEADERS !== 'false',
             bruteForceProtection: process.env.ENABLE_BRUTE_FORCE_PROTECTION !== 'false',

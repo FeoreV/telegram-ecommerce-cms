@@ -93,9 +93,9 @@ Write-Host "  Rebuild Complete" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Available services:" -ForegroundColor Yellow
-Write-Host "  - Backend:    http://localhost:3001"
-Write-Host "  - Frontend:   http://localhost:3000"
-Write-Host "  - Prometheus: http://localhost:9090"
-Write-Host "  - Grafana:    http://localhost:3030"
+Write-Host "  - Backend:    http://82.147.84.78:3001"
+Write-Host "  - Frontend:   http://82.147.84.78:3000"
+Write-Host "  - Prometheus: http://82.147.84.78:9090"
+Write-Host "  - Grafana:    http://82.147.84.78:3030"
 Write-Host ""
 

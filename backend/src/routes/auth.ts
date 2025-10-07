@@ -126,7 +126,7 @@ router.get('/adminjs-token', authMiddleware, requireRole([UserRole.OWNER, UserRo
     token: adminJsToken,
     email: req.user.telegramId, // Use telegram ID as login for AdminJS
     expiresIn: '7d',
-    adminJsUrl: process.env.ADMIN_JS_URL || 'http://localhost:3001/admin',
+    adminJsUrl: process.env.ADMIN_JS_URL || 'http://82.147.84.78:3001/admin',
     instructions: {
       ru: 'Используйте Telegram ID как логин и этот токен как пароль для входа в AdminJS',
       en: 'Use your Telegram ID as login and this token as password for AdminJS login'

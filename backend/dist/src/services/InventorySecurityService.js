@@ -35,8 +35,8 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.inventorySecurityService = exports.InventorySecurityService = exports.InventoryAuditLevel = exports.ConcurrencyControl = exports.InventoryOperationType = void 0;
 const crypto = __importStar(require("crypto"));
-const logger_1 = require("../utils/logger");
 const errorUtils_1 = require("../utils/errorUtils");
+const logger_1 = require("../utils/logger");
 const SecurityLogService_1 = require("./SecurityLogService");
 var InventoryOperationType;
 (function (InventoryOperationType) {

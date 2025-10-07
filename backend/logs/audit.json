@@ -1,34 +1,34 @@
 {
     "keep": {
-        "days": true,
-        "amount": 14
+        "days": false,
+        "amount": 5
     },
     "auditLog": "D:\\projects\\telegram-ecommerce-cms\\backend\\logs\\audit.json",
     "files": [
         {
-            "date": 1759838139856,
+            "date": 1759866408683,
             "name": "D:\\projects\\telegram-ecommerce-cms\\backend\\logs\\error-2025-10-07.log",
-            "hash": "34a65daf96b97cd6d27da71cea76a01b5c96767257114986c076ffbd9e8d1884"
+            "hash": "0371bd6712e5556199336889bc45b8b37afc825a2109e26a371ffa8e211e0c49"
         },
         {
-            "date": 1759838139858,
+            "date": 1759866408688,
             "name": "D:\\projects\\telegram-ecommerce-cms\\backend\\logs\\combined-2025-10-07.log",
-            "hash": "36603002129e03a47b36190393334290ee86adda35a36086d96eb2fef6f09c50"
+            "hash": "a49168e2675f817af32610ab4877cecb3e70304f632827cf7b199297cf009d4f"
         },
         {
-            "date": 1759838139860,
+            "date": 1759866408690,
             "name": "D:\\projects\\telegram-ecommerce-cms\\backend\\logs\\http-2025-10-07.log",
-            "hash": "35839d899049b8165d01d070c07f1d23b6dec3888c3aa89b940cb0e88bdb2c18"
+            "hash": "4737ad7f91dd7553a75d56cfe3b39ffcfd4e75bcb3ebadb8ebc21acea9ee04b3"
         },
         {
-            "date": 1759838139861,
+            "date": 1759866408691,
             "name": "D:\\projects\\telegram-ecommerce-cms\\backend\\logs\\security-2025-10-07.log",
-            "hash": "b79346cf3b4c522fb7d9ee5814a2d1583c60338aaace3fb0447bb712db4c255f"
+            "hash": "b49863669b9d84d8ffb317d86db450acb16665e7d3489697b2e0687d56cf4c60"
         },
         {
-            "date": 1759838139862,
+            "date": 1759866408694,
             "name": "D:\\projects\\telegram-ecommerce-cms\\backend\\logs\\audit-2025-10-07.log",
-            "hash": "c2d9747a53ce97b88a4409f6b59458a71f72ff1445ca6da507a38754d44cfc19"
+            "hash": "50a5c908f8fc18119df833baf48b1aeb8136de77c1299c386978de4d3475fdfc"
         }
     ],
     "hashType": "sha256"

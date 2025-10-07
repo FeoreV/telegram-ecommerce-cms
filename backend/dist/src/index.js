@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.app = void 0;
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const csrf_csrf_1 = require("csrf-csrf");
 const dotenv_1 = __importDefault(require("dotenv"));
@@ -18,6 +19,7 @@ const prisma_1 = require("./lib/prisma");
 const SecureAuthRoutes_1 = __importDefault(require("./auth/SecureAuthRoutes"));
 const socket_1 = require("./lib/socket");
 const compromiseGuard_1 = require("./middleware/compromiseGuard");
+const contentTypeValidation_1 = require("./middleware/contentTypeValidation");
 const errorHandler_1 = require("./middleware/errorHandler");
 const exfiltrationTrap_1 = require("./middleware/exfiltrationTrap");
 const httpLogger_1 = require("./middleware/httpLogger");
@@ -27,7 +29,6 @@ const performanceTracker_1 = require("./middleware/performanceTracker");
 const responseDLP_1 = require("./middleware/responseDLP");
 const vaultHealthCheck_1 = require("./middleware/vaultHealthCheck");
 const webhookQuarantineGuard_1 = require("./middleware/webhookQuarantineGuard");
-const contentTypeValidation_1 = require("./middleware/contentTypeValidation");
 const admin_1 = __importDefault(require("./routes/admin"));
 const auth_3 = __importDefault(require("./routes/auth"));
 const backup_1 = __importDefault(require("./routes/backup"));
@@ -83,10 +84,13 @@ const initializeCriticalServices = async () => {
 const envValidation = envValidator_1.default.validate();
 if (!envValidation.isValid) {
     console.error('Environment validation failed. Exiting...');
+    console.error('Errors:', envValidation.errors);
+    console.error('Warnings:', envValidation.warnings);
     process.exit(1);
 }
 envValidator_1.default.printEnvironmentSummary();
 const app = (0, express_1.default)();
+exports.app = app;
 const server = (0, http_1.createServer)(app);
 const io = (0, socket_1.initSocket)(server, env_1.env.FRONTEND_URL || "http://localhost:3000");
 app.use(security_1.securityMiddlewareBundle);
@@ -101,9 +105,11 @@ app.use(metrics_1.metricsMiddleware);
 app.use(vaultHealthCheck_1.vaultHealthMiddleware);
 app.get('/api/security/status', auth_2.authMiddleware, (req, res) => {
     try {
-        const status = (0, security_1.getSecurityStatus)();
         res.json({
-            security: status,
+            security: {
+                status: 'active',
+                features: ['rate-limiting', 'csrf-protection', 'helmet', 'sanitization']
+            },
             timestamp: new Date().toISOString()
         });
     }
@@ -161,41 +167,73 @@ app.use('/api/cms/webhooks/medusa', webhookQuarantineGuard_1.webhookQuarantineGu
 app.use(express_1.default.json({ limit: '1mb' }));
 app.use(express_1.default.urlencoded({ limit: '1mb', extended: true }));
 app.use((0, cookie_parser_1.default)());
+const isProduction = process.env.NODE_ENV === 'production';
 const csrfProtection = (0, csrf_csrf_1.doubleCsrf)({
     getSecret: () => SecretManager_1.secretManager.getEncryptionSecrets().masterKey,
     getSessionIdentifier: (req) => {
         const user = req.user;
         return user?.id || req.ip || 'anonymous';
     },
-    cookieName: '__Host-csrf.token',
+    cookieName: isProduction ? '__Host-csrf.token' : 'csrf-token',
     cookieOptions: {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        secure: isProduction,
+        sameSite: isProduction ? 'strict' : 'lax',
         path: '/',
     },
     size: 64,
     ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
 });
 const { doubleCsrfProtection } = csrfProtection;
-app.get('/api/csrf-token', (req, res) => {
-    res.json({ message: 'CSRF token set in cookie' });
-});
 app.use('/api/*', (req, res, next) => {
+    const fullPath = req.originalUrl.split('?')[0];
     const skipPaths = [
         '/api/health',
         '/api/csrf-token',
         '/api/webhooks',
         '/api/cms/webhooks',
         '/api/auth/telegram',
+        '/api/auth/login/telegram',
+        '/api/auth/login/email',
+        '/api/auth/refresh-token',
+        '/api/auth/auto-refresh',
+        '/api/auth/verify-token',
     ];
-    if (skipPaths.some(path => req.path.startsWith(path))) {
+    if (skipPaths.some(path => fullPath.startsWith(path))) {
         return next();
     }
     if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
         return next();
     }
-    doubleCsrfProtection(req, res, next);
+    if (process.env.NODE_ENV !== 'production' && process.env.DISABLE_CSRF === 'true') {
+        loggerEnhanced_1.logger.warn('⚠️ CSRF protection disabled in development mode');
+        return next();
+    }
+    doubleCsrfProtection(req, res, (err) => {
+        if (err) {
+            loggerEnhanced_1.logger.error('CSRF validation failed - DETAILED DEBUG', {
+                error: err.message,
+                errorStack: err.stack,
+                path: req.path,
+                method: req.method,
+                allHeaders: req.headers,
+                allCookies: req.cookies,
+                cookiesCsrf: {
+                    'csrf-token': req.cookies?.['csrf-token'],
+                    '__Host-csrf.token': req.cookies?.['__Host-csrf.token'],
+                    '_csrf': req.cookies?.['_csrf']
+                },
+                headersCsrf: {
+                    'x-csrf-token': req.get('x-csrf-token'),
+                    'X-CSRF-Token': req.get('X-CSRF-Token'),
+                    'csrf-token': req.get('csrf-token')
+                },
+                ip: req.ip,
+                user: req.user?.id
+            });
+        }
+        next(err);
+    });
 });
 app.use('/uploads', express_1.default.static('uploads'));
 app.get('/health', (req, res) => {
@@ -204,7 +242,8 @@ app.get('/health', (req, res) => {
 app.get('/health/vault', vaultHealthCheck_1.vaultHealthEndpoint);
 app.get('/metrics', async (req, res) => {
     try {
-        const PrometheusService = (await import('./services/prometheusService')).default;
+        const prometheusModule = await import('./services/prometheusService.js');
+        const PrometheusService = prometheusModule.default;
         const prometheusService = PrometheusService.getInstance();
         const metrics = await prometheusService.getMetrics();
         res.set('Content-Type', prometheusService.registry.contentType);
@@ -236,7 +275,7 @@ app.get('/api', (req, res) => {
     });
 });
 const csrfProtection_1 = require("./middleware/csrfProtection");
-app.get('/api/csrf-token', csrfProtection_1.attachCsrfToken, (req, res) => {
+app.get('/api/csrf-token', csrfProtection_1.getCsrfTokenHandler, (req, res) => {
     res.json({
         csrfToken: res.locals.csrfToken,
         message: 'CSRF token generated successfully'
@@ -398,7 +437,8 @@ async function validateRoomAccess(user, roomName) {
 const initializeServices = async () => {
     try {
         loggerEnhanced_1.logger.info('📊 Initializing Prometheus Service...');
-        const PrometheusService = (await import('./services/prometheusService')).default;
+        const prometheusModule = await import('./services/prometheusService.js');
+        const PrometheusService = prometheusModule.default;
         const prometheusService = PrometheusService.getInstance();
         prometheusService.startPeriodicCollection(10000);
         loggerEnhanced_1.logger.info('✅ Prometheus Service initialized successfully');

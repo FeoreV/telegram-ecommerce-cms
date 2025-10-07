@@ -150,14 +150,14 @@ case "$1" in
         echo ""
 
         echo -n "Backend API: "
-        if curl -sf http://localhost:3001/health > /dev/null; then
+        if curl -sf http://82.147.84.78:3001/health > /dev/null; then
             echo -e "${GREEN}✅ OK${NC}"
         else
             echo -e "${RED}❌ FAIL${NC}"
         fi
 
         echo -n "Frontend: "
-        if curl -sf http://localhost:3000 > /dev/null; then
+        if curl -sf http://82.147.84.78:3000 > /dev/null; then
             echo -e "${GREEN}✅ OK${NC}"
         else
             echo -e "${RED}❌ FAIL${NC}"

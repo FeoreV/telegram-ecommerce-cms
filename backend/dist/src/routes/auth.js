@@ -8,7 +8,6 @@ const auditLog_1 = require("../middleware/auditLog");
 const auth_1 = require("../middleware/auth");
 const errorHandler_1 = require("../middleware/errorHandler");
 const validation_1 = require("../middleware/validation");
-const validationSchemas_1 = require("../schemas/validationSchemas");
 const jwt_1 = require("../utils/jwt");
 const logger_1 = require("../utils/logger");
 const router = (0, express_1.Router)();
@@ -20,7 +19,20 @@ const qrRateLimit = (0, express_rate_limit_1.rateLimit)({
     legacyHeaders: false,
     skipSuccessfulRequests: false
 });
-router.post('/telegram', (0, validation_1.validate)(validationSchemas_1.userSchemas.telegramAuth), authController_1.telegramAuth);
+const telegramAuthRateLimit = (0, express_rate_limit_1.rateLimit)({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: 'Too many Telegram authentication attempts, please try again later',
+    standardHeaders: true,
+    legacyHeaders: false,
+    skipSuccessfulRequests: true,
+    keyGenerator: (req) => {
+        const telegramId = req.body?.telegramId;
+        const ip = req.ip || 'unknown';
+        return telegramId ? `telegram_auth:${ip}:${telegramId}` : `telegram_auth:${ip}`;
+    }
+});
+router.post('/telegram', telegramAuthRateLimit, authController_1.telegramAuth);
 router.get('/profile', auth_1.authMiddleware, authController_1.getProfile);
 router.put('/profile', auth_1.authMiddleware, [
     (0, express_validator_1.body)('email').optional().isEmail().withMessage('Valid email required'),
@@ -44,7 +56,10 @@ router.get('/adminjs-token', auth_1.authMiddleware, (0, auth_1.requireRole)([jwt
     if (!adminJsToken) {
         throw new errorHandler_1.AppError('No token available', 400);
     }
-    logger_1.logger.info(`AdminJS token requested by user: ${req.user.id} (${req.user.role})`);
+    logger_1.logger.info('AdminJS token requested', {
+        userId: req.user.id,
+        role: req.user.role
+    });
     await (0, auditLog_1.auditAuthAction)(req.user.id, auditLog_1.AuditAction.ADMINJS_ACCESS, req, {
         action: 'token_requested',
         role: req.user.role

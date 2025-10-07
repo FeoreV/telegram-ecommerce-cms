@@ -5,10 +5,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.adminSecurityService = exports.AdminSecurityService = void 0;
 const crypto_1 = __importDefault(require("crypto"));
-const speakeasy_1 = __importDefault(require("speakeasy"));
 const qrcode_1 = __importDefault(require("qrcode"));
-const logger_1 = require("../utils/logger");
+const speakeasy_1 = __importDefault(require("speakeasy"));
 const database_1 = require("../lib/database");
+const logger_1 = require("../utils/logger");
 const TenantCacheService_1 = require("./TenantCacheService");
 class AdminSecurityService {
     constructor() {
@@ -120,7 +120,7 @@ class AdminSecurityService {
             ipAddress,
             userAgent: '',
             success: true,
-            details: { reason, duration, token: bypassToken.substring(0, 8) + '...' },
+            details: { reason, duration },
             riskScore: 80,
             action: 'bypass_created'
         });
@@ -128,8 +128,7 @@ class AdminSecurityService {
             ipAddress,
             requestedBy,
             reason,
-            duration,
-            token: bypassToken.substring(0, 8) + '...'
+            duration
         });
         return bypassToken;
     }
@@ -184,7 +183,7 @@ class AdminSecurityService {
                         ipAddress: 'system',
                         userAgent: '',
                         success: false,
-                        details: { token: token.substring(0, 2) + '...' },
+                        details: { userId },
                         riskScore: 30,
                         action: 'mfa_verification_failed'
                     });

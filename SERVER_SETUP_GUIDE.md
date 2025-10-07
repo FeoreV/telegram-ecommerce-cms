@@ -2,7 +2,7 @@
 
 ## Current Problem: CORS / Connection Issues
 
-The frontend at `http://82.147.84.78:3000` cannot connect to backend at `http://82.147.84.78:3001` due to CORS blocking.
+The frontend at `82.147.84.78:3000` cannot connect to backend at `82.147.84.78:3001` due to CORS blocking.
 
 ## Quick Fix (Execute on Server)
 
@@ -20,11 +20,11 @@ cp .env .env.backup.$(date +%s)
 cat >> .env << 'EOF'
 
 # Production Server CORS Settings
-FRONTEND_URL=http://82.147.84.78:3000
-CORS_WHITELIST=http://localhost:3000,http://localhost:5173,http://82.147.84.78:3000,http://82.147.84.78:3001
-ADMIN_PANEL_URL=http://82.147.84.78:3001/admin
+FRONTEND_URL=82.147.84.78:3000
+CORS_WHITELIST=http://82.147.84.78:3000,http://82.147.84.78:5173,82.147.84.78:3000,82.147.84.78:3001
+ADMIN_PANEL_URL=82.147.84.78:3001/admin
 CORS_CREDENTIALS=true
-ADDITIONAL_CORS_ORIGINS=http://82.147.84.78:3000,http://82.147.84.78:3001
+ADDITIONAL_CORS_ORIGINS=82.147.84.78:3000,82.147.84.78:3001
 NODE_ENV=production
 EOF
 ```
@@ -53,17 +53,17 @@ npm run dev
 ### 5. Verify the fix
 ```bash
 # Check backend is running
-curl http://localhost:3001/health
+curl http://82.147.84.78:3001/health
 
 # Test CORS headers
-curl -H "Origin: http://82.147.84.78:3000" \
+curl -H "Origin: 82.147.84.78:3000" \
      -H "Access-Control-Request-Method: GET" \
      -X OPTIONS \
-     -v http://82.147.84.78:3001/api/csrf-token 2>&1 | grep -i "access-control"
+     -v 82.147.84.78:3001/api/csrf-token 2>&1 | grep -i "access-control"
 ```
 
 Expected output should include:
-- `Access-Control-Allow-Origin: http://82.147.84.78:3000`
+- `Access-Control-Allow-Origin: 82.147.84.78:3000`
 - `Access-Control-Allow-Credentials: true`
 
 ## Full Production Setup
@@ -91,13 +91,13 @@ NODE_ENV=production
 PORT=3001
 
 # URLs
-FRONTEND_URL=http://82.147.84.78:3000
-ADMIN_PANEL_URL=http://82.147.84.78:3001/admin
+FRONTEND_URL=82.147.84.78:3000
+ADMIN_PANEL_URL=82.147.84.78:3001/admin
 
 # CORS
-CORS_WHITELIST=http://82.147.84.78:3000,http://82.147.84.78:3001
+CORS_WHITELIST=82.147.84.78:3000,82.147.84.78:3001
 CORS_CREDENTIALS=true
-ADDITIONAL_CORS_ORIGINS=http://82.147.84.78:3000
+ADDITIONAL_CORS_ORIGINS=82.147.84.78:3000
 
 # Database
 DATABASE_URL=file:./prisma/dev.db
@@ -227,10 +227,10 @@ pm2 startup
 pm2 monit
 
 # View metrics
-curl http://localhost:3001/metrics
+curl http://82.147.84.78:3001/metrics
 
 # Check health
-curl http://localhost:3001/health
+curl http://82.147.84.78:3001/health
 ```
 
 ---

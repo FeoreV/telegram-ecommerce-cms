@@ -26,7 +26,7 @@ echo NODE_ENV=development >> .env
 echo BOT_PORT=3003 >> .env
 echo. >> .env
 echo # API Configuration >> .env
-echo API_URL=http://localhost:3001 >> .env
+echo API_URL=http://82.147.84.78:3001 >> .env
 echo. >> .env
 echo # Telegram Bot Token >> .env
 echo TELEGRAM_BOT_TOKEN=%TOKEN% >> .env

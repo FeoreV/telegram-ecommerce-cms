@@ -780,7 +780,7 @@ If this was not you, please contact support immediately.`,
         eventType: 'secure_notification_processed',
         severity: 'LOW',
         category: 'network',
-        ipAddress: 'localhost',
+        ipAddress: '82.147.84.78',
         success: true,
         details: {
           notificationId,

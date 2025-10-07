@@ -154,11 +154,13 @@ class EncryptionService {
         return decrypted;
     }
     hashPassword(password) {
+        logger_1.logger.warn('SECURITY WARNING: EncryptionService.hashPassword() is deprecated! Use SecureAuthSystem.hashPassword()');
         const salt = crypto_1.default.randomBytes(16).toString('hex');
         const hash = crypto_1.default.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
         return `${salt}:${hash}`;
     }
     verifyPassword(password, hashedPassword) {
+        logger_1.logger.warn('SECURITY WARNING: EncryptionService.verifyPassword() is deprecated! Use SecureAuthSystem.verifyPassword()');
         const [salt, hash] = hashedPassword.split(':');
         const verifyHash = crypto_1.default.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
         const hashBuffer = Buffer.from(hash, 'hex');

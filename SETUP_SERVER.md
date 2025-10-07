@@ -46,7 +46,7 @@ cd ..
 ```bash
 cd bot
 echo "NODE_ENV=production" > .env
-echo "API_URL=http://localhost:3002" >> .env
+echo "API_URL=http://82.147.84.78:3002" >> .env
 echo "TELEGRAM_BOT_TOKEN=ваш_токен" >> .env
 npm install --production=false
 npm run build
@@ -108,7 +108,7 @@ pm2 monit
 ### Проверка API
 
 ```bash
-curl http://localhost:3002/api/health
+curl http://82.147.84.78:3002/api/health
 ```
 
 ---

@@ -634,7 +634,7 @@ class SecureAuthSystem {
             });
             if (!user)
                 return [];
-            const { ROLE_PERMISSIONS } = await import('../middleware/permissions');
+            const { ROLE_PERMISSIONS } = await import('../middleware/permissions.js');
             return ROLE_PERMISSIONS[user.role] || [];
         }
         catch (error) {

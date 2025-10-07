@@ -415,12 +415,14 @@ const enhancedAuthMiddleware = async (req, res, next) => {
         req.user = user;
         req.token = token;
         req.sessionId = decoded.sessionId;
-        logger_1.logger.debug('User authenticated successfully', {
-            userId: user.id,
-            role: user.role,
-            ip: req.ip,
-            endpoint: req.path
-        });
+        if (process.env.NODE_ENV === 'production') {
+            logger_1.logger.debug('User authenticated successfully', {
+                userId: user.id,
+                role: user.role,
+                ip: req.ip,
+                endpoint: req.path
+            });
+        }
         next();
     }
     catch (error) {

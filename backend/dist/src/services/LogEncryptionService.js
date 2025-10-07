@@ -4,13 +4,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.logEncryptionService = exports.LogEncryptionService = void 0;
+const crypto_1 = __importDefault(require("crypto"));
 const promises_1 = __importDefault(require("fs/promises"));
 const path_1 = __importDefault(require("path"));
-const crypto_1 = __importDefault(require("crypto"));
 const stream_1 = require("stream");
+const logger_1 = require("../utils/logger");
 const EncryptionService_1 = require("./EncryptionService");
 const VaultService_1 = require("./VaultService");
-const logger_1 = require("../utils/logger");
 class LogEncryptionService {
     constructor() {
         this.encryptionStreams = new Map();

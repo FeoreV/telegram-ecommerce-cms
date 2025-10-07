@@ -599,7 +599,7 @@ export class DataRetentionService {
         eventType: 'data_retention_executed',
         severity: 'LOW',
         category: 'data_access',
-        ipAddress: 'localhost',
+        ipAddress: '82.147.84.78',
         success: job.errors.length === 0,
         details: {
           jobId,
@@ -898,7 +898,7 @@ export class DataRetentionService {
       eventType: 'data_subject_deletion_request',
       severity: request.urgency === 'court_order' ? 'CRITICAL' : 'HIGH',
       category: 'data_access',
-      ipAddress: 'localhost',
+      ipAddress: '82.147.84.78',
       success: true,
       details: {
         requestId,

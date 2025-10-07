@@ -95,7 +95,7 @@ exports.downloadBackup = (0, errorHandler_1.asyncHandler)(async (req, res) => {
         res.sendFile(backupPath);
     }
     catch (error) {
-        logger_1.logger.error(`Failed to download backup: ${(0, sanitizer_1.sanitizeForLog)(filename)}`, error);
+        logger_1.logger.error('Failed to download backup', { filename: (0, sanitizer_1.sanitizeForLog)(filename), error });
         throw new errorHandler_1.AppError('Backup file not found', 404);
     }
 });
@@ -116,7 +116,7 @@ exports.restoreBackup = (0, errorHandler_1.asyncHandler)(async (req, res) => {
     }
     try {
         const { sanitizeForLog } = require('../utils/sanitizer');
-        logger_1.logger.warn(`DANGEROUS: Database restore initiated by ${sanitizeForLog(req.user.id)}`, {
+        logger_1.logger.warn('DANGEROUS: Database restore initiated', { userId: sanitizeForLog(req.user.id),
             filename: sanitizeForLog(filename),
             options: { restoreUploads, skipExisting },
         });
@@ -133,7 +133,7 @@ exports.restoreBackup = (0, errorHandler_1.asyncHandler)(async (req, res) => {
     }
     catch (error) {
         const { sanitizeForLog } = require('../utils/sanitizer');
-        logger_1.logger.error(`Failed to restore backup: ${sanitizeForLog(filename)}`, error);
+        logger_1.logger.error('Failed to restore backup', { filename: sanitizeForLog(filename), error });
         throw new errorHandler_1.AppError(`Failed to restore backup: ${error instanceof Error ? error.message : 'Unknown error'}`, 500);
     }
 });
@@ -156,7 +156,7 @@ exports.deleteBackup = (0, errorHandler_1.asyncHandler)(async (req, res) => {
         });
     }
     catch (error) {
-        logger_1.logger.error(`Failed to delete backup: ${(0, sanitizer_1.sanitizeForLog)(filename)}`, error);
+        logger_1.logger.error('Failed to delete backup', { filename: (0, sanitizer_1.sanitizeForLog)(filename), error });
         throw new errorHandler_1.AppError('Failed to delete backup', 500);
     }
 });

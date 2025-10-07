@@ -29,7 +29,6 @@ function responseDLP(req, res, next) {
             const serialized = JSON.stringify(body);
             const isDevelopment = process.env.NODE_ENV === 'development';
             if (isDevelopment) {
-                console.log(`DLP: Disabled in development mode - ${req.path}`);
                 return originalJson(body);
             }
             const dlpPromise = performDLPScan(serialized, req, 'json_response');
@@ -70,7 +69,6 @@ function responseDLP(req, res, next) {
             const str = typeof body === 'string' ? body : JSON.stringify(body);
             const isDevelopment = process.env.NODE_ENV === 'development';
             if (isDevelopment) {
-                console.log(`DLP: Text response disabled in development mode - ${req.path}`);
                 return originalSend(body);
             }
             performDLPScan(str, req, 'text_response').catch((err) => {

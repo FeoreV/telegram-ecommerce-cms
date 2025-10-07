@@ -1,31 +1,31 @@
 # Development Environment Setup Guide
 
-This guide shows you how to configure your `.env` file for localhost development.
+This guide shows you how to configure your `.env` file for 82.147.84.78 development.
 
 ## Quick Setup
 
 1. Copy your production `.env` file to `.env.development` or `.env`
-2. Make the following changes for localhost development:
+2. Make the following changes for 82.147.84.78 development:
 
 ## Key Changes for Development
 
 ### 1. General Configuration
 ```env
 NODE_ENV=development
-SERVER_IP=localhost
+SERVER_IP=82.147.84.78
 ```
 
-### 2. Application URLs (Change all IPs to localhost)
+### 2. Application URLs (Change all IPs to 82.147.84.78)
 ```env
-API_URL=http://localhost:3001
-FRONTEND_URL=http://localhost:3000
-WEBHOOK_BASE_URL=http://localhost
+API_URL=http://82.147.84.78:3001
+FRONTEND_URL=http://82.147.84.78:3000
+WEBHOOK_BASE_URL=http://82.147.84.78
 ```
 
-### 3. CORS Configuration (Add localhost variants)
+### 3. CORS Configuration (Add 82.147.84.78 variants)
 ```env
-CORS_WHITELIST=http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173
-CORS_ORIGIN=http://localhost:3000
+CORS_WHITELIST=http://82.147.84.78:3000,http://82.147.84.78:5173,http://127.0.0.1:3000,http://127.0.0.1:5173
+CORS_ORIGIN=http://82.147.84.78:3000
 CORS_CREDENTIALS=true
 ```
 
@@ -105,14 +105,14 @@ Here's the full `.env` file content for development:
 # =============================================================================
 # TELEGRAM ECOMMERCE CMS - DEVELOPMENT ENVIRONMENT CONFIGURATION
 # =============================================================================
-# Configured for localhost development
+# Configured for 82.147.84.78 development
 # =============================================================================
 
 # =============================================================================
 # GENERAL CONFIGURATION
 # =============================================================================
 NODE_ENV=development
-SERVER_IP=localhost
+SERVER_IP=82.147.84.78
 
 # =============================================================================
 # DATABASE CONFIGURATION (SQLite)
@@ -123,9 +123,9 @@ DATABASE_URL=file:./backend/prisma/dev.db
 # =============================================================================
 # APPLICATION URLS
 # =============================================================================
-API_URL=http://localhost:3001
-FRONTEND_URL=http://localhost:3000
-WEBHOOK_BASE_URL=http://localhost
+API_URL=http://82.147.84.78:3001
+FRONTEND_URL=http://82.147.84.78:3000
+WEBHOOK_BASE_URL=http://82.147.84.78
 
 # Port Configuration
 BACKEND_PORT=3001
@@ -194,8 +194,8 @@ SUPER_ADMIN_TELEGRAM_ID=123456789
 # =============================================================================
 # REDIS CONFIGURATION (optional for development)
 # =============================================================================
-REDIS_URL=redis://localhost:6379
-REDIS_HOST=localhost
+REDIS_URL=redis://82.147.84.78:6379
+REDIS_HOST=82.147.84.78
 REDIS_PORT=6379
 REDIS_PASSWORD=
 REDIS_MAX_RETRIES=3
@@ -204,8 +204,8 @@ REDIS_TTL=3600
 # =============================================================================
 # CORS CONFIGURATION (permissive for development)
 # =============================================================================
-CORS_WHITELIST=http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173
-CORS_ORIGIN=http://localhost:3000
+CORS_WHITELIST=http://82.147.84.78:3000,http://82.147.84.78:5173,http://127.0.0.1:3000,http://127.0.0.1:5173
+CORS_ORIGIN=http://82.147.84.78:3000
 CORS_CREDENTIALS=true
 
 # =============================================================================
@@ -263,7 +263,7 @@ BACKUP_DESTINATION=./storage/backups
 # =============================================================================
 # CMS CONFIGURATION (optional)
 # =============================================================================
-CMS_BASE_URL=http://localhost:9000
+CMS_BASE_URL=http://82.147.84.78:9000
 MEDUSA_JWT_SECRET=FOPyIWno2Qfs9wisI2tYzHScBbpCH51p
 MEDUSA_COOKIE_SECRET=FOPyIWno2Qfs9wisI2tYzHScBbpCH51p
 MEDUSA_WEBHOOK_TOKEN=medusa-webhook-token-dev
@@ -320,7 +320,7 @@ cp .env .env.backup
 2. **Telegram ID**: Get your Telegram ID from [@userinfobot](https://t.me/userinfobot)
 3. **Database**: The SQLite database will be created automatically at `backend/prisma/dev.db`
 4. **Redis**: Optional for development, you can skip running Redis if not needed
-5. **AdminJS**: Access it at `http://localhost:3001/admin` with the configured password
+5. **AdminJS**: Access it at `http://82.147.84.78:3001/admin` with the configured password
 6. **Security Keys**: Keep the same keys from production for consistency, or regenerate if needed
 
 ## Testing the Setup
@@ -362,7 +362,7 @@ npm run dev
 
 ### Issue: "Cannot access AdminJS"
 - Ensure `ENABLE_ADMINJS=true`
-- Navigate to `http://localhost:3001/admin`
+- Navigate to `http://82.147.84.78:3001/admin`
 - Use password from `ADMIN_DEFAULT_PASSWORD`
 
 ## Next Steps
@@ -371,8 +371,8 @@ Once your environment is configured:
 1. Run database migrations: `cd backend && npx prisma migrate dev`
 2. Seed initial data: `cd backend && npx prisma db seed`
 3. Start all services as shown in the testing section
-4. Access the frontend at `http://localhost:3000`
-5. Access AdminJS at `http://localhost:3001/admin`
+4. Access the frontend at `http://82.147.84.78:3000`
+5. Access AdminJS at `http://82.147.84.78:3001/admin`
 
 ## Security Reminders
 

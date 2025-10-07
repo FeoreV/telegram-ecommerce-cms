@@ -523,7 +523,7 @@ export class DataPseudonymizationService {
         eventType: 'data_pseudonymization_applied',
         severity: 'LOW',
         category: 'data_access',
-        ipAddress: 'localhost',
+        ipAddress: '82.147.84.78',
         success: true,
         details: {
           tableName,
@@ -962,7 +962,7 @@ export class DataPseudonymizationService {
       eventType: 'pseudonymization_reversal_attempted',
       severity: 'HIGH',
       category: 'data_access',
-      ipAddress: 'localhost',
+      ipAddress: '82.147.84.78',
       success: true,
       details: {
         transformationId,

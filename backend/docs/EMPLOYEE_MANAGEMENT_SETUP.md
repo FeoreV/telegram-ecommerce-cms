@@ -72,7 +72,7 @@ psql -d your_database < backend/src/utils/employeeMigration.sql
 
 ```env
 # URL фронтенда для ссылок в приглашениях
-FRONTEND_URL=http://localhost:3000
+FRONTEND_URL=http://82.147.84.78:3000
 
 # Секрет для подписи куки админки (если еще не задан)
 ADMIN_COOKIE_SECRET=your-secure-secret-here

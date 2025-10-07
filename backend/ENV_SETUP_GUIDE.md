@@ -94,7 +94,7 @@ Auto-generated for encryption and security features:
 |----------|-------------|---------|
 | `PORT` | Backend server port | `3001` |
 | `NODE_ENV` | Environment mode | `development` |
-| `FRONTEND_URL` | Frontend URL | `http://localhost:3000` |
+| `FRONTEND_URL` | Frontend URL | `http://82.147.84.78:3000` |
 | `ENABLE_ADMINJS` | Enable AdminJS panel | `true` |
 
 ## After Setup
@@ -125,7 +125,7 @@ You should see:
 - ✅ No warning messages about missing secrets
 - ✅ Server listening on port 3001
 - ✅ Database connected successfully
-- ✅ AdminJS panel available at http://localhost:3001/admin
+- ✅ AdminJS panel available at http://82.147.84.78:3001/admin
 
 ## Common Issues
 
@@ -179,14 +179,14 @@ SMTP_FROM=noreply@telegram-ecommerce.com
 ### Redis (Session Storage)
 
 ```env
-REDIS_URL=redis://localhost:6379
+REDIS_URL=redis://82.147.84.78:6379
 ```
 
 ### Vault Integration
 
 ```env
 USE_VAULT=true
-VAULT_ADDR=http://localhost:8200
+VAULT_ADDR=http://82.147.84.78:8200
 VAULT_ROLE_ID=your-role-id
 VAULT_SECRET_ID=your-secret-id
 ```

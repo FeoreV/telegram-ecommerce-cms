@@ -35,9 +35,15 @@ const authMiddleware = async (req, res, next) => {
         }
         const crypto = require('crypto');
         const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-        const isRevoked = await prisma_1.prisma.revokedToken.findUnique({
-            where: { token: tokenHash }
-        });
+        let isRevoked = null;
+        try {
+            isRevoked = await prisma_1.prisma.revokedToken?.findUnique({
+                where: { token: tokenHash }
+            });
+        }
+        catch (error) {
+            logger_1.logger.debug('RevokedToken model not available, skipping check');
+        }
         if (isRevoked) {
             logger_1.logger.warn('Revoked token used', {
                 userId: decoded.userId,

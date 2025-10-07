@@ -88,7 +88,7 @@ exports.ActivityTrackers = {
 const logLoginActivity = async (req, res, next) => {
     if (req.user && req.user.role !== 'CUSTOMER') {
         try {
-            const { prisma } = await import('../lib/prisma');
+            const { prisma } = await import('../lib/prisma.js');
             const stores = await prisma.store.findMany({
                 where: {
                     OR: [

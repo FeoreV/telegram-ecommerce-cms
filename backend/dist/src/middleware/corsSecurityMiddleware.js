@@ -183,7 +183,6 @@ class CorsSecurityService {
         };
         this.csrfTokens.set(token, csrfToken);
         logger_1.logger.debug('CSRF token generated', {
-            tokenId: token.substring(0, 8) + '...',
             userId,
             sessionId,
             expiresAt: csrfToken.expiresAt
@@ -197,7 +196,6 @@ class CorsSecurityService {
         const csrfToken = this.csrfTokens.get(token);
         if (!csrfToken) {
             logger_1.logger.warn('CSRF token validation failed: Token not found', {
-                tokenId: token.substring(0, 8) + '...',
                 userId,
                 sessionId
             });
@@ -206,7 +204,6 @@ class CorsSecurityService {
         if (csrfToken.expiresAt < new Date()) {
             this.csrfTokens.delete(token);
             logger_1.logger.warn('CSRF token validation failed: Token expired', {
-                tokenId: token.substring(0, 8) + '...',
                 userId,
                 expiresAt: csrfToken.expiresAt
             });
@@ -217,7 +214,6 @@ class CorsSecurityService {
                 const userMatch = crypto_1.default.timingSafeEqual(Buffer.from(csrfToken.userId), Buffer.from(userId));
                 if (!userMatch) {
                     logger_1.logger.warn('CSRF token validation failed: User mismatch', {
-                        tokenId: token.substring(0, 8) + '...',
                         expectedUser: csrfToken.userId,
                         actualUser: userId
                     });
@@ -234,7 +230,6 @@ class CorsSecurityService {
                 const sessionMatch = crypto_1.default.timingSafeEqual(Buffer.from(csrfToken.sessionId), Buffer.from(sessionId));
                 if (!sessionMatch) {
                     logger_1.logger.warn('CSRF token validation failed: Session mismatch', {
-                        tokenId: token.substring(0, 8) + '...',
                         expectedSession: csrfToken.sessionId,
                         actualSession: sessionId
                     });
@@ -248,7 +243,6 @@ class CorsSecurityService {
         }
         if (ipAddress && csrfToken.ipAddress && csrfToken.ipAddress !== ipAddress) {
             logger_1.logger.warn('CSRF token validation failed: IP address mismatch', {
-                tokenId: token.substring(0, 8) + '...',
                 expectedIP: csrfToken.ipAddress,
                 actualIP: ipAddress
             });

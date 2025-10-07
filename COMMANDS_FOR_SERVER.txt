@@ -70,7 +70,7 @@ pm2 logs telegram-backend --lines 100
 Должно быть сообщение о успешном запуске сервера.
 
 Проверьте API:
-  curl http://localhost:3002/api/health
+  curl http://82.147.84.78:3002/api/health
 
 ========================================
 

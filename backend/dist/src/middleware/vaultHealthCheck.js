@@ -19,7 +19,8 @@ class VaultHealthChecker {
     startHealthChecks() {
         this.checkInterval = setInterval(() => {
             this.performHealthCheck().catch(error => {
-                logger_1.logger.error('Vault health check failed:', error);
+                const sanitizedError = error instanceof Error ? error.message.replace(/[\r\n]/g, ' ') : String(error).replace(/[\r\n]/g, ' ');
+                logger_1.logger.error('Vault health check failed:', { error: sanitizedError });
             });
         }, 60000);
         this.performHealthCheck().catch(error => {

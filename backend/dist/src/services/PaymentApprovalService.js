@@ -5,9 +5,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.paymentApprovalService = exports.PaymentApprovalService = void 0;
 const crypto_1 = __importDefault(require("crypto"));
-const logger_1 = require("../utils/logger");
-const errorUtils_1 = require("../utils/errorUtils");
 const database_1 = require("../lib/database");
+const errorUtils_1 = require("../utils/errorUtils");
+const logger_1 = require("../utils/logger");
 const TenantCacheService_1 = require("./TenantCacheService");
 const tenantCacheService = TenantCacheService_1.TenantCacheService.getInstance();
 class PaymentApprovalService {
@@ -401,8 +401,8 @@ class PaymentApprovalService {
         try {
             const prisma = database_1.databaseService.getPrisma();
             const userRole = await prisma.$queryRaw `
-        SELECT role FROM users 
-        WHERE id = ${userId}::UUID 
+        SELECT role FROM users
+        WHERE id = ${userId}::UUID
         AND (store_id = ${storeId}::UUID OR role IN ('OWNER', 'ADMIN'))
       `;
             if (userRole.length === 0) {
@@ -446,8 +446,8 @@ class PaymentApprovalService {
         try {
             const prisma = database_1.databaseService.getPrisma();
             const userRole = await prisma.$queryRaw `
-        SELECT role FROM users 
-        WHERE id = ${approverId}::UUID 
+        SELECT role FROM users
+        WHERE id = ${approverId}::UUID
         AND (store_id = ${storeId}::UUID OR role IN ('OWNER', 'ADMIN'))
       `;
             if (userRole.length === 0) {

@@ -64,7 +64,7 @@ const checkAuthSystemHealth = async () => {
     let status = 'healthy';
     const services = {};
     try {
-        const { prisma } = await import('../lib/prisma');
+        const { prisma } = await import('../lib/prisma.js');
         await prisma.user.count();
         services.database = 'connected';
     }

@@ -32,7 +32,7 @@ interface AuthResponse {
 }
 
 class AuthClient {
-  private baseURL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+  private baseURL = process.env.REACT_APP_API_URL || 'http://82.147.84.78:3001';
   private refreshPromise: Promise<AuthTokens> | null = null;
   private refreshTimer: NodeJS.Timeout | null = null;
 

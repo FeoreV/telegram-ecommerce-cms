@@ -83,7 +83,6 @@ exports.userSchemas = {
         sessionId: zod_1.z.string().uuid().optional()
     })
 };
-;
 exports.storeSchemas = {
     create: zod_1.z.object({
         name: exports.commonSchemas.shortText.min(1, 'Store name is required'),

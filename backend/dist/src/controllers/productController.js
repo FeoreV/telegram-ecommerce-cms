@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.bulkUpdateProducts = exports.deleteProduct = exports.updateProduct = exports.createProduct = exports.getProduct = exports.getProducts = exports.getCategories = void 0;
+exports.deleteProductVariant = exports.updateProductVariant = exports.createProductVariant = exports.getProductVariants = exports.bulkUpdateProducts = exports.deleteProduct = exports.updateProduct = exports.createProduct = exports.getProduct = exports.getProducts = exports.getCategories = void 0;
 const prisma_1 = require("../lib/prisma");
 const errorHandler_1 = require("../middleware/errorHandler");
 const logger_1 = require("../utils/logger");
@@ -265,7 +265,7 @@ exports.createProduct = (0, errorHandler_1.asyncHandler)(async (req, res) => {
 });
 exports.updateProduct = (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { id } = req.params;
-    const { name, description, sku, price, stock, images, categoryId, isActive, } = req.body;
+    const { name, description, sku, price, stock, images, categoryId, isActive, variants, } = req.body;
     if (!req.user) {
         throw new errorHandler_1.AppError('Authentication required', 401);
     }
@@ -281,18 +281,31 @@ exports.updateProduct = (0, errorHandler_1.asyncHandler)(async (req, res) => {
             throw new errorHandler_1.AppError('SKU already exists in this store', 409);
         }
     }
+    let updateData = {
+        name,
+        description,
+        sku,
+        price: price ? parseFloat(price) : undefined,
+        stock: stock !== undefined ? parseInt(stock) : undefined,
+        images: images !== undefined ? (images && images.length > 0 ? JSON.stringify(images) : null) : undefined,
+        categoryId: categoryId !== undefined ? (categoryId && categoryId.trim() !== '' ? categoryId : null) : undefined,
+        isActive,
+    };
+    if (variants !== undefined && Array.isArray(variants)) {
+        updateData.variants = {
+            deleteMany: {},
+            create: variants.map((variant) => ({
+                name: variant.name,
+                value: variant.value,
+                price: variant.price ? parseFloat(variant.price) : null,
+                stock: variant.stock !== undefined && variant.stock !== null ? parseInt(variant.stock) : null,
+                sku: variant.sku || null,
+            }))
+        };
+    }
     const product = await prisma_1.prisma.product.update({
         where: { id },
-        data: {
-            name,
-            description,
-            sku,
-            price: price ? parseFloat(price) : undefined,
-            stock: stock !== undefined ? parseInt(stock) : undefined,
-            images: images !== undefined ? (images && images.length > 0 ? JSON.stringify(images) : null) : undefined,
-            categoryId: categoryId !== undefined ? (categoryId && categoryId.trim() !== '' ? categoryId : null) : undefined,
-            isActive,
-        },
+        data: updateData,
         include: {
             store: {
                 select: {
@@ -358,4 +371,171 @@ exports.bulkUpdateProducts = (0, errorHandler_1.asyncHandler)(async (req, res) =
         count: result.count
     });
 });
+exports.getProductVariants = (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { productId } = req.params;
+    if (!req.user) {
+        throw new errorHandler_1.AppError('Authentication required', 401);
+    }
+    const product = await prisma_1.prisma.product.findUnique({
+        where: { id: productId },
+        include: {
+            variants: {
+                orderBy: [
+                    { name: 'asc' },
+                    { value: 'asc' }
+                ]
+            },
+            store: true
+        }
+    });
+    if (!product) {
+        throw new errorHandler_1.AppError('Product not found', 404);
+    }
+    const hasPermission = await checkProductPermission(req.user, product.storeId);
+    if (!hasPermission) {
+        throw new errorHandler_1.AppError('You do not have permission to view this product', 403);
+    }
+    logger_1.logger.info(`Variants retrieved for product: ${(0, sanitizer_1.sanitizeForLog)(productId)} by user ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
+    res.json({ variants: product.variants });
+});
+exports.createProductVariant = (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { productId } = req.params;
+    const { name, value, price, stock, sku } = req.body;
+    if (!req.user) {
+        throw new errorHandler_1.AppError('Authentication required', 401);
+    }
+    const product = await prisma_1.prisma.product.findUnique({
+        where: { id: productId },
+        include: { store: true }
+    });
+    if (!product) {
+        throw new errorHandler_1.AppError('Product not found', 404);
+    }
+    const hasPermission = await checkProductPermission(req.user, product.storeId);
+    if (!hasPermission) {
+        throw new errorHandler_1.AppError('You do not have permission to modify this product', 403);
+    }
+    const existingVariant = await prisma_1.prisma.productVariant.findUnique({
+        where: {
+            productId_name_value: {
+                productId,
+                name,
+                value
+            }
+        }
+    });
+    if (existingVariant) {
+        throw new errorHandler_1.AppError('Variant with this name and value already exists', 409);
+    }
+    const variant = await prisma_1.prisma.productVariant.create({
+        data: {
+            productId,
+            name,
+            value,
+            price: price ? parseFloat(price) : null,
+            stock: stock !== undefined ? parseInt(stock) : null,
+            sku: sku || null
+        }
+    });
+    logger_1.logger.info(`Variant created: ${(0, sanitizer_1.sanitizeForLog)(variant.id)} for product ${(0, sanitizer_1.sanitizeForLog)(productId)} by user ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
+    res.status(201).json({ variant });
+});
+exports.updateProductVariant = (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { productId, variantId } = req.params;
+    const { name, value, price, stock, sku } = req.body;
+    if (!req.user) {
+        throw new errorHandler_1.AppError('Authentication required', 401);
+    }
+    const variant = await prisma_1.prisma.productVariant.findUnique({
+        where: { id: variantId },
+        include: {
+            product: {
+                include: { store: true }
+            }
+        }
+    });
+    if (!variant || variant.productId !== productId) {
+        throw new errorHandler_1.AppError('Variant not found', 404);
+    }
+    const hasPermission = await checkProductPermission(req.user, variant.product.storeId);
+    if (!hasPermission) {
+        throw new errorHandler_1.AppError('You do not have permission to modify this variant', 403);
+    }
+    if (name && value && (name !== variant.name || value !== variant.value)) {
+        const existingVariant = await prisma_1.prisma.productVariant.findUnique({
+            where: {
+                productId_name_value: {
+                    productId,
+                    name,
+                    value
+                }
+            }
+        });
+        if (existingVariant && existingVariant.id !== variantId) {
+            throw new errorHandler_1.AppError('Variant with this name and value already exists', 409);
+        }
+    }
+    const updatedVariant = await prisma_1.prisma.productVariant.update({
+        where: { id: variantId },
+        data: {
+            name: name || variant.name,
+            value: value || variant.value,
+            price: price !== undefined ? (price ? parseFloat(price) : null) : variant.price,
+            stock: stock !== undefined ? (stock !== null ? parseInt(stock) : null) : variant.stock,
+            sku: sku !== undefined ? sku : variant.sku
+        }
+    });
+    logger_1.logger.info(`Variant updated: ${(0, sanitizer_1.sanitizeForLog)(variantId)} by user ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
+    res.json({ variant: updatedVariant });
+});
+exports.deleteProductVariant = (0, errorHandler_1.asyncHandler)(async (req, res) => {
+    const { productId, variantId } = req.params;
+    if (!req.user) {
+        throw new errorHandler_1.AppError('Authentication required', 401);
+    }
+    const variant = await prisma_1.prisma.productVariant.findUnique({
+        where: { id: variantId },
+        include: {
+            product: {
+                include: { store: true }
+            }
+        }
+    });
+    if (!variant || variant.productId !== productId) {
+        throw new errorHandler_1.AppError('Variant not found', 404);
+    }
+    const hasPermission = await checkProductPermission(req.user, variant.product.storeId);
+    if (!hasPermission) {
+        throw new errorHandler_1.AppError('You do not have permission to delete this variant', 403);
+    }
+    await prisma_1.prisma.productVariant.delete({
+        where: { id: variantId }
+    });
+    logger_1.logger.info(`Variant deleted: ${(0, sanitizer_1.sanitizeForLog)(variantId)} by user ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
+    res.json({ message: 'Variant deleted successfully' });
+});
+async function checkProductPermission(user, storeId) {
+    if (user.role === 'OWNER') {
+        return true;
+    }
+    const store = await prisma_1.prisma.store.findUnique({
+        where: { id: storeId },
+        include: {
+            admins: true,
+            vendors: true
+        }
+    });
+    if (!store) {
+        return false;
+    }
+    if (store.ownerId === user.id) {
+        return true;
+    }
+    const isAdmin = store.admins.some(admin => admin.userId === user.id);
+    if (isAdmin) {
+        return true;
+    }
+    const isVendor = store.vendors.some(vendor => vendor.userId === user.id && vendor.isActive);
+    return isVendor;
+}
 //# sourceMappingURL=productController.js.map

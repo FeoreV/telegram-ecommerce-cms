@@ -4,10 +4,10 @@ Unified quick start, configuration pointers, usage, and troubleshooting.
 
 ### Quick start
 - Start all services (includes monitoring): `docker-compose up -d`
-- React Admin monitoring: `http://localhost:3000/monitoring`
-- Grafana: `http://localhost:3030` (admin/admin)
-- Prometheus: `http://localhost:9090`
-- Backend metrics: `http://localhost:3001/metrics`
+- React Admin monitoring: `http://82.147.84.78:3000/monitoring`
+- Grafana: `http://82.147.84.78:3030` (admin/admin)
+- Prometheus: `http://82.147.84.78:9090`
+- Backend metrics: `http://82.147.84.78:3001/metrics`
 
 ### Configuration locations
 - Prometheus: `config/prometheus/prometheus.yml`
@@ -28,8 +28,8 @@ Unified quick start, configuration pointers, usage, and troubleshooting.
 ```bash
 docker-compose logs -f grafana
 docker-compose logs -f prometheus
-curl http://localhost:3001/metrics
-curl http://localhost:9090/api/v1/targets
+curl http://82.147.84.78:3001/metrics
+curl http://82.147.84.78:9090/api/v1/targets
 ```
 
 

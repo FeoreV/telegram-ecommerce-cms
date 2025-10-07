@@ -190,7 +190,7 @@ run_health_checks() {
 
     # Check Backend
     print_info "Проверка Backend..."
-    if docker-compose -f "$COMPOSE_FILE" exec -T backend curl -f http://localhost:3001/health > /dev/null 2>&1; then
+    if docker-compose -f "$COMPOSE_FILE" exec -T backend curl -f http://82.147.84.78:3001/health > /dev/null 2>&1; then
         print_success "Backend работает"
     else
         print_warning "Backend не отвечает (может потребоваться больше времени)"
@@ -219,12 +219,12 @@ show_summary() {
 
     echo ""
     print_info "Сервисы доступны по адресам:"
-    echo "  🌐 Frontend: http://localhost:${FRONTEND_PORT:-3000}"
-    echo "  🔧 Backend API: http://localhost:${BACKEND_PORT:-3001}"
+    echo "  🌐 Frontend: http://82.147.84.78:${FRONTEND_PORT:-3000}"
+    echo "  🔧 Backend API: http://82.147.84.78:${BACKEND_PORT:-3001}"
     echo "  🤖 Bot Webhook: Port ${BOT_WEBHOOK_PORT:-8443}"
-    echo "  📊 Grafana: http://localhost:${GRAFANA_PORT:-3030}"
-    echo "  📈 Prometheus: http://localhost:${PROMETHEUS_PORT:-9090}"
-    echo "  🔍 Kibana: http://localhost:${KIBANA_PORT:-5601}"
+    echo "  📊 Grafana: http://82.147.84.78:${GRAFANA_PORT:-3030}"
+    echo "  📈 Prometheus: http://82.147.84.78:${PROMETHEUS_PORT:-9090}"
+    echo "  🔍 Kibana: http://82.147.84.78:${KIBANA_PORT:-5601}"
     echo ""
     print_info "Полезные команды:"
     echo "  Логи всех сервисов:    docker-compose -f $COMPOSE_FILE logs -f"

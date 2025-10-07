@@ -3,8 +3,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cleanupSecurityData = exports.adminSecurityBundle = exports.apiSecurityBundle = exports.securityMiddlewareBundle = exports.markSuspiciousIP = exports.ipReputationCheck = exports.helmetMiddleware = exports.corsMiddleware = exports.getSecurityStatus = exports.adminIPWhitelist = exports.sanitizeInput = exports.securityMonitoring = exports.bruteForce = exports.slowDownMiddleware = exports.adminRateLimit = exports.apiRateLimit = exports.uploadRateLimit = exports.authRateLimit = exports.globalRateLimit = void 0;
+exports.cleanupSecurityData = exports.adminSecurityBundle = exports.apiSecurityBundle = exports.securityMiddlewareBundle = exports.markSuspiciousIP = exports.ipReputationCheck = exports.nonceCSPMiddleware = exports.helmetMiddleware = exports.corsMiddleware = exports.adminIPWhitelist = exports.sanitizeInput = exports.securityMonitoring = exports.bruteForce = exports.slowDownMiddleware = exports.adminRateLimit = exports.apiRateLimit = exports.uploadRateLimit = exports.authRateLimit = exports.globalRateLimit = void 0;
 const cors_1 = __importDefault(require("cors"));
+const crypto_1 = __importDefault(require("crypto"));
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const express_slow_down_1 = __importDefault(require("express-slow-down"));
 const helmet_1 = __importDefault(require("helmet"));
@@ -34,15 +35,23 @@ const corsOptions = {
                     logger_1.logger.warn('CORS blocked request from origin in production:', { origin, allowedOrigins: productionOrigins });
                     return callback(new Error('Not allowed by CORS policy'));
                 }
+                return callback(null, true);
             }
         }
         if (!origin && NODE_ENV === 'development') {
             return callback(null, true);
         }
         if (NODE_ENV === 'development' && origin) {
-            if (/^https?:\/\/localhost(:\d+)?$/.test(origin) ||
-                /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin)) {
+            const allowedDevPorts = ['3000', '3001', '5173', '4173'];
+            const localhostPattern = new RegExp(`^https?://(localhost|127\\.0\\.0\\.1):(${allowedDevPorts.join('|')})$`);
+            if (localhostPattern.test(origin)) {
                 return callback(null, true);
+            }
+            if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+                logger_1.logger.warn('CORS blocked localhost origin with non-allowed port', {
+                    origin,
+                    allowedPorts: allowedDevPorts
+                });
             }
         }
         if (origin && allowedOrigins.includes(origin)) {
@@ -63,7 +72,9 @@ const corsOptions = {
         'Authorization',
         'Cache-Control',
         'X-API-Key',
-        'X-Request-ID'
+        'X-Request-ID',
+        'x-csrf-token',
+        'X-CSRF-Token'
     ],
     exposedHeaders: [
         'X-Total-Count',
@@ -76,27 +87,24 @@ const corsOptions = {
     optionsSuccessStatus: 200
 };
 const helmetOptions = {
-    contentSecurityPolicy: {
+    contentSecurityPolicy: NODE_ENV === 'development' ? false : {
         directives: {
             defaultSrc: ["'self'"],
             styleSrc: [
                 "'self'",
-                ...(NODE_ENV === 'development' ? ["'unsafe-inline'"] : []),
                 'https://fonts.googleapis.com',
                 'https://cdn.jsdelivr.net',
                 'https://unpkg.com'
             ],
             scriptSrc: [
                 "'self'",
-                ...(NODE_ENV === 'development' ? ["'unsafe-inline'", "'unsafe-eval'"] : []),
                 'https://cdn.jsdelivr.net',
                 'https://unpkg.com'
             ],
             imgSrc: [
                 "'self'",
                 'data:',
-                'https:',
-                ...(NODE_ENV === 'development' ? ['http:'] : [])
+                'https:'
             ],
             connectSrc: [
                 "'self'",
@@ -121,7 +129,7 @@ const helmetOptions = {
             frameAncestors: ["'none'"],
             baseUri: ["'self'"],
         },
-        reportOnly: NODE_ENV === 'development',
+        reportOnly: false,
     },
     crossOriginEmbedderPolicy: NODE_ENV === 'production' ? { policy: 'require-corp' } : false,
     crossOriginOpenerPolicy: { policy: 'same-origin' },
@@ -221,7 +229,7 @@ const createRateLimit = (config) => {
 };
 exports.globalRateLimit = createRateLimit({
     windowMs: 15 * 60 * 1000,
-    max: NODE_ENV === 'development' ? 1000 : parseInt(process.env.RATE_LIMIT_MAX || '100'),
+    max: NODE_ENV === 'development' ? 10000 : parseInt(process.env.RATE_LIMIT_MAX || '100'),
     message: 'Too many requests from this IP, please try again later.'
 });
 exports.authRateLimit = createRateLimit({
@@ -237,7 +245,7 @@ exports.uploadRateLimit = createRateLimit({
 });
 exports.apiRateLimit = createRateLimit({
     windowMs: 15 * 60 * 1000,
-    max: NODE_ENV === 'development' ? 500 : parseInt(process.env.API_RATE_LIMIT_MAX || '200'),
+    max: NODE_ENV === 'development' ? 5000 : parseInt(process.env.API_RATE_LIMIT_MAX || '200'),
     message: 'Too many API requests, please try again later.'
 });
 exports.adminRateLimit = createRateLimit({
@@ -257,39 +265,115 @@ exports.slowDownMiddleware = (0, express_slow_down_1.default)({
     maxDelayMs: 20000,
     validate: { delayMs: false }
 });
-const bruteForceAttempts = new Map();
-exports.bruteForce = {
-    prevent: (req, res, next) => {
-        const clientIP = req.ip || 'unknown';
-        const now = Date.now();
-        const record = bruteForceAttempts.get(clientIP) || { count: 0, lastAttempt: now };
-        if (now - record.lastAttempt > 15 * 60 * 1000) {
-            record.count = 0;
-        }
-        if (record.count >= 3) {
-            const blockDuration = Math.min(15 * 60 * 1000 * Math.pow(2, record.count - 3), 24 * 60 * 60 * 1000);
-            const timeSinceLastAttempt = now - record.lastAttempt;
-            if (timeSinceLastAttempt < blockDuration) {
-                const retryAfter = Math.ceil((blockDuration - timeSinceLastAttempt) / 1000);
-                logger_1.logger.warn('Brute force protection triggered', {
-                    ip: clientIP,
-                    userAgent: req.get('User-Agent'),
-                    attempts: record.count,
-                    blockDuration: Math.ceil(blockDuration / 1000 / 60) + ' minutes',
-                    retryAfter: retryAfter + ' seconds'
-                });
-                return res.status(429).json({
-                    error: 'Too many failed attempts',
-                    message: 'Account temporarily locked. Please try again later.',
-                    retryAfter: retryAfter
-                });
+const BRUTE_FORCE_PREFIX = 'bruteforce:';
+const BRUTE_FORCE_WINDOW = 15 * 60;
+const BRUTE_FORCE_MAX_ATTEMPTS = 3;
+const bruteForceAttemptsFallback = new Map();
+async function getBruteForceRecord(key) {
+    if (redisClient && redisClient.isOpen) {
+        try {
+            const data = await redisClient.get(`${BRUTE_FORCE_PREFIX}${key}`);
+            if (data) {
+                return JSON.parse(data);
             }
         }
-        req.bruteForceKey = clientIP;
-        next();
+        catch (error) {
+            logger_1.logger.error('Redis getBruteForceRecord error', { error, key });
+        }
+    }
+    return bruteForceAttemptsFallback.get(key) || null;
+}
+async function setBruteForceRecord(key, record) {
+    if (redisClient && redisClient.isOpen) {
+        try {
+            const ttl = Math.ceil(Math.min(BRUTE_FORCE_WINDOW * Math.pow(2, record.count), 24 * 60 * 60));
+            await redisClient.setEx(`${BRUTE_FORCE_PREFIX}${key}`, ttl, JSON.stringify(record));
+            return;
+        }
+        catch (error) {
+            logger_1.logger.error('Redis setBruteForceRecord error', { error, key });
+        }
+    }
+    bruteForceAttemptsFallback.set(key, record);
+}
+async function deleteBruteForceRecord(key) {
+    if (redisClient && redisClient.isOpen) {
+        try {
+            await redisClient.del(`${BRUTE_FORCE_PREFIX}${key}`);
+            return;
+        }
+        catch (error) {
+            logger_1.logger.error('Redis deleteBruteForceRecord error', { error, key });
+        }
+    }
+    bruteForceAttemptsFallback.delete(key);
+}
+exports.bruteForce = {
+    prevent: async (req, res, next) => {
+        const clientIP = req.ip || 'unknown';
+        const now = Date.now();
+        try {
+            const record = await getBruteForceRecord(clientIP) || { count: 0, lastAttempt: now };
+            if (now - record.lastAttempt > BRUTE_FORCE_WINDOW * 1000) {
+                record.count = 0;
+            }
+            if (record.count >= BRUTE_FORCE_MAX_ATTEMPTS) {
+                const blockDuration = Math.min(15 * 60 * 1000 * Math.pow(2, record.count - BRUTE_FORCE_MAX_ATTEMPTS), 24 * 60 * 60 * 1000);
+                const timeSinceLastAttempt = now - record.lastAttempt;
+                if (timeSinceLastAttempt < blockDuration) {
+                    const retryAfter = Math.ceil((blockDuration - timeSinceLastAttempt) / 1000);
+                    logger_1.logger.warn('Brute force protection triggered', {
+                        ip: clientIP,
+                        userAgent: req.get('User-Agent'),
+                        attempts: record.count,
+                        blockDuration: Math.ceil(blockDuration / 1000 / 60) + ' minutes',
+                        retryAfter: retryAfter + ' seconds',
+                        backend: redisClient?.isOpen ? 'redis' : 'memory'
+                    });
+                    security_1.securityMetrics.incrementBruteForceAttempts();
+                    return res.status(429).json({
+                        error: 'Too many failed attempts',
+                        message: 'Account temporarily locked. Please try again later.',
+                        retryAfter: retryAfter
+                    });
+                }
+            }
+            req.bruteForceKey = clientIP;
+            next();
+        }
+        catch (error) {
+            logger_1.logger.error('Brute force protection error', { error, ip: clientIP });
+            next();
+        }
     },
-    reset: (key) => {
-        bruteForceAttempts.delete(key);
+    recordFailure: async (key) => {
+        try {
+            const now = Date.now();
+            const record = await getBruteForceRecord(key) || { count: 0, lastAttempt: now };
+            record.count++;
+            record.lastAttempt = now;
+            await setBruteForceRecord(key, record);
+            logger_1.logger.info('Brute force failure recorded', {
+                key,
+                attempts: record.count,
+                backend: redisClient?.isOpen ? 'redis' : 'memory'
+            });
+        }
+        catch (error) {
+            logger_1.logger.error('Failed to record brute force attempt', { error, key });
+        }
+    },
+    reset: async (key) => {
+        try {
+            await deleteBruteForceRecord(key);
+            logger_1.logger.info('Brute force counter reset', {
+                key,
+                backend: redisClient?.isOpen ? 'redis' : 'memory'
+            });
+        }
+        catch (error) {
+            logger_1.logger.error('Failed to reset brute force attempts', { error, key });
+        }
     }
 };
 const securityMonitoring = (req, res, next) => {
@@ -438,6 +522,9 @@ function sanitizeString(str, isKey = false) {
         return str.replace(/[^a-zA-Z0-9_\-.]/g, '').trim();
     }
     let sanitized = str;
+    sanitized = sanitized.normalize('NFKC');
+    sanitized = sanitized.replace(/\0/g, '');
+    sanitized = sanitized.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
     sanitized = sanitized.replace(/<script[^>]*>.*?<\/script>/gis, '');
     sanitized = sanitized.replace(/javascript:/gi, '');
     sanitized = sanitized.replace(/data:text\/html/gi, '');
@@ -450,8 +537,6 @@ function sanitizeString(str, isKey = false) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#x27;')
         .replace(/\//g, '&#x2F;');
-    sanitized = sanitized.replace(/\0/g, '');
-    sanitized = sanitized.normalize('NFKC');
     return sanitized.trim();
 }
 const adminIPWhitelist = (req, res, next) => {
@@ -501,65 +586,80 @@ const adminIPWhitelist = (req, res, next) => {
     }
 };
 exports.adminIPWhitelist = adminIPWhitelist;
-const getSecurityStatus = () => {
-    const suspiciousIPsArray = Array.from(suspiciousIPs.entries()).map(([ip, data]) => ({
-        ip,
-        count: data.count,
-        lastSeen: data.lastSeen,
-        blocked: data.blocked
-    }));
-    return {
-        suspiciousIPs: suspiciousIPsArray.length,
-        blockedIPs: suspiciousIPsArray.filter(ip => ip.blocked).length,
-        redisConnected: !!redisClient,
-        environment: NODE_ENV,
-        corsOriginsConfigured: !!process.env.CORS_WHITELIST,
-        adminIPWhitelistConfigured: !!process.env.ADMIN_IP_WHITELIST,
-        httpsEnabled: process.env.USE_HTTPS === 'true' || process.env.HTTPS === 'true'
-    };
-};
-exports.getSecurityStatus = getSecurityStatus;
 exports.corsMiddleware = (0, cors_1.default)(corsOptions);
 exports.helmetMiddleware = (0, helmet_1.default)(helmetOptions);
-const suspiciousIPs = new Map();
-const SUSPICIOUS_THRESHOLD = 10;
-const BLOCK_DURATION = 60 * 60 * 1000;
-const ipReputationCheck = (req, res, next) => {
-    const clientIP = req.ip || req.socket?.remoteAddress || 'unknown';
-    const now = new Date();
-    const ipData = suspiciousIPs.get(clientIP);
-    if (ipData) {
-        if (ipData.blocked && (now.getTime() - ipData.lastSeen.getTime()) < BLOCK_DURATION) {
-            logger_1.logger.warn('Blocked IP attempted access', { ip: clientIP, blockedUntil: new Date(ipData.lastSeen.getTime() + BLOCK_DURATION) });
-            return res.status(403).json({
-                error: 'Access denied. IP temporarily blocked due to suspicious activity.',
-                blockedUntil: new Date(ipData.lastSeen.getTime() + BLOCK_DURATION)
-            });
-        }
-        if (ipData.blocked && (now.getTime() - ipData.lastSeen.getTime()) >= BLOCK_DURATION) {
-            ipData.blocked = false;
-            ipData.count = 0;
-            logger_1.logger.info('IP unblocked after timeout', { ip: clientIP });
-        }
+const nonceCSPMiddleware = (req, res, next) => {
+    if (NODE_ENV !== 'development') {
+        return next();
     }
+    const nonce = crypto_1.default.randomBytes(16).toString('base64');
+    res.locals.cspNonce = nonce;
+    req.cspNonce = nonce;
+    const cspDirectives = [
+        "default-src 'self'",
+        `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://cdn.jsdelivr.net https://unpkg.com`,
+        `style-src 'self' 'nonce-${nonce}' https://fonts.googleapis.com https://cdn.jsdelivr.net https://unpkg.com`,
+        "img-src 'self' data: https: http:",
+        "connect-src 'self' wss: ws: https://api.telegram.org" +
+            (process.env.FRONTEND_URL ? ` ${process.env.FRONTEND_URL}` : '') +
+            (process.env.ADMIN_PANEL_URL ? ` ${process.env.ADMIN_PANEL_URL}` : ''),
+        "font-src 'self' https://fonts.gstatic.com data:",
+        "object-src 'none'",
+        "media-src 'self' data: https:",
+        "frame-src 'none'",
+        "manifest-src 'self'",
+        "worker-src 'self' blob:",
+        "child-src 'none'",
+        "form-action 'self'",
+        "frame-ancestors 'none'",
+        "base-uri 'self'",
+        "upgrade-insecure-requests"
+    ];
+    res.setHeader('Content-Security-Policy-Report-Only', cspDirectives.join('; '));
     next();
 };
-exports.ipReputationCheck = ipReputationCheck;
-const markSuspiciousIP = (ip) => {
-    const now = new Date();
-    const ipData = suspiciousIPs.get(ip) || { count: 0, lastSeen: now, blocked: false };
-    ipData.count++;
-    ipData.lastSeen = now;
-    if (ipData.count >= SUSPICIOUS_THRESHOLD && !ipData.blocked) {
-        ipData.blocked = true;
-        logger_1.logger.warn('IP blocked due to suspicious activity', { ip, count: ipData.count });
+exports.nonceCSPMiddleware = nonceCSPMiddleware;
+const IPReputationService_1 = require("../services/IPReputationService");
+const ipReputationCheck = async (req, res, next) => {
+    try {
+        const clientIP = req.ip || req.socket?.remoteAddress || 'unknown';
+        if (clientIP === 'unknown') {
+            return next();
+        }
+        const blockStatus = await IPReputationService_1.ipReputationService.isBlocked(clientIP);
+        if (blockStatus.blocked) {
+            logger_1.logger.warn('Blocked IP attempted access', {
+                ip: clientIP,
+                reason: blockStatus.reason,
+                blockedUntil: blockStatus.blockedUntil
+            });
+            return res.status(403).json({
+                error: 'Access denied. IP temporarily blocked due to suspicious activity.',
+                blockedUntil: blockStatus.blockedUntil,
+                reason: blockStatus.reason
+            });
+        }
+        next();
     }
-    suspiciousIPs.set(ip, ipData);
+    catch (error) {
+        logger_1.logger.error('IP reputation check failed:', error);
+        next();
+    }
+};
+exports.ipReputationCheck = ipReputationCheck;
+const markSuspiciousIP = async (ip, reason = 'suspicious_activity') => {
+    try {
+        await IPReputationService_1.ipReputationService.markSuspicious(ip, reason);
+    }
+    catch (error) {
+        logger_1.logger.error('Failed to mark IP as suspicious:', { ip, reason, error });
+    }
 };
 exports.markSuspiciousIP = markSuspiciousIP;
 exports.securityMiddlewareBundle = [
     ...(NODE_ENV === 'development' || !ENABLE_IP_REPUTATION ? [] : [exports.ipReputationCheck]),
     exports.helmetMiddleware,
+    ...(NODE_ENV === 'development' ? [exports.nonceCSPMiddleware] : []),
     securityHeaders_1.customSecurityHeaders,
     exports.corsMiddleware,
     exports.securityMonitoring,
@@ -585,17 +685,22 @@ exports.adminSecurityBundle = [
     exports.slowDownMiddleware,
     exports.adminIPWhitelist
 ];
-const cleanupSecurityData = () => {
-    const now = new Date();
-    const cleanupThreshold = 24 * 60 * 60 * 1000;
-    for (const [ip, data] of suspiciousIPs.entries()) {
-        if (now.getTime() - data.lastSeen.getTime() > cleanupThreshold) {
-            suspiciousIPs.delete(ip);
+const cleanupSecurityData = async () => {
+    try {
+        const now = Date.now();
+        const cleanupThreshold = 24 * 60 * 60 * 1000;
+        for (const [key, data] of bruteForceAttemptsFallback.entries()) {
+            if (now - data.lastAttempt > cleanupThreshold) {
+                bruteForceAttemptsFallback.delete(key);
+            }
         }
+        logger_1.logger.info('Security data cleanup completed', {
+            fallbackRecords: bruteForceAttemptsFallback.size
+        });
     }
-    logger_1.logger.info('Security data cleanup completed', {
-        remainingSuspiciousIPs: suspiciousIPs.size
-    });
+    catch (error) {
+        logger_1.logger.error('Security data cleanup error', { error });
+    }
 };
 exports.cleanupSecurityData = cleanupSecurityData;
 if (NODE_ENV === 'production') {

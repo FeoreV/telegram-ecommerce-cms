@@ -65,12 +65,19 @@ async function showUserOrders(bot, chatId, session) {
             text += `💰 ${order.totalAmount} ${order.currency}\n`;
             text += `📅 ${new Date(order.createdAt).toLocaleString('ru-RU')}\n`;
             text += `📊 Статус: ${statusText}\n\n`;
-            keyboard.inline_keyboard.push([
+            const orderButtons = [
                 {
                     text: `📋 Заказ #${order.orderNumber}`,
                     callback_data: `order_view_${order.id}`
                 }
-            ]);
+            ];
+            if (order.status === 'PENDING_ADMIN' && !order.paymentProof) {
+                orderButtons.push({
+                    text: '📸 Чек',
+                    callback_data: `upload_proof_${order.id}`
+                });
+            }
+            keyboard.inline_keyboard.push(orderButtons);
         });
         keyboard.inline_keyboard.push([
             { text: '🏪 Магазины', callback_data: 'store_list' },
@@ -185,10 +192,16 @@ async function handleOrderText(bot, msg, session) {
         let successText = `✅ *Заказ успешно создан!*\n\n`;
         successText += `📋 *Номер заказа:* #${order.orderNumber}\n`;
         successText += `💰 *Сумма:* ${order.totalAmount} ${order.currency}\n\n`;
-        successText += `⏳ Ваш заказ отправлен на подтверждение администратору.\n`;
-        successText += `Вы получите уведомление о статусе оплаты.`;
+        successText += `💳 *Следующий шаг:*\n`;
+        successText += `1️⃣ Оплатите заказ по реквизитам магазина\n`;
+        successText += `2️⃣ Загрузите скриншот чека (кнопка ниже)\n`;
+        successText += `3️⃣ Дождитесь подтверждения администратора\n\n`;
+        successText += `⏳ Вы получите уведомление о статусе оплаты.`;
         const keyboard = {
             inline_keyboard: [
+                [
+                    { text: '📸 Загрузить чек оплаты', callback_data: `upload_proof_${order.id}` }
+                ],
                 [
                     { text: '📋 Мои заказы', callback_data: 'order_list' },
                     { text: '🏪 Магазины', callback_data: 'store_list' }

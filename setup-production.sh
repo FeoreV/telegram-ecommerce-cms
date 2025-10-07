@@ -36,8 +36,8 @@ PORT=3002
 DATABASE_URL="file:./prisma/dev.db"
 
 # Frontend
-FRONTEND_URL=http://localhost:3000
-ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3002
+FRONTEND_URL=http://82.147.84.78:3000
+ALLOWED_ORIGINS=http://82.147.84.78:3000,http://82.147.84.78:3002
 
 # JWT Secrets
 JWT_SECRET=$(generate_base64)
@@ -60,7 +60,7 @@ ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=changeme123
 
 # Optional services
-REDIS_URL=redis://localhost:6379
+REDIS_URL=redis://82.147.84.78:6379
 SMTP_HOST=
 SMTP_PORT=587
 SMTP_USER=
@@ -81,7 +81,7 @@ echo "📝 Настройка bot/.env..."
 if [ ! -f bot/.env ]; then
     cat > bot/.env << EOF
 NODE_ENV=production
-API_URL=http://localhost:3002
+API_URL=http://82.147.84.78:3002
 TELEGRAM_BOT_TOKEN=
 EOF
     echo "✅ bot/.env создан"
@@ -205,8 +205,8 @@ echo "3. Измените пароль администратора:"
 echo "   После первого входа в систему"
 echo ""
 echo "4. Доступ к приложению:"
-echo "   Frontend:  http://localhost:3000"
-echo "   Backend:   http://localhost:3002"
+echo "   Frontend:  http://82.147.84.78:3000"
+echo "   Backend:   http://82.147.84.78:3002"
 echo ""
 echo "5. Мониторинг:"
 echo "   pm2 monit"

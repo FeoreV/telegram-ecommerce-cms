@@ -159,8 +159,14 @@ exports.getOrders = (0, errorHandler_1.asyncHandler)(async (req, res) => {
             skip,
             take: Number(limit),
         });
+        const ordersWithUrls = orders.map(order => ({
+            ...order,
+            paymentProof: order.paymentProof
+                ? `/orders/${order.id}/payment-proof`
+                : null
+        }));
         res.json({
-            items: orders,
+            items: ordersWithUrls,
             pagination: {
                 page: Number(page),
                 limit: Number(limit),
@@ -377,7 +383,7 @@ exports.createOrder = (0, errorHandler_1.asyncHandler)(async (req, res) => {
             currency: store.currency,
             itemCount: validatedItems.length,
         });
-        logger_1.logger.info(`Order created: ${(0, sanitizer_1.sanitizeForLog)(order.orderNumber)} by user ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
+        logger_1.logger.info('Order created', { orderNumber: (0, sanitizer_1.sanitizeForLog)(order.orderNumber), userId: (0, sanitizer_1.sanitizeForLog)(req.user.id) });
         res.status(201).json({ order });
     }
     catch (error) {
@@ -454,7 +460,7 @@ exports.confirmPayment = (0, errorHandler_1.asyncHandler)(async (req, res) => {
         totalAmount: order.totalAmount,
         currency: order.currency
     });
-    logger_1.logger.info(`Payment confirmed for order ${(0, sanitizer_1.sanitizeForLog)(id)} by admin ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
+    logger_1.logger.info('Payment confirmed', { orderId: (0, sanitizer_1.sanitizeForLog)(id), adminId: (0, sanitizer_1.sanitizeForLog)(req.user.id) });
     res.json({ order: updatedOrder, message: 'Payment confirmed successfully' });
 });
 exports.rejectOrder = (0, errorHandler_1.asyncHandler)(async (req, res) => {
@@ -553,7 +559,7 @@ exports.rejectOrder = (0, errorHandler_1.asyncHandler)(async (req, res) => {
         customerId: order.customerId,
         reason,
     });
-    logger_1.logger.info(`Order ${(0, sanitizer_1.sanitizeForLog)(id)} rejected by admin ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}. Reason: ${(0, sanitizer_1.sanitizeForLog)(reason)}`);
+    logger_1.logger.info('Order rejected', { orderId: (0, sanitizer_1.sanitizeForLog)(id), adminId: (0, sanitizer_1.sanitizeForLog)(req.user.id), reason: (0, sanitizer_1.sanitizeForLog)(reason) });
     res.json({ order: updatedOrder, message: 'Order rejected successfully' });
 });
 async function notifyCustomerPaymentConfirmed(order) {
@@ -746,7 +752,13 @@ exports.getOrder = (0, errorHandler_1.asyncHandler)(async (req, res) => {
             throw new errorHandler_1.AppError('No access to this order', 403);
         }
     }
-    res.json({ order });
+    const orderResponse = {
+        ...order,
+        paymentProof: order.paymentProof
+            ? `/orders/${order.id}/payment-proof`
+            : null
+    };
+    res.json({ order: orderResponse });
 });
 exports.shipOrder = (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { id } = req.params;
@@ -817,7 +829,7 @@ exports.shipOrder = (0, errorHandler_1.asyncHandler)(async (req, res) => {
         trackingNumber,
         carrier,
     });
-    logger_1.logger.info(`Order ${(0, sanitizer_1.sanitizeForLog)(id)} shipped by admin ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
+    logger_1.logger.info('Order shipped', { orderId: (0, sanitizer_1.sanitizeForLog)(id), adminId: (0, sanitizer_1.sanitizeForLog)(req.user.id) });
     res.json({ order: updatedOrder, message: 'Order shipped successfully' });
 });
 exports.deliverOrder = (0, errorHandler_1.asyncHandler)(async (req, res) => {
@@ -885,7 +897,7 @@ exports.deliverOrder = (0, errorHandler_1.asyncHandler)(async (req, res) => {
         status: 'DELIVERED',
         adminId: req.user.id,
     });
-    logger_1.logger.info(`Order ${(0, sanitizer_1.sanitizeForLog)(id)} delivered by admin ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
+    logger_1.logger.info('Order delivered', { orderId: (0, sanitizer_1.sanitizeForLog)(id), adminId: (0, sanitizer_1.sanitizeForLog)(req.user.id) });
     res.json({ order: updatedOrder, message: 'Order delivered successfully' });
 });
 exports.cancelOrder = (0, errorHandler_1.asyncHandler)(async (req, res) => {
@@ -979,7 +991,7 @@ exports.cancelOrder = (0, errorHandler_1.asyncHandler)(async (req, res) => {
         status: 'CANCELLED',
         adminId: req.user.id,
     });
-    logger_1.logger.info(`Order ${id} cancelled by admin ${req.user.id}, reason: ${reason}`);
+    logger_1.logger.info('Order cancelled', { orderId: (0, sanitizer_1.sanitizeForLog)(id), adminId: (0, sanitizer_1.sanitizeForLog)(req.user.id), reason: (0, sanitizer_1.sanitizeForLog)(reason) });
     res.json({ order: updatedOrder, message: 'Order cancelled successfully' });
 });
 const uploadOrderPaymentProof = (req, res) => {
@@ -1063,7 +1075,7 @@ const uploadOrderPaymentProof = (req, res) => {
                 paymentProof: true,
                 customerId: req.user.id,
             });
-            logger_1.logger.info(`Payment proof uploaded for order ${orderId} by user ${req.user.id}: ${file.filename}`);
+            logger_1.logger.info('Payment proof uploaded', { orderId: (0, sanitizer_1.sanitizeForLog)(orderId), userId: (0, sanitizer_1.sanitizeForLog)(req.user.id), filename: (0, sanitizer_1.sanitizeForLog)(file.filename) });
             res.json({
                 order: updatedOrder,
                 message: 'Payment proof uploaded successfully',
@@ -1143,14 +1155,30 @@ exports.getPaymentProof = (0, errorHandler_1.asyncHandler)(async (req, res) => {
     try {
         await fs.access(filePath);
         const stats = await fs.stat(filePath);
-        res.setHeader('Content-Type', 'application/octet-stream');
+        const ext = path.extname(filePath).toLowerCase();
+        const contentTypeMap = {
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.png': 'image/png',
+            '.gif': 'image/gif',
+            '.webp': 'image/webp',
+            '.pdf': 'application/pdf'
+        };
+        const contentType = contentTypeMap[ext] || 'application/octet-stream';
+        res.setHeader('Content-Type', contentType);
         res.setHeader('Content-Length', stats.size);
-        res.setHeader('Content-Disposition', `attachment; filename="payment_proof_${orderId.slice(-8)}.${path.extname(filePath).slice(1)}"`);
+        if (contentType.startsWith('image/')) {
+            res.setHeader('Content-Disposition', `inline; filename="payment_proof_${orderId.slice(-8)}${ext}"`);
+        }
+        else {
+            res.setHeader('Content-Disposition', `attachment; filename="payment_proof_${orderId.slice(-8)}${ext}"`);
+        }
         logger_1.logger.info('Payment proof accessed', {
             orderId,
             userId: req.user.id,
             userRole: req.user.role,
             fileSize: stats.size,
+            contentType,
             ip: req.ip
         });
         const fileBuffer = await fs.readFile(filePath);

@@ -61,7 +61,7 @@ else
 fi
 
 update_env "NODE_ENV" "production" "bot/.env"
-update_env "API_URL" "http://localhost:3002" "bot/.env"
+update_env "API_URL" "http://82.147.84.78:3002" "bot/.env"
 
 # Исправляем права
 echo ""

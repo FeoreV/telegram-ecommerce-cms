@@ -61,8 +61,7 @@ exports.telegramAuth = (0, errorHandler_1.asyncHandler)(async (req, res) => {
         where: { telegramId: telegramId.toString() },
     });
     if (!user) {
-        const isSuperAdmin = process.env.SUPER_ADMIN_TELEGRAM_ID && process.env.SUPER_ADMIN_TELEGRAM_ID === telegramId.toString();
-        const initialRole = isSuperAdmin ? jwt_1.UserRole.OWNER : jwt_1.UserRole.CUSTOMER;
+        const initialRole = jwt_1.UserRole.CUSTOMER;
         user = await prisma_1.prisma.user.create({
             data: {
                 telegramId: telegramId.toString(),
@@ -74,7 +73,11 @@ exports.telegramAuth = (0, errorHandler_1.asyncHandler)(async (req, res) => {
                 profilePhoto: photoUrl,
             },
         });
-        logger_1.logger.info(`New user created: ${(0, sanitizer_1.sanitizeForLog)(telegramId)} with role: ${(0, sanitizer_1.sanitizeForLog)(initialRole)}`);
+        logger_1.logger.info('New user created with CUSTOMER role', {
+            telegramId: (0, sanitizer_1.sanitizeForLog)(telegramId),
+            role: (0, sanitizer_1.sanitizeForLog)(initialRole),
+            note: 'OWNER role must be assigned manually via admin tools'
+        });
         await notificationService_1.NotificationService.send({
             title: 'Добро пожаловать!',
             message: 'Ваш аккаунт успешно создан в системе управления e-commerce платформой',
@@ -100,7 +103,7 @@ exports.telegramAuth = (0, errorHandler_1.asyncHandler)(async (req, res) => {
                 profilePhoto: photoUrl,
             },
         });
-        logger_1.logger.info(`User updated: id=${(0, sanitizer_1.sanitizeForLog)(user.id)}, role=${(0, sanitizer_1.sanitizeForLog)(user.role)}`);
+        logger_1.logger.info('User updated', { id: (0, sanitizer_1.sanitizeForLog)(user.id), role: (0, sanitizer_1.sanitizeForLog)(user.role) });
     }
     if (!user.isActive) {
         throw new errorHandler_1.AppError('Account is deactivated', 403);
@@ -141,7 +144,7 @@ exports.telegramAuth = (0, errorHandler_1.asyncHandler)(async (req, res) => {
             });
         }
     }
-    logger_1.logger.info(`User ${(0, sanitizer_1.sanitizeForLog)(user.id)} logged in successfully via ${sessionId ? 'QR code' : 'direct'} method`);
+    logger_1.logger.info('User logged in successfully', { userId: (0, sanitizer_1.sanitizeForLog)(user.id), method: sessionId ? 'QR code' : 'direct' });
     res.json({
         success: true,
         accessToken,
@@ -173,7 +176,7 @@ exports.generateQRAuth = (0, errorHandler_1.asyncHandler)(async (req, res) => {
     await redis.setex(`${QR_SESSION_PREFIX}${sessionId}`, QR_SESSION_TTL, JSON.stringify(session));
     const botUsername = process.env.TELEGRAM_BOT_USERNAME;
     const deepLink = `https://t.me/${botUsername}?start=auth_${sessionId}`;
-    logger_1.logger.info(`QR auth session created: ${(0, sanitizer_1.sanitizeForLog)(sessionId)}`);
+    logger_1.logger.info('QR auth session created', { sessionId: (0, sanitizer_1.sanitizeForLog)(sessionId) });
     res.json({
         success: true,
         sessionId,
@@ -248,7 +251,7 @@ exports.refreshToken = (0, errorHandler_1.asyncHandler)(async (req, res) => {
             expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         }
     });
-    logger_1.logger.info(`Token refreshed for user ${user.id}`);
+    logger_1.logger.info('Token refreshed', { userId: (0, sanitizer_1.sanitizeForLog)(user.id) });
     res.json({
         success: true,
         accessToken: newAccessToken,
@@ -275,14 +278,20 @@ exports.logout = (0, errorHandler_1.asyncHandler)(async (req, res) => {
         const jwt = require('jsonwebtoken');
         const decoded = jwt.decode(accessToken);
         const expiresAt = decoded?.exp ? new Date(decoded.exp * 1000) : new Date(Date.now() + 24 * 60 * 60 * 1000);
-        await prisma_1.prisma.revokedToken.create({
-            data: {
-                token: tokenHash,
-                userId: req.user.id,
-                expiresAt,
-                reason: 'User logout'
-            }
-        }).catch(() => {
+        try {
+            await prisma_1.prisma.revokedToken?.create({
+                data: {
+                    token: tokenHash,
+                    userId: req.user.id,
+                    expiresAt,
+                    reason: 'User logout'
+                }
+            });
+        }
+        catch (error) {
+            logger_1.logger.debug('RevokedToken model not available, token revocation skipped');
+        }
+        Promise.resolve().catch(() => {
         });
     }
     if (refreshToken) {
@@ -301,7 +310,7 @@ exports.logout = (0, errorHandler_1.asyncHandler)(async (req, res) => {
             }
         });
     }
-    logger_1.logger.info(`User ${req.user.id} logged out`);
+    logger_1.logger.info('User logged out', { userId: (0, sanitizer_1.sanitizeForLog)(req.user.id) });
     res.json({
         success: true,
         message: 'Logged out successfully'
@@ -367,7 +376,7 @@ exports.updateProfile = (0, errorHandler_1.asyncHandler)(async (req, res) => {
             profilePhoto: true,
         }
     });
-    logger_1.logger.info(`Profile updated for user ${req.user.id}`);
+    logger_1.logger.info('Profile updated', { userId: (0, sanitizer_1.sanitizeForLog)(req.user.id) });
     res.json({
         success: true,
         user: updatedUser,
@@ -453,7 +462,7 @@ exports.revokeSession = (0, errorHandler_1.asyncHandler)(async (req, res) => {
             userId: req.user.id,
         }
     });
-    logger_1.logger.info(`Session ${sessionId} revoked by user ${req.user.id}`);
+    logger_1.logger.info('Session revoked', { sessionId: (0, sanitizer_1.sanitizeForLog)(sessionId), userId: (0, sanitizer_1.sanitizeForLog)(req.user.id) });
     res.json({
         success: true,
         message: 'Session revoked successfully'

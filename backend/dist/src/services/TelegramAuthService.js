@@ -209,7 +209,7 @@ class TelegramAuthService {
     }
     async findOrCreateTelegramUser(userData) {
         try {
-            const { databaseService } = await import('../lib/database');
+            const { databaseService } = await import('../lib/database.js');
             const prisma = databaseService.getPrisma();
             let user = await prisma.user.findUnique({
                 where: { telegramId: userData.telegramId }

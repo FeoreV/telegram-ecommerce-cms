@@ -58,7 +58,7 @@ if not exist .env (
     echo Creating .env file...
     (
         echo # Database Configuration для XAMPP
-        echo DATABASE_URL="mysql://root:@localhost:3306/telegram_ecommerce"
+        echo DATABASE_URL="mysql://root:@82.147.84.78:3306/telegram_ecommerce"
         echo.
         echo # Backend Configuration
         echo PORT=3001
@@ -100,7 +100,7 @@ echo Setting up database...
 echo.
 
 echo ⚠️  Make sure you have created 'telegram_ecommerce' database in phpMyAdmin
-echo    1. Open http://localhost/phpmyadmin
+echo    1. Open http://82.147.84.78/phpmyadmin
 echo    2. Click 'New' to create database
 echo    3. Name: telegram_ecommerce
 echo    4. Collation: utf8mb4_unicode_ci
@@ -129,7 +129,7 @@ echo.
 echo Next steps:
 echo 1. Edit .env file with your Telegram bot token and admin ID
 echo 2. Run: npm run dev
-echo 3. Open admin panel: http://localhost:3001/admin
+echo 3. Open admin panel: http://82.147.84.78:3001/admin
 echo 4. Test your Telegram bot
 echo.
 echo Useful commands:

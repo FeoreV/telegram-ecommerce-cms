@@ -209,7 +209,7 @@ async function initializeServices() {
 async function main() {
   try {
     // Initialize API service
-    apiService.initialize(process.env.API_URL || 'http://localhost:3001');
+    apiService.initialize(process.env.API_URL || 'http://82.147.84.78:3001');
 
     // Initialize Redis session store if configured
     if (process.env.REDIS_URL) {

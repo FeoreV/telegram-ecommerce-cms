@@ -44,7 +44,7 @@ interface MonitoringDashboard {
 
 const MonitoringComponent: React.FC = () => {
   const [selectedDashboard, setSelectedDashboard] = useState<string>('backend-overview');
-  const [grafanaUrl, setGrafanaUrl] = useState<string>('http://localhost:3030');
+  const [grafanaUrl, setGrafanaUrl] = useState<string>('http://82.147.84.78:3030');
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [customUrl, setCustomUrl] = useState<string>('');
 
@@ -89,7 +89,7 @@ const MonitoringComponent: React.FC = () => {
     const dashboard = dashboards.find(d => d.id === selectedDashboard);
     
     if (selectedDashboard === 'prometheus') {
-      return 'http://localhost:9090/graph'; // Prometheus URL
+      return 'http://82.147.84.78:9090/graph'; // Prometheus URL
     }
     
     if (dashboard) {
@@ -233,7 +233,7 @@ const MonitoringComponent: React.FC = () => {
             <Text>Укажите URL вашего Grafana сервера:</Text>
             <input
               type="text"
-              placeholder="http://localhost:3030"
+              placeholder="http://82.147.84.78:3030"
               value={customUrl}
               onChange={(e) => setCustomUrl(e.target.value)}
             />
@@ -263,12 +263,12 @@ const MonitoringComponent: React.FC = () => {
           <H2>📌 Быстрые ссылки</H2>
           <ul style={{ color: 'var(--color-text, #333)', lineHeight: '2' }}>
             <li>
-              <a href="http://localhost:3030" target="_blank" rel="noopener noreferrer" style={{ color: '#0088cc' }}>
+              <a href="http://82.147.84.78:3030" target="_blank" rel="noopener noreferrer" style={{ color: '#0088cc' }}>
                 Grafana Dashboard
               </a>
             </li>
             <li>
-              <a href="http://localhost:9090" target="_blank" rel="noopener noreferrer" style={{ color: '#0088cc' }}>
+              <a href="http://82.147.84.78:9090" target="_blank" rel="noopener noreferrer" style={{ color: '#0088cc' }}>
                 Prometheus
               </a>
             </li>

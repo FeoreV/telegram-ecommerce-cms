@@ -22,8 +22,15 @@ const WEBHOOK_BASE_URL = process.env.WEBHOOK_BASE_URL;
 const PORT = process.env.BOT_PORT || 3003;
 const isProduction = process.env.NODE_ENV === 'production';
 const useWebhook = !!WEBHOOK_BASE_URL;
-if (!BOT_TOKEN) {
-    throw new Error('TELEGRAM_BOT_TOKEN is required');
+if (!BOT_TOKEN || BOT_TOKEN === 'YOUR_BOT_TOKEN_FROM_BOTFATHER') {
+    logger_1.logger.error('❌ TELEGRAM_BOT_TOKEN is not configured properly!');
+    logger_1.logger.error('Please follow these steps:');
+    logger_1.logger.error('1. Open @BotFather in Telegram');
+    logger_1.logger.error('2. Create a new bot with /newbot or use existing bot');
+    logger_1.logger.error('3. Copy the bot token');
+    logger_1.logger.error('4. Set TELEGRAM_BOT_TOKEN in bot/.env file');
+    logger_1.logger.error('5. Restart the bot service');
+    process.exit(1);
 }
 logger_1.logger.info('Initializing Telegram Bot', {
     useWebhook,
@@ -46,7 +53,8 @@ if (!useWebhook) {
             const rateLimitPassed = await security.checkRateLimit(msg.from?.id?.toString() || '');
             const antiSpamPassed = rateLimitPassed ? !security.checkSpam(msg.from?.id?.toString() || '', msg.text || '') : false;
             if (!rateLimitPassed || !antiSpamPassed) {
-                logger_1.logger.warn(`Message blocked from user ${msg.from?.id}`, {
+                const { sanitizeForLog } = require('./utils/sanitizer');
+                logger_1.logger.warn(`Message blocked from user ${sanitizeForLog(msg.from?.id)}`, {
                     rateLimitPassed,
                     antiSpamPassed,
                     userId: msg.from?.id,
@@ -194,10 +202,10 @@ async function main() {
         (0, handlers_1.setupHandlers)(bot);
         const notificationHandler = await initializeServices();
         bot.on('error', (error) => {
-            logger_1.logger.error('Bot error:', error);
+            logger_1.logger.error('Bot error:', { error: error instanceof Error ? error.message : String(error) });
         });
         bot.on('polling_error', (error) => {
-            logger_1.logger.error('Polling error:', error);
+            logger_1.logger.error('Polling error:', { error: error instanceof Error ? error.message : String(error) });
             setTimeout(() => {
                 if (!useWebhook) {
                     bot.startPolling({ restart: true });
@@ -255,7 +263,8 @@ async function main() {
     }
 }
 main().catch((error) => {
-    logger_1.logger.error('Unhandled error during bot startup:', error);
+    const errorMsg = error instanceof Error ? error.message.replace(/[\r\n]/g, ' ') : String(error).replace(/[\r\n]/g, ' ');
+    logger_1.logger.error('Unhandled error during bot startup:', errorMsg);
     process.exit(1);
 });
 //# sourceMappingURL=index.js.map

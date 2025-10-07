@@ -22,7 +22,7 @@ router.post('/change-password', SecureAuthMiddleware_1.secureAuthMiddleware, csr
 router.post('/set-password', ...SecureAuthMiddleware_1.ownerAuthMiddlewareStack, csrfProtection_1.csrfProtection, SecureAuthController_1.setPassword);
 router.get('/permissions/:userId?', SecureAuthMiddleware_1.secureAuthMiddleware, (0, SecureAuthMiddleware_1.requireRole)([SecureAuthSystem_1.UserRole.OWNER, SecureAuthSystem_1.UserRole.ADMIN]), async (req, res) => {
     try {
-        const { SecureAuthSystem } = await import('./SecureAuthSystem');
+        const { SecureAuthSystem } = await import('./SecureAuthSystem.js');
         const targetUserId = req.params.userId || req.user?.id;
         if (targetUserId !== req.user?.id && req.user?.role !== SecureAuthSystem_1.UserRole.OWNER) {
             return res.status(403).json({
@@ -47,7 +47,7 @@ router.get('/permissions/:userId?', SecureAuthMiddleware_1.secureAuthMiddleware,
 });
 router.get('/health', async (req, res) => {
     try {
-        const { prisma } = await import('../lib/prisma');
+        const { prisma } = await import('../lib/prisma.js');
         await prisma.user.count();
         let redisStatus = 'not_configured';
         if (process.env.REDIS_URL) {
@@ -76,7 +76,7 @@ router.get('/health', async (req, res) => {
 });
 router.get('/stats', ...SecureAuthMiddleware_1.ownerAuthMiddlewareStack, async (req, res) => {
     try {
-        const { prisma } = await import('../lib/prisma');
+        const { prisma } = await import('../lib/prisma.js');
         const userStats = await prisma.user.groupBy({
             by: ['role'],
             _count: {

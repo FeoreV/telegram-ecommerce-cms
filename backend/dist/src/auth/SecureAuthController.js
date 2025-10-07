@@ -1,10 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.autoRefresh = exports.verifyToken = exports.setPassword = exports.changePassword = exports.updateProfile = exports.getProfile = exports.logout = exports.refreshToken = exports.loginWithTelegram = exports.loginWithEmail = void 0;
-const SecureAuthSystem_1 = require("./SecureAuthSystem");
-const logger_1 = require("../utils/logger");
 const prisma_1 = require("../lib/prisma");
 const errorHandler_1 = require("../middleware/errorHandler");
+const logger_1 = require("../utils/logger");
+const SecureAuthSystem_1 = require("./SecureAuthSystem");
 exports.loginWithEmail = (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {

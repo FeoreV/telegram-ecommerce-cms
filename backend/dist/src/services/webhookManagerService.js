@@ -5,11 +5,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getWebhookManager = exports.WebhookManagerService = void 0;
 const express_1 = __importDefault(require("express"));
-const logger_js_1 = require("../utils/logger.js");
 const prisma_js_1 = require("../lib/prisma.js");
-const botFactoryService_js_1 = require("./botFactoryService.js");
 const auth_js_1 = require("../middleware/auth.js");
+const logger_js_1 = require("../utils/logger.js");
 const telegramWebhookValidator_js_1 = require("../utils/telegramWebhookValidator.js");
+const botFactoryService_js_1 = require("./botFactoryService.js");
 class WebhookManagerService {
     constructor(config) {
         this.webhooks = new Map();
@@ -105,7 +105,8 @@ class WebhookManagerService {
             return { success: true, webhookUrl };
         }
         catch (error) {
-            logger_js_1.logger.error(`❌ Failed to set webhook for store ${storeId}:`, error);
+            const sanitizedError = error instanceof Error ? error.message.replace(/[\r\n]/g, ' ') : String(error).replace(/[\r\n]/g, ' ');
+            logger_js_1.logger.error(`❌ Failed to set webhook for store ${storeId}:`, { error: sanitizedError, storeId });
             return { success: false, error: 'Произошла ошибка при установке webhook' };
         }
     }
@@ -143,7 +144,8 @@ class WebhookManagerService {
             return { success: true };
         }
         catch (error) {
-            logger_js_1.logger.error(`❌ Failed to remove webhook for store ${storeId}:`, error);
+            const sanitizedError = error instanceof Error ? error.message.replace(/[\r\n]/g, ' ') : String(error).replace(/[\r\n]/g, ' ');
+            logger_js_1.logger.error(`❌ Failed to remove webhook for store ${storeId}:`, { error: sanitizedError, storeId });
             return { success: false, error: 'Произошла ошибка при удалении webhook' };
         }
     }
@@ -234,7 +236,8 @@ class WebhookManagerService {
                 const update = req.body;
                 const webhookInfo = this.webhooks.get(storeId);
                 if (!webhookInfo) {
-                    logger_js_1.logger.warn(`Webhook request for unregistered store: ${storeId}`);
+                    const sanitizedStoreId = String(storeId).replace(/[\r\n]/g, ' ');
+                    logger_js_1.logger.warn(`Webhook request for unregistered store: ${sanitizedStoreId}`);
                     return res.status(404).json({ error: 'Webhook not found' });
                 }
                 const activeBot = botFactoryService_js_1.botFactoryService.getBotByStore(storeId);

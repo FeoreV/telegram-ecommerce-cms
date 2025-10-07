@@ -37,14 +37,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getBulkTemplate = exports.bulkDeleteProducts = exports.bulkUpdateProducts = exports.exportProducts = exports.importProducts = exports.upload = void 0;
-const prisma_1 = require("../lib/prisma");
-const errorHandler_1 = require("../middleware/errorHandler");
-const auditLog_1 = require("../middleware/auditLog");
-const logger_1 = require("../utils/logger");
-const multer_1 = __importDefault(require("multer"));
 const csv_parser_1 = __importDefault(require("csv-parser"));
 const fs_1 = require("fs");
+const multer_1 = __importDefault(require("multer"));
 const path = __importStar(require("path"));
+const prisma_1 = require("../lib/prisma");
+const auditLog_1 = require("../middleware/auditLog");
+const errorHandler_1 = require("../middleware/errorHandler");
+const logger_1 = require("../utils/logger");
 const storage = multer_1.default.diskStorage({
     destination: (req, file, cb) => {
         cb(null, 'uploads/');
@@ -212,7 +212,7 @@ exports.importProducts = (0, errorHandler_1.asyncHandler)(async (req, res) => {
         });
     }
     catch (error) {
-        logger_1.logger.error('Import error:', error);
+        logger_1.logger.error('Import error:', (0, logger_1.toLogMetadata)(error));
         throw new errorHandler_1.AppError('Failed to import products', 500);
     }
     finally {

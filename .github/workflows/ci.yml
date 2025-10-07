@@ -75,7 +75,7 @@ jobs:
       env:
         NODE_ENV: test
         DATABASE_URL: file:./test.db
-        REDIS_URL: redis://localhost:6379
+        REDIS_URL: redis://82.147.84.78:6379
 
   security-scan:
     name: Security Scan

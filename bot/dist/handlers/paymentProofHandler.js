@@ -8,9 +8,9 @@ exports.initiatePaymentProofFlow = initiatePaymentProofFlow;
 exports.handlePaymentProofCallback = handlePaymentProofCallback;
 const path_1 = __importDefault(require("path"));
 const apiService_1 = require("../services/apiService");
-const sessionManager_1 = require("../utils/sessionManager");
 const logger_1 = require("../utils/logger");
-const smartVerificationService_1 = require("../services/smartVerificationService");
+const sanitizer_1 = require("../utils/sanitizer");
+const sessionManager_1 = require("../utils/sessionManager");
 async function handlePaymentProofFlow(bot, msg) {
     const chatId = msg.chat.id;
     const userId = msg.from?.id?.toString();
@@ -101,7 +101,7 @@ async function initiatePaymentProofFlow(bot, chatId, orderId, userId) {
             parse_mode: 'Markdown',
             reply_markup: keyboard
         });
-        logger_1.logger.info(`Payment proof flow initiated for order ${orderId} by user ${userId}`);
+        logger_1.logger.info(`Payment proof flow initiated for order ${(0, sanitizer_1.sanitizeForLog)(orderId)} by user ${(0, sanitizer_1.sanitizeForLog)(userId)}`);
     }
     catch (error) {
         logger_1.logger.error('Failed to initiate payment proof flow:', error);
@@ -121,10 +121,14 @@ async function handlePhotoUpload(bot, msg, session) {
             await bot.sendMessage(msg.chat.id, '❌ Не удалось получить файл.');
             return;
         }
-        const processingMsg = await bot.sendMessage(msg.chat.id, '🔄 Анализирую чек с помощью ИИ...');
+        const processingMsg = await bot.sendMessage(msg.chat.id, '⏳ Загружаю чек...');
         try {
             const fileInfo = await bot.getFile(fileId);
             const fileUrl = `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${fileInfo.file_path}`;
+            const url = new URL(fileUrl);
+            if (url.hostname !== 'api.telegram.org') {
+                throw new Error('SECURITY: Invalid file URL - only Telegram API allowed');
+            }
             const response = await fetch(fileUrl);
             const arrayBuffer = await response.arrayBuffer();
             const imageBuffer = Buffer.from(arrayBuffer);
@@ -138,23 +142,12 @@ async function handlePhotoUpload(bot, msg, session) {
             }
             const orderResponse = await apiService_1.apiService.getOrder(orderId, session.token);
             const order = orderResponse.order;
-            const analysis = await smartVerificationService_1.smartVerificationService.analyzePaymentProof(imageBuffer, {
-                totalAmount: order.totalAmount,
-                currency: order.currency,
-                orderNumber: order.orderNumber,
-                expectedRecipient: order.store?.contactInfo?.receiver
-            });
             await apiService_1.apiService.uploadPaymentProof(orderId, imageBuffer, `payment_proof_${Date.now()}.jpg`, session.token);
-            const report = smartVerificationService_1.smartVerificationService.generateVerificationReport(analysis, {
-                totalAmount: order.totalAmount,
-                currency: order.currency
-            });
-            await bot.editMessageText(`📸 *Чек успешно загружен и проанализирован!*\n\n${report}\n\n` +
+            await bot.editMessageText(`✅ *Чек успешно загружен!*\n\n` +
                 `📋 Заказ: #${order.orderNumber}\n` +
-                `${analysis.isAutoVerifiable ?
-                    '🤖 Система рекомендует автоматическое подтверждение.' :
-                    '👤 Требуется ручная проверка администратором.'}\n\n` +
-                `⏱️ Статус будет обновлен в ближайшее время.`, {
+                `💰 Сумма: ${order.totalAmount} ${order.currency}\n\n` +
+                `👤 Ваш чек отправлен администратору на проверку.\n` +
+                `⏱️ Вы получите уведомление о результате в ближайшее время.`, {
                 chat_id: msg.chat.id,
                 message_id: processingMsg.message_id,
                 parse_mode: 'Markdown',
@@ -170,20 +163,7 @@ async function handlePhotoUpload(bot, msg, session) {
             sessionManager_1.userSessions.updateSession(session.telegramId, {
                 paymentProofFlow: null
             });
-            if (analysis.isAutoVerifiable && process.env.ENABLE_AUTO_VERIFICATION === 'true') {
-                await handleAutoVerification(orderId, analysis, session.token);
-                await bot.sendMessage(msg.chat.id, `🎉 *Платеж автоматически подтвержден!*\n\n` +
-                    `✅ Заказ #${order.orderNumber} переведен в статус "Оплачен"\n` +
-                    `📦 Ожидайте обновления о доставке.`, { parse_mode: 'Markdown' });
-            }
-            else {
-                await notifyAdminsWithAIAnalysis(order, analysis);
-            }
-            logger_1.logger.info(`Payment proof processed for order ${orderId}`, {
-                confidenceScore: analysis.confidenceScore,
-                isAutoVerifiable: analysis.isAutoVerifiable,
-                detectedAmount: analysis.detectedAmount
-            });
+            logger_1.logger.info(`Payment proof uploaded for order ${(0, sanitizer_1.sanitizeForLog)(orderId)}`);
         }
         catch (error) {
             logger_1.logger.error('Payment proof processing failed:', error);
@@ -196,30 +176,6 @@ async function handlePhotoUpload(bot, msg, session) {
     catch (error) {
         logger_1.logger.error('Photo upload handler error:', error);
         await bot.sendMessage(msg.chat.id, '❌ Ошибка при загрузке файла.');
-    }
-}
-async function handleAutoVerification(orderId, analysis, token) {
-    try {
-        await apiService_1.apiService.confirmPayment(orderId, token);
-        logger_1.logger.info(`Auto-verified payment for order ${orderId}`, {
-            confidenceScore: analysis.confidenceScore
-        });
-    }
-    catch (error) {
-        logger_1.logger.error('Auto-verification failed:', error);
-        throw error;
-    }
-}
-async function notifyAdminsWithAIAnalysis(order, analysis) {
-    try {
-        logger_1.logger.info(`Payment analysis completed for order ${order.id}`, {
-            aiAnalysis: analysis,
-            requiresReview: !analysis.isAutoVerifiable,
-            priority: analysis.confidenceScore < 0.5 ? 'HIGH' : 'NORMAL'
-        });
-    }
-    catch (error) {
-        logger_1.logger.error('Failed to notify admins:', error);
     }
 }
 async function handleDocumentUpload(bot, msg, session) {
@@ -240,6 +196,7 @@ async function processFileUpload(bot, chatId, fileId, session, fileType) {
     if (!session.paymentProofFlow) {
         return;
     }
+    const orderId = session.paymentProofFlow.orderId;
     const processingMsg = await bot.sendMessage(chatId, '⏳ Обрабатываю файл...');
     try {
         const file = await bot.getFile(fileId);
@@ -247,22 +204,30 @@ async function processFileUpload(bot, chatId, fileId, session, fileType) {
         if (!filePath) {
             throw new Error('Failed to get file path');
         }
-        const fileUrl = `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${filePath}`;
+        const telegramDomain = 'api.telegram.org';
+        const fileUrl = `https://${telegramDomain}/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${filePath}`;
+        const url = new URL(fileUrl);
+        if (url.hostname !== telegramDomain) {
+            throw new Error('SECURITY: Invalid file URL - only Telegram API allowed');
+        }
         const response = await fetch(fileUrl);
         if (!response.ok) {
             throw new Error('Failed to download file');
         }
         const buffer = await response.arrayBuffer();
         const fileExtension = path_1.default.extname(filePath) || (fileType === 'photo' ? '.jpg' : '.pdf');
-        const fileName = `payment_proof_${session.paymentProofFlow.orderId}_${Date.now()}${fileExtension}`;
-        await apiService_1.apiService.uploadPaymentProof(session.paymentProofFlow.orderId, buffer, fileName, session.token);
+        const fileName = `payment_proof_${orderId}_${Date.now()}${fileExtension}`;
+        await apiService_1.apiService.uploadPaymentProof(orderId, buffer, fileName, session.token);
+        const orderResponse = await apiService_1.apiService.getOrder(orderId, session.token);
+        const order = orderResponse.order;
         sessionManager_1.userSessions.updateSession(session.telegramId, {
             paymentProofFlow: null
         });
         const successText = `✅ *Чек успешно загружен!*\n\n` +
+            `📋 Заказ: #${order.orderNumber}\n` +
+            `💰 Сумма: ${order.totalAmount} ${order.currency}\n\n` +
             `Ваш чек отправлен администратору на проверку.\n` +
             `Вы получите уведомление о результате рассмотрения.\n\n` +
-            `📋 Заказ: #${session.paymentProofFlow.orderId.slice(-8)}\n` +
             `⏰ Обычно проверка занимает от нескольких минут до часа.`;
         const keyboard = {
             inline_keyboard: [
@@ -278,7 +243,7 @@ async function processFileUpload(bot, chatId, fileId, session, fileType) {
             parse_mode: 'Markdown',
             reply_markup: keyboard
         });
-        logger_1.logger.info(`Payment proof uploaded for order ${session.paymentProofFlow.orderId} by user ${session.telegramId}`);
+        logger_1.logger.info(`Payment proof uploaded for order ${(0, sanitizer_1.sanitizeForLog)(orderId)} by user ${(0, sanitizer_1.sanitizeForLog)(session.telegramId)}`);
     }
     catch (error) {
         logger_1.logger.error('File upload error:', error);
@@ -287,7 +252,7 @@ async function processFileUpload(bot, chatId, fileId, session, fileType) {
             message_id: processingMsg.message_id,
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: '🔄 Попробовать снова', callback_data: `upload_proof_${session.paymentProofFlow.orderId}` }]
+                    [{ text: '🔄 Попробовать снова', callback_data: `upload_proof_${orderId}` }]
                 ]
             }
         });

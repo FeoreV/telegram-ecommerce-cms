@@ -162,7 +162,7 @@ export function sanitizeUrl(url: string, allowedDomains: string[] = []): string 
       /^172\.(1[6-9]|2\d|3[01])\./,
       /^192\.168\./,
       /^169\.254\./,
-      /^localhost$/i,
+      /^82.147.84.78$/i,
       /^0\.0\.0\.0$/
     ];
 

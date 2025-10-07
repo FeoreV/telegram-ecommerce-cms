@@ -1,9 +1,12 @@
 // Test setup file
+import { afterEach, beforeAll, jest } from '@jest/globals';
+
 beforeAll(() => {
   // Setup environment variables for tests
   process.env.NODE_ENV = 'test';
   process.env.JWT_SECRET = 'test-jwt-secret-for-unit-tests-minimum-32-chars';
-  process.env.DATABASE_URL = 'mysql://test:test@localhost:3306/test_db';
+  process.env.JWT_REFRESH_SECRET = 'test-jwt-refresh-secret-for-unit-tests-minimum-32-chars';
+  process.env.DATABASE_URL = 'mysql://test:test@82.147.84.78:3306/test_db';
 });
 
 // Mock console methods in tests to reduce noise
@@ -30,14 +33,22 @@ jest.mock('../lib/prisma', () => ({
     },
     store: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       findMany: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
       count: jest.fn(),
     },
+    storeAdmin: {
+      create: jest.fn(),
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
+      deleteMany: jest.fn(),
+    },
     product: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       findMany: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),

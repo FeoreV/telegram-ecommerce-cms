@@ -449,7 +449,7 @@ export class NotificationService {
                 </div>` : ''}
 
                 <p style="margin-top: 20px;">
-                    <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}"
+                    <a href="${process.env.FRONTEND_URL || 'http://82.147.84.78:3000'}"
                        style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">
                         Открыть админ панель
                     </a>

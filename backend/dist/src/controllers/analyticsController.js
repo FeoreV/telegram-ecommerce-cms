@@ -1,10 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getCustomerAnalytics = exports.getRevenueTrends = exports.getStoreComparison = exports.getDashboardAnalytics = void 0;
+const date_fns_1 = require("date-fns");
 const prisma_1 = require("../lib/prisma");
 const errorHandler_1 = require("../middleware/errorHandler");
 const logger_1 = require("../utils/logger");
-const date_fns_1 = require("date-fns");
 exports.getDashboardAnalytics = (0, errorHandler_1.asyncHandler)(async (req, res) => {
     const { period = '7d', storeId } = req.query;
     if (!req.user) {
@@ -37,7 +37,10 @@ exports.getDashboardAnalytics = (0, errorHandler_1.asyncHandler)(async (req, res
             statusDistribution,
             storePerformance
         };
-        logger_1.logger.info(`Analytics fetched for user ${req.user.id}, period: ${period}, storeId: ${storeId || 'all'}`);
+        const sanitizedUserId = String(req.user.id).replace(/[\r\n]/g, ' ');
+        const sanitizedPeriod = String(period).replace(/[\r\n]/g, ' ');
+        const sanitizedStoreId = storeId ? String(storeId).replace(/[\r\n]/g, ' ') : 'all';
+        logger_1.logger.info(`Analytics fetched for user ${sanitizedUserId}, period: ${sanitizedPeriod}, storeId: ${sanitizedStoreId}`);
         res.json({
             success: true,
             data: metrics,

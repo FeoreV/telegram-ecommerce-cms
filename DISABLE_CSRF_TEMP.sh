@@ -28,5 +28,5 @@ echo "To re-enable CSRF:"
 echo "1. Edit backend/.env and set: DISABLE_CSRF=false"
 echo "2. Run: pm2 restart telegram-backend"
 echo ""
-echo "Test store creation now at: http://82.147.84.78:3000"
+echo "Test store creation now at: 82.147.84.78:3000"
 

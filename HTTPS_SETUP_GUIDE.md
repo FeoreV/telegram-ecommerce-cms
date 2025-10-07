@@ -74,7 +74,7 @@ server {
     server_name yourdomain.com www.yourdomain.com;
 
     location / {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://82.147.84.78:3000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -95,7 +95,7 @@ server {
     client_max_body_size 10M;
 
     location / {
-        proxy_pass http://localhost:3001;
+        proxy_pass http://82.147.84.78:3001;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -119,7 +119,7 @@ server {
     
     # WebSocket support for Socket.IO
     location /socket.io/ {
-        proxy_pass http://localhost:3001;
+        proxy_pass http://82.147.84.78:3001;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -296,7 +296,7 @@ server {
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
 
     location / {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://82.147.84.78:3000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -390,11 +390,11 @@ sudo nano /etc/caddy/Caddyfile
 Add:
 ```
 yourdomain.com, www.yourdomain.com {
-    reverse_proxy localhost:3000
+    reverse_proxy 82.147.84.78:3000
 }
 
 api.yourdomain.com {
-    reverse_proxy localhost:3001
+    reverse_proxy 82.147.84.78:3001
 }
 ```
 

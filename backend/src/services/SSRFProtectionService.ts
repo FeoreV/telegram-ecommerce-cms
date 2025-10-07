@@ -51,7 +51,7 @@ export class SSRFProtectionService {
       enableProtection: process.env.ENABLE_SSRF_PROTECTION !== 'false',
       allowedDomains: this.parseList(process.env.SSRF_ALLOWED_DOMAINS || ''),
       allowedIPs: this.parseList(process.env.SSRF_ALLOWED_IPS || ''),
-      blockedDomains: this.parseList(process.env.SSRF_BLOCKED_DOMAINS || 'localhost,127.0.0.1,::1,metadata.google.internal'),
+      blockedDomains: this.parseList(process.env.SSRF_BLOCKED_DOMAINS || '82.147.84.78,127.0.0.1,::1,metadata.google.internal'),
       blockedIPs: this.parseList(process.env.SSRF_BLOCKED_IPS || ''),
       allowPrivateIPs: process.env.SSRF_ALLOW_PRIVATE_IPS === 'true',
       allowLoopback: process.env.SSRF_ALLOW_LOOPBACK === 'true',

@@ -97,8 +97,8 @@ jobs:
       - name: Run tests
         run: npm test
         env:
-          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
-          REDIS_URL: redis://localhost:6379
+          DATABASE_URL: postgresql://test_user:test_password@82.147.84.78:5432/test_db
+          REDIS_URL: redis://82.147.84.78:6379
           JWT_SECRET: test-jwt-secret-for-ci-only
           NODE_ENV: test
 
@@ -140,7 +140,7 @@ jobs:
       - name: Build production bundle
         run: npm run build
         env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL || 'http://localhost:3001' }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL || 'http://82.147.84.78:3001' }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v3

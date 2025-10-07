@@ -4,12 +4,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.secureAuthService = exports.SecureAuthService = void 0;
-const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const crypto_1 = __importDefault(require("crypto"));
-const SecretManager_1 = require("../utils/SecretManager");
-const TenantCacheService_1 = require("./TenantCacheService");
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const database_1 = require("../lib/database");
 const logger_1 = require("../utils/logger");
+const SecretManager_1 = require("../utils/SecretManager");
+const TenantCacheService_1 = require("./TenantCacheService");
 class SecureAuthService {
     static createConfig() {
         const intFromEnv = (key, fallback) => {
@@ -167,7 +167,17 @@ class SecureAuthService {
                 .update(refreshToken)
                 .digest('hex');
             if (sessionData.refreshTokenHash !== refreshTokenHash) {
-                throw new Error('Invalid refresh token');
+                const { tokenRotationService } = await import('./TokenRotationService.js');
+                const graceCheck = await tokenRotationService.validateTokenInGracePeriod(refreshTokenHash, sessionData.sessionId);
+                if (graceCheck.valid && graceCheck.newTokenHash === sessionData.refreshTokenHash) {
+                    logger_1.logger.info('Refresh token used during grace period', {
+                        sessionId: sessionData.sessionId,
+                        userId: sessionData.userId
+                    });
+                }
+                else {
+                    throw new Error('Invalid refresh token');
+                }
             }
             const accessTokenPayload = {
                 userId: sessionData.userId,
@@ -201,12 +211,21 @@ class SecureAuthService {
                     audience: process.env.JWT_AUDIENCE || 'botrt-admin-panel'
                 });
                 newRefreshTokenExpiry = new Date(Date.now() + this.config.refreshTokenTTL * 1000);
+                const oldRefreshTokenHash = crypto_1.default
+                    .createHash('sha256')
+                    .update(refreshToken)
+                    .digest('hex');
                 const newRefreshTokenHash = crypto_1.default
                     .createHash('sha256')
                     .update(newRefreshToken)
                     .digest('hex');
                 sessionData.refreshTokenHash = newRefreshTokenHash;
-                this.revokedTokens.add(refreshToken);
+                const { tokenRotationService } = await import('./TokenRotationService.js');
+                await tokenRotationService.recordRotation(oldRefreshTokenHash, newRefreshTokenHash, sessionData.sessionId, sessionData.userId);
+                logger_1.logger.debug('Token rotation completed with grace period', {
+                    sessionId: sessionData.sessionId,
+                    userId: sessionData.userId
+                });
             }
             sessionData.lastActivity = new Date();
             sessionData.deviceInfo = deviceInfo;
@@ -238,6 +257,18 @@ class SecureAuthService {
                 throw new Error('Invalid token type');
             }
             if (this.revokedTokens.has(accessToken)) {
+                if (decoded.type === 'refresh') {
+                    const tokenHash = crypto_1.default.createHash('sha256').update(accessToken).digest('hex');
+                    const { tokenRotationService } = await import('./TokenRotationService.js');
+                    const graceCheck = await tokenRotationService.validateTokenInGracePeriod(tokenHash, decoded.sessionId);
+                    if (graceCheck.valid) {
+                        logger_1.logger.info('Token validated during grace period', {
+                            sessionId: decoded.sessionId,
+                            newTokenHash: graceCheck.newTokenHash
+                        });
+                        return decoded;
+                    }
+                }
                 throw new Error('Access token has been revoked');
             }
             const sessionData = await this.getSession(decoded.sessionId);
@@ -400,7 +431,7 @@ class SecureAuthService {
         try {
             const prisma = database_1.databaseService.getPrisma();
             const result = await prisma.$queryRaw `
-        SELECT * FROM user_sessions 
+        SELECT * FROM user_sessions
         WHERE user_id = ${userId}::UUID AND is_active = true
         ORDER BY last_activity DESC
       `;

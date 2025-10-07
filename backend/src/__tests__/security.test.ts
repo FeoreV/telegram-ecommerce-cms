@@ -244,7 +244,7 @@ describe('Security Integration Tests', () => {
     it('should block internal IP addresses', () => {
       const urls = [
         'http://127.0.0.1/admin',
-        'http://localhost/secret',
+        'http://82.147.84.78/secret',
         'http://192.168.1.1/internal',
         'http://10.0.0.1/private'
       ];

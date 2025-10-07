@@ -4,24 +4,31 @@ const client_1 = require("@prisma/client");
 const prisma = new client_1.PrismaClient();
 async function main() {
     console.log('🌱 Seeding database...');
-    const superAdminTelegramId = process.env.SUPER_ADMIN_TELEGRAM_ID || '123456789';
+    const isDevelopment = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+    if (!isDevelopment) {
+        console.log('⚠️  Skipping OWNER creation in production - use admin tools instead');
+        console.log('ℹ️  Run: npm run promote-user <telegram-id> OWNER');
+        return;
+    }
+    const demoOwnerTelegramId = 'DEMO_OWNER_' + Date.now();
     const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || 'admin@botrt.local';
     const superAdmin = await prisma.user.upsert({
-        where: { telegramId: superAdminTelegramId },
+        where: { telegramId: demoOwnerTelegramId },
         update: {
             role: 'OWNER',
             email: superAdminEmail
         },
         create: {
-            telegramId: superAdminTelegramId,
+            telegramId: demoOwnerTelegramId,
             email: superAdminEmail,
-            firstName: 'Super',
-            lastName: 'Admin',
+            firstName: 'Demo',
+            lastName: 'Owner',
             role: 'OWNER',
             isActive: true,
         },
     });
-    console.log('✅ Super admin created:', superAdmin);
+    console.log('✅ Demo OWNER created for development:', superAdmin);
+    console.log('⚠️  WARNING: This is a demo account. In production, create OWNER via admin tools.');
     const demoStore = await prisma.store.upsert({
         where: { slug: 'demo-store' },
         update: {},

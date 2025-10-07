@@ -35,9 +35,9 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NotificationService = exports.NotificationPriority = exports.NotificationChannel = exports.NotificationType = void 0;
 const nodemailer = __importStar(require("nodemailer"));
-const logger_1 = require("../utils/logger");
 const prisma_1 = require("../lib/prisma");
 const socket_1 = require("../lib/socket");
+const logger_1 = require("../utils/logger");
 var NotificationType;
 (function (NotificationType) {
     NotificationType["ORDER_CREATED"] = "ORDER_CREATED";
@@ -258,7 +258,7 @@ class NotificationService {
             logger_1.logger.info(`Email notifications sent to ${recipients.length} recipients`);
         }
         catch (error) {
-            logger_1.logger.error('Failed to send email notifications:', error);
+            logger_1.logger.error('Failed to send email notifications:', (0, logger_1.serializeError)(error));
         }
     }
     static async sendTelegram(notification) {
@@ -376,15 +376,15 @@ class NotificationService {
             <div class="content">
                 <p>Привет, ${recipient.firstName || 'Админ'}!</p>
                 <p>${notification.message}</p>
-                
+
                 ${notification.data ? `
                 <div class="data-section">
                     <strong>Дополнительная информация:</strong>
                     <pre>${JSON.stringify(notification.data, null, 2)}</pre>
                 </div>` : ''}
-                
+
                 <p style="margin-top: 20px;">
-                    <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" 
+                    <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}"
                        style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">
                         Открыть админ панель
                     </a>

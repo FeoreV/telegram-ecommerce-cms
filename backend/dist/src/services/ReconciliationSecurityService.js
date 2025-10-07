@@ -35,8 +35,8 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.reconciliationSecurityService = exports.ReconciliationSecurityService = exports.DiscrepancySeverity = exports.ReconciliationPriority = exports.ReconciliationType = void 0;
 const crypto = __importStar(require("crypto"));
-const logger_1 = require("../utils/logger");
 const errorUtils_1 = require("../utils/errorUtils");
+const logger_1 = require("../utils/logger");
 const SecurityLogService_1 = require("./SecurityLogService");
 var ReconciliationType;
 (function (ReconciliationType) {
@@ -505,32 +505,12 @@ class ReconciliationSecurityService {
         }
     }
     async retrieveDatabaseData(_source) {
-        const sampleData = [];
-        const recordCount = Math.floor(Math.random() * 1000) + 100;
-        for (let i = 0; i < recordCount; i++) {
-            sampleData.push({
-                id: i + 1,
-                product_id: `prod_${Math.floor(Math.random() * 100)}`,
-                store_id: `store_${Math.floor(Math.random() * 10)}`,
-                quantity: Math.floor(Math.random() * 1000),
-                last_updated: new Date()
-            });
-        }
-        return sampleData;
+        logger_1.logger.warn('retrieveDatabaseData called but not implemented - returning empty data');
+        return [];
     }
     async retrieveApiData(_source) {
-        const sampleData = [];
-        const recordCount = Math.floor(Math.random() * 800) + 50;
-        for (let i = 0; i < recordCount; i++) {
-            sampleData.push({
-                transaction_id: `txn_${i + 1}`,
-                order_id: `ord_${Math.floor(Math.random() * 100)}`,
-                amount: (Math.random() * 1000).toFixed(2),
-                status: 'completed',
-                timestamp: new Date()
-            });
-        }
-        return sampleData;
+        logger_1.logger.warn('retrieveApiData called but not implemented - returning empty data');
+        return [];
     }
     async retrieveFileData(_source) {
         return [

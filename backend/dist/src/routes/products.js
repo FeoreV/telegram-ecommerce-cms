@@ -32,6 +32,7 @@ router.put('/:id', csrfProtection_1.csrfProtection, (0, auth_1.requireRole)([jwt
     (0, express_validator_1.body)('images').optional().isArray(),
     (0, express_validator_1.body)('categoryId').optional().isString(),
     (0, express_validator_1.body)('isActive').optional().isBoolean(),
+    (0, express_validator_1.body)('variants').optional().isArray(),
 ], validation_1.validate, productController_1.updateProduct);
 router.delete('/:id', csrfProtection_1.csrfProtection, (0, auth_1.requireRole)([jwt_1.UserRole.OWNER, jwt_1.UserRole.ADMIN, jwt_1.UserRole.VENDOR]), [(0, express_validator_1.param)('id').isString().withMessage('Valid product ID required')], validation_1.validate, productController_1.deleteProduct);
 router.patch('/bulk', csrfProtection_1.csrfProtection, (0, auth_1.requireRole)([jwt_1.UserRole.OWNER, jwt_1.UserRole.ADMIN, jwt_1.UserRole.VENDOR]), [
@@ -41,5 +42,27 @@ router.patch('/bulk', csrfProtection_1.csrfProtection, (0, auth_1.requireRole)([
     (0, express_validator_1.body)('updates.stock').optional().isInt({ min: 0 }),
     (0, express_validator_1.body)('updates.price').optional().isNumeric(),
 ], validation_1.validate, productController_1.bulkUpdateProducts);
+router.get('/:productId/variants', [(0, express_validator_1.param)('productId').isString().withMessage('Valid product ID required')], validation_1.validate, productController_1.getProductVariants);
+router.post('/:productId/variants', csrfProtection_1.csrfProtection, (0, auth_1.requireRole)([jwt_1.UserRole.OWNER, jwt_1.UserRole.ADMIN, jwt_1.UserRole.VENDOR]), [
+    (0, express_validator_1.param)('productId').isString().withMessage('Valid product ID required'),
+    (0, express_validator_1.body)('name').notEmpty().withMessage('Variant name is required'),
+    (0, express_validator_1.body)('value').notEmpty().withMessage('Variant value is required'),
+    (0, express_validator_1.body)('price').optional().isNumeric().withMessage('Valid price required'),
+    (0, express_validator_1.body)('stock').optional().isInt({ min: 0 }).withMessage('Valid stock quantity required'),
+    (0, express_validator_1.body)('sku').optional().isString(),
+], validation_1.validate, productController_1.createProductVariant);
+router.put('/:productId/variants/:variantId', csrfProtection_1.csrfProtection, (0, auth_1.requireRole)([jwt_1.UserRole.OWNER, jwt_1.UserRole.ADMIN, jwt_1.UserRole.VENDOR]), [
+    (0, express_validator_1.param)('productId').isString().withMessage('Valid product ID required'),
+    (0, express_validator_1.param)('variantId').isString().withMessage('Valid variant ID required'),
+    (0, express_validator_1.body)('name').optional().notEmpty().withMessage('Variant name cannot be empty'),
+    (0, express_validator_1.body)('value').optional().notEmpty().withMessage('Variant value cannot be empty'),
+    (0, express_validator_1.body)('price').optional().isNumeric().withMessage('Valid price required'),
+    (0, express_validator_1.body)('stock').optional().isInt({ min: 0 }).withMessage('Valid stock quantity required'),
+    (0, express_validator_1.body)('sku').optional().isString(),
+], validation_1.validate, productController_1.updateProductVariant);
+router.delete('/:productId/variants/:variantId', csrfProtection_1.csrfProtection, (0, auth_1.requireRole)([jwt_1.UserRole.OWNER, jwt_1.UserRole.ADMIN, jwt_1.UserRole.VENDOR]), [
+    (0, express_validator_1.param)('productId').isString().withMessage('Valid product ID required'),
+    (0, express_validator_1.param)('variantId').isString().withMessage('Valid variant ID required'),
+], validation_1.validate, productController_1.deleteProductVariant);
 exports.default = router;
 //# sourceMappingURL=products.js.map

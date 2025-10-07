@@ -333,7 +333,7 @@ exports.createStore = (0, errorHandler_1.asyncHandler)(async (req, res) => {
                 createdBy: req.user.id
             }
         });
-        logger_1.logger.info(`Store created: ${(0, sanitizer_1.sanitizeForLog)(store.id)} (${(0, sanitizer_1.sanitizeForLog)(store.name)}) by user ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
+        logger_1.logger.info('Store created', { storeId: (0, sanitizer_1.sanitizeForLog)(store.id), storeName: (0, sanitizer_1.sanitizeForLog)(store.name), userId: (0, sanitizer_1.sanitizeForLog)(req.user.id) });
         res.status(201).json({
             success: true,
             store: transformStore(store),
@@ -452,7 +452,7 @@ exports.updateStore = (0, errorHandler_1.asyncHandler)(async (req, res) => {
             },
         },
     });
-    logger_1.logger.info(`Store updated: ${(0, sanitizer_1.sanitizeForLog)(store.id)} by user ${(0, sanitizer_1.sanitizeForLog)(req.user?.id)}`);
+    logger_1.logger.info('Store updated', { storeId: (0, sanitizer_1.sanitizeForLog)(store.id), userId: (0, sanitizer_1.sanitizeForLog)(req.user?.id) });
     res.json({ store: transformStore(store) });
 });
 exports.deleteStore = (0, errorHandler_1.asyncHandler)(async (req, res) => {
@@ -460,7 +460,7 @@ exports.deleteStore = (0, errorHandler_1.asyncHandler)(async (req, res) => {
     await prisma_1.prisma.store.delete({
         where: { id },
     });
-    logger_1.logger.info(`Store deleted: ${(0, sanitizer_1.sanitizeForLog)(id)} by user ${(0, sanitizer_1.sanitizeForLog)(req.user?.id)}`);
+    logger_1.logger.info('Store deleted', { storeId: (0, sanitizer_1.sanitizeForLog)(id), userId: (0, sanitizer_1.sanitizeForLog)(req.user?.id) });
     res.json({ message: 'Store deleted successfully' });
 });
 exports.addStoreAdmin = (0, errorHandler_1.asyncHandler)(async (req, res) => {
@@ -489,7 +489,7 @@ exports.addStoreAdmin = (0, errorHandler_1.asyncHandler)(async (req, res) => {
             userId,
         },
     });
-    logger_1.logger.info(`Admin added to store: ${(0, sanitizer_1.sanitizeForLog)(id)}, user: ${(0, sanitizer_1.sanitizeForLog)(userId)} by ${(0, sanitizer_1.sanitizeForLog)(req.user?.id)}`);
+    logger_1.logger.info('Admin added to store', { storeId: (0, sanitizer_1.sanitizeForLog)(id), userId: (0, sanitizer_1.sanitizeForLog)(userId), by: (0, sanitizer_1.sanitizeForLog)(req.user?.id) });
     res.json({ message: 'Admin added successfully' });
 });
 exports.removeStoreAdmin = (0, errorHandler_1.asyncHandler)(async (req, res) => {
@@ -502,7 +502,7 @@ exports.removeStoreAdmin = (0, errorHandler_1.asyncHandler)(async (req, res) => 
             },
         },
     });
-    logger_1.logger.info(`Admin removed from store: ${(0, sanitizer_1.sanitizeForLog)(id)}, user: ${(0, sanitizer_1.sanitizeForLog)(userId)} by ${(0, sanitizer_1.sanitizeForLog)(req.user?.id)}`);
+    logger_1.logger.info('Admin removed from store', { storeId: (0, sanitizer_1.sanitizeForLog)(id), userId: (0, sanitizer_1.sanitizeForLog)(userId), by: (0, sanitizer_1.sanitizeForLog)(req.user?.id) });
     res.json({ message: 'Admin removed successfully' });
 });
 exports.getUserStores = (0, errorHandler_1.asyncHandler)(async (req, res) => {
@@ -577,6 +577,6 @@ exports.getUserStores = (0, errorHandler_1.asyncHandler)(async (req, res) => {
         stores: storesWithBotInfo,
         total: storesWithBotInfo.length
     });
-    logger_1.logger.info(`User stores retrieved: ${storesWithBotInfo.length} stores for user ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
+    logger_1.logger.info('User stores retrieved', { count: storesWithBotInfo.length, userId: (0, sanitizer_1.sanitizeForLog)(req.user.id) });
 });
 //# sourceMappingURL=storeController.js.map

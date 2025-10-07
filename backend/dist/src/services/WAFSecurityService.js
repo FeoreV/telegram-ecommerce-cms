@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.wafSecurityService = exports.WAFSecurityService = void 0;
 const axios_1 = __importDefault(require("axios"));
 const logger_1 = require("../utils/logger");
+const inputSanitizer_1 = require("../utils/inputSanitizer");
 const TenantCacheService_1 = require("./TenantCacheService");
 class WAFSecurityService {
     constructor() {
@@ -304,7 +305,7 @@ class WAFSecurityService {
             }
             const allowedGeoAPIs = ['ip-api.com', 'ipapi.co', 'ipinfo.io'];
             if (!/^(\d{1,3}\.){3}\d{1,3}$/.test(ipAddress)) {
-                logger_1.logger.warn(`SECURITY: Invalid IP address format: ${ipAddress}`);
+                logger_1.logger.warn('SECURITY: Invalid IP address format', { ipAddress: (0, inputSanitizer_1.sanitizeForLog)(ipAddress) });
                 return 'UNKNOWN';
             }
             const geoSources = [
@@ -331,7 +332,7 @@ class WAFSecurityService {
                 try {
                     const url = new URL(source.url);
                     if (!allowedGeoAPIs.includes(url.hostname)) {
-                        logger_1.logger.warn(`SECURITY: Blocked geolocation request to non-whitelisted domain: ${url.hostname}`);
+                        logger_1.logger.warn('SECURITY: Blocked geolocation request to non-whitelisted domain', { domain: (0, inputSanitizer_1.sanitizeForLog)(url.hostname) });
                         continue;
                     }
                     const response = await axios_1.default.get(source.url, {
@@ -342,20 +343,20 @@ class WAFSecurityService {
                     if (response.status === 200) {
                         const country = source.parser(response.data);
                         if (country && country !== 'undefined' && country.length >= 2) {
-                            logger_1.logger.debug(`IP ${ipAddress} resolved to country ${country} via ${source.name}`);
+                            logger_1.logger.debug('IP resolved to country', { ipAddress: (0, inputSanitizer_1.sanitizeForLog)(ipAddress), country: (0, inputSanitizer_1.sanitizeForLog)(country), source: (0, inputSanitizer_1.sanitizeForLog)(source.name) });
                             return country.toUpperCase();
                         }
                     }
                 }
                 catch (sourceError) {
-                    logger_1.logger.debug(`Failed to get country from ${source.name} for IP ${ipAddress}:`, sourceError);
+                    logger_1.logger.debug('Failed to get country', { source: (0, inputSanitizer_1.sanitizeForLog)(source.name), ipAddress: (0, inputSanitizer_1.sanitizeForLog)(ipAddress), error: sourceError });
                     continue;
                 }
             }
             return this.getCountryFromInternalDB(ipAddress);
         }
         catch (error) {
-            logger_1.logger.error(`Error getting country for IP ${ipAddress}:`, error);
+            logger_1.logger.error('Error getting country for IP', { ipAddress: (0, inputSanitizer_1.sanitizeForLog)(ipAddress), error });
             return 'UNKNOWN';
         }
     }

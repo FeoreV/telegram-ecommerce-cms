@@ -34,15 +34,17 @@ const metricsMiddleware = (req, res, next) => {
         }
         prometheusService.recordHttpRequest(method, path, res.statusCode, responseTime);
         prometheusService.httpRequestsInProgress.dec({ method, route: path });
-        logger_1.logger.info('Request completed', {
-            method,
-            path,
-            statusCode: res.statusCode,
-            responseTime,
-            userAgent: req.headers['user-agent'],
-            ip: req.ip,
-            requestId: req.requestId,
-        });
+        if (process.env.NODE_ENV === 'production') {
+            logger_1.logger.info('Request completed', {
+                method,
+                path,
+                statusCode: res.statusCode,
+                responseTime,
+                userAgent: req.headers['user-agent'],
+                ip: req.ip,
+                requestId: req.requestId,
+            });
+        }
         if (typeof encoding === 'function') {
             cb = encoding;
             encoding = undefined;

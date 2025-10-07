@@ -46,8 +46,8 @@ TELEGRAM_BOT_TOKEN=ваш-токен-бота
 # Запустите MySQL и создайте базу данных
 mysql -u root -p
 CREATE DATABASE telegram_ecommerce;
-CREATE USER 'telegram_user'@'localhost' IDENTIFIED BY 'telegram_pass';
-GRANT ALL PRIVILEGES ON telegram_ecommerce.* TO 'telegram_user'@'localhost';
+CREATE USER 'telegram_user'@'82.147.84.78' IDENTIFIED BY 'telegram_pass';
+GRANT ALL PRIVILEGES ON telegram_ecommerce.* TO 'telegram_user'@'82.147.84.78';
 FLUSH PRIVILEGES;
 EXIT;
 
@@ -77,13 +77,13 @@ node scripts/health-check.js
 ```
 
 Или вручную:
-- Backend API: http://localhost:3001/health
-- Admin Panel: http://localhost:3000
-- API Info: http://localhost:3001/api
+- Backend API: http://82.147.84.78:3001/health
+- Admin Panel: http://82.147.84.78:3000
+- API Info: http://82.147.84.78:3001/api
 
 ## 🧪 Тестирование
 
-1. Откройте admin panel: http://localhost:3000
+1. Откройте admin panel: http://82.147.84.78:3000
 2. Войдите используя ваш Telegram ID
 3. Найдите вашего бота в Telegram и отправьте `/start`
 4. Проверьте навигацию по магазинам и товарам

@@ -66,7 +66,7 @@ After running the commands above, check:
 3. You should see "Server started" or similar success messages
 
 4. Test the API:
-   curl http://localhost:3002/api/health
+   curl http://82.147.84.78:3002/api/health
 
 If you still see errors, check:
    pm2 logs telegram-backend --err --lines 100

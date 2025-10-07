@@ -110,7 +110,7 @@ const app = express();
 const server = createServer(app);
 
 // Initialize Socket.IO
-const io = initSocket(server, env.FRONTEND_URL || "http://localhost:3000");
+const io = initSocket(server, env.FRONTEND_URL || "http://82.147.84.78:3000");
 
 // Enhanced security middleware bundle
 app.use(securityMiddlewareBundle);
@@ -591,8 +591,8 @@ const PORT = env.PORT || 3001;
 
 server.listen(PORT, async () => {
   logger.info(`🚀 Server running on port ${PORT}`);
-  logger.info(`📊 Admin panel: http://localhost:3000`);
-  logger.info(`🔧 API: http://localhost:${PORT}/api`);
+  logger.info(`📊 Admin panel: http://82.147.84.78:3000`);
+  logger.info(`🔧 API: http://82.147.84.78:${PORT}/api`);
 
   // Initialize services after server starts
   try {
@@ -605,6 +605,9 @@ server.listen(PORT, async () => {
     // Don't exit - let the server continue running even if some services fail
   }
 });
+
+// Export app for testing
+export { app };
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {

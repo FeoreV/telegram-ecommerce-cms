@@ -180,7 +180,7 @@ jobs:
           - 3306:3306
 
     env:
-      DATABASE_URL: "mysql://root:root@localhost:3306/coverage_test"
+      DATABASE_URL: "mysql://root:root@82.147.84.78:3306/coverage_test"
       JWT_SECRET: "test-jwt-secret-32-chars-long-minimum"
       JWT_REFRESH_SECRET: "test-jwt-refresh-secret-32-chars-long"
       NODE_ENV: "test"

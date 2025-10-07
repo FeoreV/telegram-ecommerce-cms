@@ -37,7 +37,7 @@ export default defineConfig({
     host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: 'http://82.147.84.78:3001',
         changeOrigin: true,
       },
     },

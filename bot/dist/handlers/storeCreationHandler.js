@@ -3,8 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.startStoreCreation = startStoreCreation;
 exports.handleStoreCreationMessage = handleStoreCreationMessage;
 exports.handleStoreCreationCallback = handleStoreCreationCallback;
-const logger_1 = require("../utils/logger");
 const apiService_1 = require("../services/apiService");
+const logger_1 = require("../utils/logger");
 const sessionManager_1 = require("../utils/sessionManager");
 const SUPPORTED_CURRENCIES = ['USD', 'EUR', 'RUB', 'UAH'];
 const CURRENCY_SYMBOLS = {
@@ -357,10 +357,13 @@ async function createStore(bot, chatId, session) {
             parse_mode: 'Markdown',
             reply_markup: keyboard
         });
-        logger_1.logger.info(`Store created successfully: ${newStore.id} by user ${session.telegramId}`);
+        const sanitizedStoreId = String(newStore.id).replace(/[\r\n]/g, ' ');
+        const sanitizedUserId = String(session.telegramId).replace(/[\r\n]/g, ' ');
+        logger_1.logger.info(`Store created successfully: ${sanitizedStoreId} by user ${sanitizedUserId}`);
     }
     catch (error) {
-        logger_1.logger.error('Error creating store:', error);
+        const sanitizedError = error instanceof Error ? error.message.replace(/[\r\n]/g, ' ') : String(error).replace(/[\r\n]/g, ' ');
+        logger_1.logger.error('Error creating store:', sanitizedError);
         const errorMessage = error.response?.data?.message || 'Не удалось создать магазин';
         await bot.editMessageText(`❌ Ошибка создания магазина: ${errorMessage}\n\n` +
             'Попробуйте еще раз или обратитесь к администратору.', {

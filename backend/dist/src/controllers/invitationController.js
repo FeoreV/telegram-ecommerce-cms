@@ -120,7 +120,7 @@ exports.getEmployeeActivity = (0, errorHandler_1.asyncHandler)(async (req, res) 
 async function checkStoreAccess(userId, storeId, role) {
     if (role === 'OWNER')
         return true;
-    const { prisma } = await import('../lib/prisma');
+    const { prisma } = await import('../lib/prisma.js');
     const store = await prisma.store.findFirst({
         where: {
             id: storeId,

@@ -30,7 +30,7 @@ const envContent = `# Environment Configuration
 # ============================================
 PORT=3001
 NODE_ENV=development
-FRONTEND_URL=http://localhost:3000
+FRONTEND_URL=http://82.147.84.78:3000
 ENABLE_ADMINJS=true
 
 # ============================================
@@ -83,13 +83,13 @@ LOG_KEY_ID=${generateSecret(32)}
 TELEGRAM_BOT_TOKEN=your-telegram-bot-token-here
 TELEGRAM_WEBHOOK_SECRET=${generateSecret(32)}
 TELEGRAM_WEBHOOK_URL=
-API_URL=http://localhost:3001
+API_URL=http://82.147.84.78:3001
 BOT_PORT=3003
 
 # ============================================
 # Security Configuration
 # ============================================
-CORS_WHITELIST=http://localhost:3000,http://localhost:5173
+CORS_WHITELIST=http://82.147.84.78:3000,http://82.147.84.78:5173
 ENABLE_BRUTE_FORCE_PROTECTION=true
 ENABLE_SECURITY_HEADERS=true
 ENABLE_REQUEST_SANITIZATION=true
@@ -100,7 +100,7 @@ ENCRYPTION_ALGORITHM=aes-256-gcm
 # ============================================
 # Optional: Redis (for session storage)
 # ============================================
-# REDIS_URL=redis://localhost:6379
+# REDIS_URL=redis://82.147.84.78:6379
 
 # ============================================
 # Optional: Email Notifications (SMTP)
@@ -121,14 +121,14 @@ ENCRYPTION_ALGORITHM=aes-256-gcm
 # Optional: Vault Configuration
 # ============================================
 # USE_VAULT=false
-# VAULT_ADDR=http://localhost:8200
+# VAULT_ADDR=http://82.147.84.78:8200
 # VAULT_ROLE_ID=your-role-id
 # VAULT_SECRET_ID=your-secret-id
 
 # ============================================
 # Medusa CMS (if using)
 # ============================================
-CMS_BASE_URL=http://localhost:9000
+CMS_BASE_URL=http://82.147.84.78:9000
 MEDUSA_JWT_SECRET=${generateSecret(32)}
 MEDUSA_COOKIE_SECRET=${generateSecret(32)}
 MEDUSA_WEBHOOK_TOKEN=${generateSecret(32)}

@@ -520,7 +520,7 @@ await userService.bulkUserAction('delete', inactiveUserIds)
 
 Полная документация API доступна в Swagger UI:
 ```
-http://localhost:5000/api-docs
+http://82.147.84.78:5000/api-docs
 ```
 
 ## Changelog

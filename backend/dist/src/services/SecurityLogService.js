@@ -37,13 +37,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.securityLogService = exports.SecurityLogService = void 0;
+const crypto_1 = __importDefault(require("crypto"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
-const crypto_1 = __importDefault(require("crypto"));
-const logger_1 = require("../utils/logger");
-const TenantCacheService_1 = require("./TenantCacheService");
-const EncryptionService_1 = require("./EncryptionService");
 const securityKeys_1 = require("../config/securityKeys");
+const inputSanitizer_1 = require("../utils/inputSanitizer");
+const logger_1 = require("../utils/logger");
+const EncryptionService_1 = require("./EncryptionService");
+const TenantCacheService_1 = require("./TenantCacheService");
 class SecurityLogService {
     constructor() {
         this.logBuffer = new Map();
@@ -442,7 +443,7 @@ class SecurityLogService {
                 }
             }
             catch (error) {
-                logger_1.logger.error(`Failed to evaluate alert rule ${ruleName}:`, (0, logger_1.toLogMetadata)(error));
+                logger_1.logger.error(`Failed to evaluate alert rule ${(0, inputSanitizer_1.sanitizeForLog)(ruleName)}:`, (0, logger_1.toLogMetadata)(error));
             }
         }
     }
@@ -562,7 +563,7 @@ class SecurityLogService {
                 this.logBuffer.set(key, []);
             }
             catch (error) {
-                logger_1.logger.error(`Failed to flush buffer ${key}:`, (0, logger_1.toLogMetadata)(error));
+                logger_1.logger.error(`Failed to flush buffer ${(0, inputSanitizer_1.sanitizeForLog)(key)}:`, (0, logger_1.toLogMetadata)(error));
             }
         }
     }

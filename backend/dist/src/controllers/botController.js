@@ -214,7 +214,7 @@ exports.createBot = (0, asyncHandler_js_1.asyncHandler)(async (req, res) => {
             botCreatedAt: true
         }
     });
-    logger_js_1.logger.info(`✅ Bot created for store ${(0, sanitizer_1.sanitizeForLog)(store.name)} by user ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
+    logger_js_1.logger.info('Bot created for store', { storeName: (0, sanitizer_1.sanitizeForLog)(store.name), userId: (0, sanitizer_1.sanitizeForLog)(req.user.id) });
     res.status(201).json({
         success: true,
         message: `Бот @${updatedStore?.botUsername} успешно создан`,
@@ -261,7 +261,7 @@ exports.removeBot = (0, asyncHandler_js_1.asyncHandler)(async (req, res) => {
         });
     }
     const botIdentifier = store.botUsername ? `@${store.botUsername}` : 'Бот';
-    logger_js_1.logger.info(`🗑️ ${(0, sanitizer_1.sanitizeForLog)(botIdentifier)} removed from store ${(0, sanitizer_1.sanitizeForLog)(store.name)} by user ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
+    logger_js_1.logger.info('Bot removed from store', { bot: (0, sanitizer_1.sanitizeForLog)(botIdentifier), storeName: (0, sanitizer_1.sanitizeForLog)(store.name), userId: (0, sanitizer_1.sanitizeForLog)(req.user.id) });
     res.json({
         success: true,
         message: `${botIdentifier} успешно удален из магазина ${store.name}`
@@ -301,14 +301,14 @@ exports.updateBotSettings = (0, asyncHandler_js_1.asyncHandler)(async (req, res)
             updatedAt: new Date()
         }
     });
-    logger_js_1.logger.info(`⚙️ Bot settings updated for store ${(0, sanitizer_1.sanitizeForLog)(store.name)} by user ${(0, sanitizer_1.sanitizeForLog)(req.user.id)}`);
+    logger_js_1.logger.info('Bot settings updated', { storeName: (0, sanitizer_1.sanitizeForLog)(store.name), userId: (0, sanitizer_1.sanitizeForLog)(req.user.id) });
     try {
         const reloadResult = await botFactoryService_js_1.botFactoryService.reloadBotSettings(storeId);
         if (reloadResult.success) {
-            logger_js_1.logger.info(`🔄 Bot settings reloaded for store ${(0, sanitizer_1.sanitizeForLog)(storeId)}`);
+            logger_js_1.logger.info('Bot settings reloaded', { storeId: (0, sanitizer_1.sanitizeForLog)(storeId) });
         }
         else {
-            logger_js_1.logger.warn(`⚠️ Could not reload bot settings: ${reloadResult.error}`);
+            logger_js_1.logger.warn('Could not reload bot settings', { error: (0, sanitizer_1.sanitizeForLog)(reloadResult.error) });
         }
     }
     catch (error) {
@@ -444,7 +444,7 @@ exports.restartBot = (0, asyncHandler_js_1.asyncHandler)(async (req, res) => {
             message: result.error || 'Не удалось перезапустить бота'
         });
     }
-    logger_js_1.logger.info(`🔄 Bot restarted for store ${store.name} by user ${req.user.id}`);
+    logger_js_1.logger.info('Bot restarted', { storeName: (0, sanitizer_1.sanitizeForLog)(store.name), userId: (0, sanitizer_1.sanitizeForLog)(req.user.id) });
     res.json({
         success: true,
         message: `Бот @${store.botUsername} успешно перезапущен`
@@ -483,7 +483,7 @@ exports.enableWebhook = (0, asyncHandler_js_1.asyncHandler)(async (req, res) => 
                 message: result.error
             });
         }
-        logger_js_1.logger.info(`✅ Webhook enabled for store ${store.name} by user ${req.user.id}`);
+        logger_js_1.logger.info('Webhook enabled', { storeName: (0, sanitizer_1.sanitizeForLog)(store.name), userId: (0, sanitizer_1.sanitizeForLog)(req.user.id) });
         res.json({
             success: true,
             message: 'Webhook успешно включен',
@@ -491,9 +491,9 @@ exports.enableWebhook = (0, asyncHandler_js_1.asyncHandler)(async (req, res) => 
         });
     }
     catch (error) {
-        logger_js_1.logger.error(`Error enabling webhook for store ${storeId}:`, {
-            error: error instanceof Error ? error.message : String(error),
-            storeId
+        logger_js_1.logger.error('Error enabling webhook', {
+            storeId: (0, sanitizer_1.sanitizeForLog)(storeId),
+            error: error instanceof Error ? error.message : String(error)
         });
         res.status(500).json({
             success: false,
@@ -526,16 +526,16 @@ exports.disableWebhook = (0, asyncHandler_js_1.asyncHandler)(async (req, res) =>
                 message: result.error
             });
         }
-        logger_js_1.logger.info(`🔄 Webhook disabled for store ${store.name} by user ${req.user.id}`);
+        logger_js_1.logger.info('Webhook disabled', { storeName: (0, sanitizer_1.sanitizeForLog)(store.name), userId: (0, sanitizer_1.sanitizeForLog)(req.user.id) });
         res.json({
             success: true,
             message: 'Webhook отключен, бот переведен на polling'
         });
     }
     catch (error) {
-        logger_js_1.logger.error(`Error disabling webhook for store ${storeId}:`, {
-            error: error instanceof Error ? error.message : String(error),
-            storeId
+        logger_js_1.logger.error('Error disabling webhook', {
+            storeId: (0, sanitizer_1.sanitizeForLog)(storeId),
+            error: error instanceof Error ? error.message : String(error)
         });
         res.status(500).json({
             success: false,
@@ -665,11 +665,11 @@ exports.getBotSettings = (0, asyncHandler_js_1.asyncHandler)(async (req, res) =>
             settings = JSON.parse(store.botSettings);
         }
         catch (error) {
-            logger_js_1.logger.warn(`Failed to parse bot settings for store ${storeId}:`, (0, logger_js_1.toLogMetadata)(error));
+            logger_js_1.logger.warn('Failed to parse bot settings', { storeId: (0, sanitizer_1.sanitizeForLog)(storeId), error: (0, logger_js_1.toLogMetadata)(error) });
             settings = {};
         }
     }
-    logger_js_1.logger.info(`Bot settings retrieved for store ${store.name} by user ${req.user.id}`);
+    logger_js_1.logger.info('Bot settings retrieved', { storeName: (0, sanitizer_1.sanitizeForLog)(store.name), userId: (0, sanitizer_1.sanitizeForLog)(req.user.id) });
     res.json({
         success: true,
         settings: {

@@ -88,7 +88,7 @@ server {
     ssl_certificate_key /path/to/privkey.pem;
     
     location /api {
-        proxy_pass http://localhost:3001;
+        proxy_pass http://82.147.84.78:3001;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

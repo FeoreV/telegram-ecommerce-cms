@@ -5,10 +5,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.winstonLogger = exports.logger = exports.serializeError = exports.maskSensitiveData = exports.LogCategory = exports.LOG_LEVELS = void 0;
 exports.toLogMetadata = toLogMetadata;
-const winston_1 = __importDefault(require("winston"));
-const winston_daily_rotate_file_1 = __importDefault(require("winston-daily-rotate-file"));
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
+const winston_1 = __importDefault(require("winston"));
+const winston_daily_rotate_file_1 = __importDefault(require("winston-daily-rotate-file"));
 const env_1 = require("./env");
 exports.LOG_LEVELS = {
     error: 0,
@@ -201,12 +201,14 @@ const purgeLogsDirectory = (directory) => {
                 }
             }
             catch (entryError) {
-                console.warn('Failed to remove log artifact:', target, entryError);
+                const errorMsg = entryError instanceof Error ? entryError.message.replace(/[\r\n]/g, ' ') : String(entryError);
+                console.warn('Failed to remove log artifact:', target.replace(/[\r\n]/g, ' '), errorMsg);
             }
         }
     }
     catch (purgeError) {
-        console.warn('Failed to purge logs directory:', directory, purgeError);
+        const errorMsg = purgeError instanceof Error ? purgeError.message.replace(/[\r\n]/g, ' ') : String(purgeError);
+        console.warn('Failed to purge logs directory:', directory.replace(/[\r\n]/g, ' '), errorMsg);
     }
 };
 purgeLogsDirectory(logsDir);
@@ -214,7 +216,7 @@ const createTransports = () => {
     const transports = [];
     if (env_1.env.NODE_ENV !== 'production') {
         transports.push(new winston_1.default.transports.Console({
-            level: 'debug',
+            level: 'warn',
             format: developmentFormat,
         }));
     }
@@ -278,7 +280,8 @@ class EnhancedLogger {
                 exitOnError: false,
             });
             this.winston.on('error', (error) => {
-                console.error('Logger error:', error);
+                const errorMsg = error instanceof Error ? error.message.replace(/[\r\n]/g, ' ') : String(error);
+                console.error('Logger error:', errorMsg);
             });
         }
         if (!skipInitializationLog && !existingLogger) {

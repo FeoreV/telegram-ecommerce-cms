@@ -35,8 +35,9 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.disasterRecoveryService = exports.DisasterRecoveryService = void 0;
 const crypto = __importStar(require("crypto"));
-const logger_1 = require("../utils/logger");
 const errorUtils_1 = require("../utils/errorUtils");
+const logger_1 = require("../utils/logger");
+const logSanitizer_1 = require("../utils/logSanitizer");
 const SecureBackupService_1 = require("./SecureBackupService");
 const SecurityLogService_1 = require("./SecurityLogService");
 class DisasterRecoveryService {
@@ -672,7 +673,7 @@ class DisasterRecoveryService {
                     }
                 }
                 catch (err) {
-                    logger_1.logger.error(`Scheduled recovery test failed for plan ${planId}:`, err);
+                    logger_1.logger.error('Scheduled recovery test failed', { planId: (0, logSanitizer_1.sanitizeForLog)(planId), error: err });
                 }
             }
         }

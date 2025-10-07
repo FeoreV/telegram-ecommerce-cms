@@ -36,7 +36,7 @@ else
 fi
 
 # Update or add CORS_WHITELIST
-CORS_WHITELIST="http://localhost:3000,http://localhost:5173,http://${SERVER_IP}:3000,http://${SERVER_IP}:3001"
+CORS_WHITELIST="http://82.147.84.78:3000,http://82.147.84.78:5173,http://${SERVER_IP}:3000,http://${SERVER_IP}:3001"
 if grep -q "^CORS_WHITELIST=" .env; then
     sed -i "s|^CORS_WHITELIST=.*|CORS_WHITELIST=$CORS_WHITELIST|" .env
     echo "✅ Updated CORS_WHITELIST"
@@ -67,8 +67,8 @@ echo "════════════════════════�
 echo "✅ CORS configuration fixed successfully!"
 echo ""
 echo "CORS will now allow:"
-echo "  - http://localhost:3000 (local dev)"
-echo "  - http://localhost:5173 (Vite)"
+echo "  - http://82.147.84.78:3000 (local dev)"
+echo "  - http://82.147.84.78:5173 (Vite)"
 echo "  - http://$SERVER_IP:3000 (frontend)"
 echo "  - http://$SERVER_IP:3001 (backend)"
 echo ""
