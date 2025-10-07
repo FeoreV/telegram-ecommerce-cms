@@ -12,9 +12,9 @@ import {
     removeBot,
     restartBot,
     updateBotSettings
-} from '../controllers/botController.js';
-import { authMiddleware } from '../middleware/auth.js';
-import { csrfProtection } from '../middleware/csrfProtection.js';
+} from '../controllers/botController';
+import { authMiddleware } from '../middleware/auth';
+import { csrfProtection } from '../middleware/csrfProtection';
 
 // Simple role-based middleware
 const requireRole = (roles: string[]) => {
