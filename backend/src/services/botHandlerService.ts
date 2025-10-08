@@ -386,17 +386,31 @@ export class BotHandlerService {
         message += '\n';
       }
 
+      const keyboardButtons = [];
+
+      // Add category buttons
+      if (categories.length > 0) {
+        keyboardButtons.push(...categories.map(category => ([
+          { text: `📂 ${category.name}`, callback_data: `category_${category.id}` }
+        ])));
+      }
+
+      // Add product buttons - это исправление!
+      if (productsResult.products.length > 0) {
+        keyboardButtons.push(...productsResult.products.slice(0, 5).map(product => ([
+          { text: `🛒 ${product.name}`, callback_data: `product_${product.id}` }
+        ])));
+      }
+
+      // Add utility buttons
+      keyboardButtons.push([
+        { text: '🔍 Поиск товаров', callback_data: 'search' },
+        { text: '⬅️ Назад', callback_data: 'start' }
+      ]);
+
       const keyboard = {
         reply_markup: {
-          inline_keyboard: [
-            ...categories.map(category => ([
-              { text: `📂 ${category.name}`, callback_data: `category_${category.id}` }
-            ])),
-            [
-              { text: '🔍 Поиск товаров', callback_data: 'search' },
-              { text: '⬅️ Назад', callback_data: 'start' }
-            ]
-          ]
+          inline_keyboard: keyboardButtons
         }
       };
 
