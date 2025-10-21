@@ -68,6 +68,7 @@ export class DatabaseService {
             level: 'warn',
           },
         ],
+        enableTracing: false,
       });
 
       // Set up logging - with proper typing for Prisma events
