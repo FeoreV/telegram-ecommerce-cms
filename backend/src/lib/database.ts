@@ -68,8 +68,7 @@ export class DatabaseService {
             level: 'warn',
           },
         ],
-        enableTracing: false,
-      });
+      } as any);
 
       // Set up logging - with proper typing for Prisma events
       (this.prisma as any).$on('error', (e: any) => {
