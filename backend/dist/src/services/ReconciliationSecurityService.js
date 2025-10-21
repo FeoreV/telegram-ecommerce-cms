@@ -426,7 +426,7 @@ class ReconciliationSecurityService {
                 eventType: 'reconciliation_job_completed',
                 severity: execution.summary.criticalDiscrepancies > 0 ? 'HIGH' : 'LOW',
                 category: 'application',
-                ipAddress: '82.147.84.78',
+                ipAddress: 'localhost',
                 success: true,
                 details: {
                     executionId,

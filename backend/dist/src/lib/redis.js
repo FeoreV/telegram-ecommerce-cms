@@ -106,13 +106,13 @@ class RedisService {
     }
     extractHost(url) {
         if (!url)
-            return '82.147.84.78';
+            return 'localhost';
         try {
             const parsed = new URL(url);
             return parsed.hostname;
         }
         catch {
-            return '82.147.84.78';
+            return 'localhost';
         }
     }
     extractPort(url) {

@@ -29,8 +29,12 @@ async function handleStores(bot, msg, callbackQuery) {
             await showStore(bot, chatId, session, storeId);
         }
         else if (callbackQuery?.data?.startsWith('store_products_')) {
-            const storeId = callbackQuery.data.replace('store_products_', '');
-            await showStoreProducts(bot, chatId, session, storeId);
+            const matches = callbackQuery.data.match(/^store_products_([^_]+)(?:_page_(\d+))?$/);
+            if (matches) {
+                const storeId = matches[1];
+                const page = matches[2] ? parseInt(matches[2], 10) : 1;
+                await showStoreProducts(bot, chatId, session, storeId, page);
+            }
         }
         else if (callbackQuery?.data === 'store_create') {
             await showCreateStoreForm(bot, chatId, session);
@@ -178,7 +182,7 @@ async function showStore(bot, chatId, session, storeId) {
         throw error;
     }
 }
-async function showStoreProducts(bot, chatId, session, storeId) {
+async function showStoreProducts(bot, chatId, session, storeId, page = 1) {
     const loadingMsg = await bot.sendMessage(chatId, '🔄 Загружаю каталог товаров...');
     try {
         if (!session.token) {
@@ -190,11 +194,12 @@ async function showStoreProducts(bot, chatId, session, storeId) {
             (async () => {
                 const cmsBase = process.env.CMS_BASE_URL;
                 if (!cmsBase) {
-                    return apiService_1.apiService.getProducts(storeId, session.token, 1, 10);
+                    return apiService_1.apiService.getProducts(storeId, session.token, page, 10);
                 }
                 try {
-                    const data = await cache_1.ttlCache.wrap(`cms:products:store:${storeId}:p1`, 10000, async () => {
-                        const resp = await cmsService_1.cmsService.listProducts({ limit: 10, offset: 0 });
+                    const offset = (page - 1) * 10;
+                    const data = await cache_1.ttlCache.wrap(`cms:products:store:${storeId}:p${page}`, 10000, async () => {
+                        const resp = await cmsService_1.cmsService.listProducts({ limit: 10, offset });
                         return resp;
                     });
                     const normalized = {
@@ -205,14 +210,14 @@ async function showStoreProducts(bot, chatId, session, storeId) {
                             price: p?.variants?.[0]?.prices?.[0]?.amount ? (p.variants[0].prices[0].amount / 100) : 0,
                             stock: p?.variants?.[0]?.inventory_quantity ?? 0,
                         })),
-                        pagination: { page: 1, totalPages: 1 },
+                        pagination: { page, totalPages: Math.ceil((data.count || 10) / 10) },
                         source: 'cms'
                     };
                     return normalized;
                 }
                 catch (e) {
                     logger_1.logger.warn('CMS product listing failed, falling back to backend', e);
-                    return apiService_1.apiService.getProducts(storeId, session.token, 1, 10);
+                    return apiService_1.apiService.getProducts(storeId, session.token, page, 10);
                 }
             })()
         ]);
