@@ -131,7 +131,8 @@ const app = express();
 const server = createServer(app);
 
 // Trust proxy (nginx reverse proxy)
-app.set('trust proxy', true);
+// Use number of proxies instead of 'true' for security
+app.set('trust proxy', 1); // Trust first proxy (nginx)
 
 // Initialize Socket.IO
 const io = initSocket(server, env.FRONTEND_URL || "http://82.147.84.78:3000");
