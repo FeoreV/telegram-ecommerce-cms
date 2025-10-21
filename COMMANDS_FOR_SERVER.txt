@@ -1,0 +1,78 @@
+=== КОМАНДЫ ДЛЯ СЕРВЕРА ===
+
+Скопируйте и выполните по порядку:
+
+# 1. Остановить все процессы
+pm2 stop all
+pm2 delete all
+
+# 2. Убить процесс на порту 3003 (бот)
+lsof -ti:3003 | xargs kill -9
+
+# 3. Перейти в директорию
+cd /root/telegram-ecommerce-cms
+
+# 4. Обновить код
+git pull origin main
+
+# 5. Обновить backend/.env - ДОБАВЬТЕ ЭТИ СТРОКИ В КОНЕЦ ФАЙЛА:
+nano backend/.env
+
+# Добавьте в конец файла (замените YOUR_BOT_TOKEN на реальный):
+TELEGRAM_BOT_TOKEN=YOUR_BOT_TOKEN
+ENABLE_SECURITY_HEADERS=true
+ENABLE_BRUTE_FORCE_PROTECTION=true
+USE_HTTPS=false
+ADMIN_IP_WHITELIST=
+SECURITY_LOGS_KEY_ID=security-logs-key-1
+SBOM_SIGNING_KEY_ID=sbom-signing-key-1
+COMMUNICATION_KEY_ID=communication-key-1
+WEBSOCKET_KEY_ID=websocket-key-1
+BACKUP_KEY_ID=backup-key-1
+STORAGE_KEY_ID=storage-key-1
+LOG_KEY_ID=log-key-1
+
+# Сохраните: Ctrl+O, Enter, Ctrl+X
+
+# 6. Пересобрать backend
+cd backend
+npm run build
+
+# 7. Пересобрать frontend
+cd ../frontend
+npm run build
+
+# 8. Запустить заново
+cd ..
+pm2 start ecosystem.config.js
+
+# 9. Проверить
+pm2 status
+pm2 logs --lines 30
+
+=== ЕСЛИ НЕТ ТОКЕНА БОТА ===
+
+1. Откройте Telegram
+2. Найдите @BotFather
+3. Отправьте: /mybots
+4. Выберите бота → API Token
+5. Скопируйте токен (формат: 1234567890:ABCdefGHIjklMNOpqrsTUVwxyz)
+
+=== БЫСТРАЯ ПРОВЕРКА ===
+
+# Проверить что backend запущен
+curl http://localhost:3001/health
+
+# Проверить что frontend собран
+ls -la frontend/dist/
+
+# Должны увидеть файлы: index.html, assets/
+
+=== ЕСЛИ ВСЁ ЕЩЁ НЕ РАБОТАЕТ ===
+
+Измените NODE_ENV на development:
+
+nano backend/.env
+# Найдите: NODE_ENV=production
+# Замените на: NODE_ENV=development
+# Сохраните и перезапустите: pm2 restart all
