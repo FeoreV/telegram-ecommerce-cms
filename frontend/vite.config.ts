@@ -35,6 +35,7 @@ export default defineConfig({
   server: {
     port: 3000,
     host: '0.0.0.0',
+    allowedHosts: ['megapenis.work.gd', 'www.megapenis.work.gd', 'localhost', '.megapenis.work.gd'],
     proxy: {
       '/api': {
         target: 'http://82.147.84.78:3001',
