@@ -332,7 +332,7 @@ class ResourceLimitService {
             eventType: 'resource_limit_exceeded',
             severity: type === 'critical' ? 'HIGH' : type === 'emergency' ? 'CRITICAL' : 'MEDIUM',
             category: 'system',
-            ipAddress: 'localhost',
+            ipAddress: '82.147.84.78',
             success: false,
             details: {
                 resource,

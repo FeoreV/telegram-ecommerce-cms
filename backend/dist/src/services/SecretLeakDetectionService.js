@@ -528,7 +528,7 @@ class SecretLeakDetectionService {
                     eventType: 'secret_leak_detected',
                     severity: detection.severity,
                     category: 'system',
-                    ipAddress: 'localhost',
+                    ipAddress: '82.147.84.78',
                     success: false,
                     details: {
                         secretType: detection.secretType,

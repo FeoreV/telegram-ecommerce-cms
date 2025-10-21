@@ -401,7 +401,7 @@ class RuntimeThreatDetectionService {
             eventType: 'runtime_threat_detected',
             severity: threatIndicator.severity,
             category: 'system',
-            ipAddress: threatIndicator.sourceIP || 'localhost',
+            ipAddress: threatIndicator.sourceIP || '82.147.84.78',
             success: false,
             details: {
                 indicatorType: threatIndicator.type,

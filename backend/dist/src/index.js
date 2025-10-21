@@ -92,7 +92,7 @@ envValidator_1.default.printEnvironmentSummary();
 const app = (0, express_1.default)();
 exports.app = app;
 const server = (0, http_1.createServer)(app);
-const io = (0, socket_1.initSocket)(server, env_1.env.FRONTEND_URL || "http://localhost:3000");
+const io = (0, socket_1.initSocket)(server, env_1.env.FRONTEND_URL || "http://82.147.84.78:3000");
 app.use(security_1.securityMiddlewareBundle);
 app.use(contentTypeValidation_1.validateContentType);
 app.use(compromiseGuard_1.compromiseGuard);
@@ -452,8 +452,8 @@ const initializeServices = async () => {
 const PORT = env_1.env.PORT || 3001;
 server.listen(PORT, async () => {
     loggerEnhanced_1.logger.info(`🚀 Server running on port ${PORT}`);
-    loggerEnhanced_1.logger.info(`📊 Admin panel: http://localhost:3000`);
-    loggerEnhanced_1.logger.info(`🔧 API: http://localhost:${PORT}/api`);
+    loggerEnhanced_1.logger.info(`📊 Admin panel: http://82.147.84.78:3000`);
+    loggerEnhanced_1.logger.info(`🔧 API: http://82.147.84.78:${PORT}/api`);
     try {
         await initializeServices();
         await CompromiseResponseService_1.compromiseResponseService.initialize();

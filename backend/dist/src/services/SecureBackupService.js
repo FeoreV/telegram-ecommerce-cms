@@ -608,7 +608,7 @@ class SecureBackupService {
             eventType: 'backup_corruption_detected',
             severity: 'HIGH',
             category: 'system',
-            ipAddress: 'localhost',
+            ipAddress: '82.147.84.78',
             success: false,
             details: {
                 backupId,
@@ -649,7 +649,7 @@ class SecureBackupService {
             eventType: `backup_${action}`,
             severity: outcome === 'failure' ? 'HIGH' : 'LOW',
             category: 'system',
-            ipAddress: 'localhost',
+            ipAddress: '82.147.84.78',
             success: outcome === 'success',
             details: {
                 backupId,
