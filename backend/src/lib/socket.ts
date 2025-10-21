@@ -7,9 +7,16 @@ export function initSocket(server: HttpServer, origin: string): SocketServer {
   if (!ioInstance) {
     ioInstance = new SocketServer(server, {
       cors: {
-        origin,
+        origin: origin || '*',
         methods: ['GET', 'POST'],
+        credentials: true,
+        allowedHeaders: ['Authorization', 'Content-Type'],
       },
+      transports: ['websocket', 'polling'],
+      pingTimeout: 60000,
+      pingInterval: 25000,
+      connectTimeout: 45000,
+      allowEIO3: true,
     });
   }
   return ioInstance;

@@ -89,9 +89,25 @@ if (!envValidation.isValid) {
     process.exit(1);
 }
 envValidator_1.default.printEnvironmentSummary();
+const initializeAdminJS = async () => {
+    loggerEnhanced_1.logger.info('⚠️ AdminJS completely disabled - no setup required');
+};
+(async () => {
+    try {
+        await initializeCriticalServices();
+        loggerEnhanced_1.logger.info('✅ Critical services initialized successfully');
+        await initializeAdminJS();
+        loggerEnhanced_1.logger.info('✅ Application initialization completed');
+    }
+    catch (error) {
+        loggerEnhanced_1.logger.error('❌ Failed to initialize application services:', error);
+        process.exit(1);
+    }
+})();
 const app = (0, express_1.default)();
 exports.app = app;
 const server = (0, http_1.createServer)(app);
+app.set('trust proxy', true);
 const io = (0, socket_1.initSocket)(server, env_1.env.FRONTEND_URL || "http://82.147.84.78:3000");
 app.use(security_1.securityMiddlewareBundle);
 app.use(contentTypeValidation_1.validateContentType);
@@ -281,21 +297,6 @@ app.get('/api/csrf-token', csrfProtection_1.getCsrfTokenHandler, (req, res) => {
         message: 'CSRF token generated successfully'
     });
 });
-const initializeAdminJS = async () => {
-    loggerEnhanced_1.logger.info('⚠️ AdminJS completely disabled - no setup required');
-};
-(async () => {
-    try {
-        await initializeCriticalServices();
-        loggerEnhanced_1.logger.info('✅ Critical services initialized successfully');
-        await initializeAdminJS();
-        loggerEnhanced_1.logger.info('✅ Application initialization completed');
-    }
-    catch (error) {
-        loggerEnhanced_1.logger.error('❌ Failed to initialize application services:', error);
-        process.exit(1);
-    }
-})();
 backupService_1.BackupService.initialize().catch(error => {
     loggerEnhanced_1.logger.error('Failed to initialize backup service:', { error: error instanceof Error ? error.message : String(error) });
 });

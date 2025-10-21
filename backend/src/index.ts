@@ -134,8 +134,15 @@ const server = createServer(app);
 // Use number of proxies instead of 'true' for security
 app.set('trust proxy', 1); // Trust first proxy (nginx)
 
-// Initialize Socket.IO
-const io = initSocket(server, env.FRONTEND_URL || "http://82.147.84.78:3000");
+// Initialize Socket.IO with proper CORS configuration
+const allowedOrigins = [
+  env.FRONTEND_URL,
+  'https://megapenis.work.gd',
+  'http://localhost:3000',
+  'http://localhost:5173',
+].filter(Boolean);
+
+const io = initSocket(server, allowedOrigins.join(','));
 
 // Enhanced security middleware bundle
 app.use(securityMiddlewareBundle);
