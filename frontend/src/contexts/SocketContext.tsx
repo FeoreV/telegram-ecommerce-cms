@@ -47,12 +47,14 @@ const getInitialFlag = (key: string, fallback: boolean) => {
 }
 
 const SOCKET_OPTIONS = {
-  transports: ['websocket', 'polling'] as unknown as string[],
+  transports: ['polling', 'websocket'] as unknown as string[], // Try polling first
   reconnection: true,
-  reconnectionAttempts: Infinity,
-  reconnectionDelay: 1000,
-  reconnectionDelayMax: 5000,
-  forceNew: true,
+  reconnectionAttempts: 5, // Limit attempts to avoid infinite retries
+  reconnectionDelay: 2000,
+  reconnectionDelayMax: 10000,
+  timeout: 10000,
+  forceNew: false,
+  upgrade: true, // Allow upgrade from polling to websocket
 }
 
 export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
@@ -98,14 +100,23 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
   useEffect(() => {
     const token = tokenManager.getAccessToken()
+    
+    // Don't try to connect if no user or token
     if (!user || !token) {
       teardownSocket()
       return undefined
     }
 
+    // Don't connect in production if there are issues (graceful degradation)
+    if (import.meta.env.PROD && !notificationsEnabled) {
+      console.log('Socket.IO disabled - notifications turned off');
+      return undefined;
+    }
+
     const instance = io(socketUrl, {
       ...SOCKET_OPTIONS,
       auth: { token },
+      autoConnect: true,
     })
 
     const handleConnect = () => {
@@ -122,9 +133,14 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     }
 
     const handleError = (error: Error) => {
+      console.warn('Socket.IO error:', error.message)
       setConnectionError(error.message)
       setStatus('error')
-      toast.error('Потеряно соединение с сервером. Автоподключение…')
+      
+      // Don't show toast in production to avoid annoying users
+      if (!import.meta.env.PROD) {
+        toast.error('Потеряно соединение с сервером. Автоподключение…')
+      }
     }
 
     const handleReconnectAttempt = (attempt: number) => {
@@ -133,8 +149,13 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     }
 
     const handleReconnectFailed = () => {
+      console.warn('Socket.IO reconnection failed')
       setStatus('error')
-      toast.error('Не удалось восстановить соединение. Попробуйте позже.')
+      
+      // Don't show toast in production
+      if (!import.meta.env.PROD) {
+        toast.error('Не удалось восстановить соединение. Попробуйте позже.')
+      }
     }
 
     instance.on('connect', handleConnect)
