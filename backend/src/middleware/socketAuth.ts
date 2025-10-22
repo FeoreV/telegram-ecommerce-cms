@@ -23,8 +23,11 @@ export const socketAuthMiddleware = async (
     const token = socket.handshake.auth.token
 
     if (!token) {
-      logger.warn(`Socket authentication failed: No token provided for ${socket.id}`)
-      return next(new Error('Authentication failed: No token provided'))
+      logger.warn(`Socket connection without token: ${socket.id}`)
+      // Allow connection but mark as unauthenticated
+      socket.userId = undefined
+      socket.user = undefined
+      return next()
     }
 
     // Verify JWT token
@@ -32,11 +35,11 @@ export const socketAuthMiddleware = async (
     try {
       decoded = verifyToken(token)
     } catch (error: any) {
-      logger.warn(`Socket authentication failed: ${error.message} for ${socket.id}`)
-      if (error.message === 'Token expired') {
-        return next(new Error('Authentication failed: Token expired'))
-      }
-      return next(new Error('Authentication failed: Invalid token'))
+      logger.warn(`Socket token invalid: ${error.message} for ${socket.id}`)
+      // Allow connection but mark as unauthenticated
+      socket.userId = undefined
+      socket.user = undefined
+      return next()
     }
 
     // Verify user exists and is active
@@ -54,8 +57,11 @@ export const socketAuthMiddleware = async (
     })
 
     if (!user || !user.isActive) {
-      logger.warn(`Socket authentication failed: User not found or inactive for ${socket.id}`)
-      return next(new Error('Authentication failed: User not found or inactive'))
+      logger.warn(`Socket user not found or inactive for ${socket.id}`)
+      // Allow connection but mark as unauthenticated
+      socket.userId = undefined
+      socket.user = undefined
+      return next()
     }
 
     // Attach user info to socket
