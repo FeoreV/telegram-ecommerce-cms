@@ -20,8 +20,8 @@ const AUTH_BASE = (() => {
 // Create axios instance
 export const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE,
-  timeout: 30_000,
-  withCredentials: true, // Enable credentials for CORS
+  timeout: 60_000,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',

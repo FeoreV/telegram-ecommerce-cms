@@ -18,6 +18,7 @@ import {
     Typography,
 } from '@mui/material'
 import React, { Component, ErrorInfo, ReactNode } from 'react'
+import { sanitizeForLog } from '../../utils/sanitizer'
 
 interface Props {
   children: ReactNode
@@ -100,7 +101,6 @@ class ErrorBoundary extends Component<Props, State> {
 
   logErrorToService = (error: Error, errorInfo: ErrorInfo) => {
     // SECURITY FIX: CWE-117 - Sanitize logs
-    const { sanitizeForLog } = require('../../utils/sanitizer');
     // In a real application, you would send this to your error tracking service
     console.group('🚨 Error Boundary Caught An Error')
     console.error('Error:', sanitizeForLog(error.message))
