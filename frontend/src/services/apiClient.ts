@@ -34,6 +34,7 @@ let csrfFetchingPromise: Promise<string | null> | null = null
 
 async function fetchCsrfToken(): Promise<string | null> {
   try {
+    // API_BASE already includes /api, so just add csrf-token
     const response = await axios.get(`${API_BASE}/csrf-token`, { withCredentials: true })
     // Token is set in cookie, but also check response body
     const token = (response.data as any)?.csrfToken || (response.data as any)?.message

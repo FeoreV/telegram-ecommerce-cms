@@ -45,6 +45,7 @@ import configRoutes from './routes/config';
 import customRoleRoutes from './routes/customRoleRoutes';
 import employeeRoutes from './routes/employeeRoutes';
 import healthRoutes from './routes/health';
+import simpleHealthRoutes from './routes/simple-health';
 import integrationRoutes from './routes/integration';
 import invitationRoutes from './routes/invitationRoutes';
 import inviteLinkRoutes from './routes/inviteLinkRoutes';
@@ -361,6 +362,34 @@ app.get('/api/metrics', authMiddleware, (req, res) => {
   res.json(metrics);
 });
 
+// Root endpoint - redirect to API info or frontend
+app.get('/', (req, res) => {
+  // Check if request accepts HTML (browser) vs JSON (API client)
+  const acceptsHtml = req.accepts('html');
+  
+  if (acceptsHtml && env.FRONTEND_URL) {
+    // Redirect browsers to frontend
+    res.redirect(env.FRONTEND_URL);
+  } else {
+    // Return API info for API clients
+    res.json({
+      message: 'Telegram E-commerce Bot API',
+      version: '1.0.0',
+      endpoints: {
+        auth: '/api/auth/telegram (POST)',
+        stores: '/api/stores (GET)',
+        products: '/api/products (GET)',
+        orders: '/api/orders (GET)',
+        admin: '/api/admin/dashboard (GET)',
+        csrf: '/api/csrf-token (GET)'
+      },
+      health: '/health',
+      documentation: '/api',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // API info endpoint
 app.get('/api', (req, res) => {
   res.json({
@@ -394,11 +423,12 @@ BackupService.initialize().catch(error => {
 });
 
 // Health and monitoring routes (before other middlewares for public endpoints)
-app.use('/health', healthRoutes);
-app.use('/api/health', healthRoutes); // Alternative path for API consistency
+// Use simple health for public endpoint to avoid 500 errors
+app.use('/health', simpleHealthRoutes);
+app.use('/api/health', simpleHealthRoutes); // Alternative path for API consistency
 
-// Health and diagnostics (public)
-app.use('/api/health', healthRoutes);
+// Detailed health diagnostics (authenticated, may have issues with old Node.js)
+app.use('/api/health/detailed', healthRoutes);
 
 // Security routes (enhanced auth for sensitive operations)
 app.use('/api/security', securityRoutes);

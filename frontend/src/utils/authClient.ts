@@ -32,11 +32,16 @@ interface AuthResponse {
 }
 
 class AuthClient {
-  private baseURL = process.env.REACT_APP_API_URL || 'https://megapenis.work.gd';
+  private baseURL: string;
   private refreshPromise: Promise<AuthTokens> | null = null;
   private refreshTimer: NodeJS.Timeout | null = null;
 
   constructor() {
+    // Use Vite env variable and ensure /api prefix
+    const rawBase = (import.meta.env.VITE_API_URL as string | undefined) || 'https://megapenis.work.gd';
+    const base = rawBase.replace(/\/$/, '');
+    this.baseURL = base.endsWith('/api') ? base : `${base}/api`;
+    
     this.setupAutoRefresh();
   }
 
