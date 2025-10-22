@@ -77,8 +77,31 @@ export const socketAuthMiddleware = async (
 
     logger.info(`Socket authenticated: ${socket.id} for user ${user.id} (${user.role})`)
     next()
-  } catch (error) {
-    logger.error('Socket authentication error:', error)
-    next(new Error('Authentication failed: Server error'))
+  } catch (error: any) {
+    // Enhanced diagnostics without leaking sensitive data
+    try {
+      logger.error('Socket authentication error - DIAGNOSTIC', {
+        name: error?.name,
+        message: error?.message,
+        stack: error?.stack,
+        socketId: socket.id,
+        handshakeAuthKeys: Object.keys(socket.handshake?.auth || {}),
+        handshakeQueryKeys: Object.keys(socket.handshake?.query || {}),
+        // Log selected headers only
+        requestHeaders: socket.handshake?.headers ? {
+          origin: socket.handshake.headers.origin,
+          host: socket.handshake.headers.host,
+          'user-agent': socket.handshake.headers['user-agent'],
+          'x-forwarded-for': (socket.handshake.headers as any)['x-forwarded-for'],
+        } : undefined,
+      });
+    } catch {
+      // Swallow logging failures
+    }
+
+    // Provide a structured error to client without exposing internals
+    const err = new Error('Authentication failed');
+    (err as any).data = { code: 'AUTH_FAILED' };
+    next(err as any);
   }
 }

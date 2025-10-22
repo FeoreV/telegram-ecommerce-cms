@@ -119,6 +119,24 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       autoConnect: true,
     })
 
+    // Diagnostic: log connection meta (no secrets)
+    try {
+      console.info('Socket.IO connecting', {
+        url: socketUrl,
+        transports: (SOCKET_OPTIONS as any).transports,
+        prod: import.meta.env.PROD,
+        hasToken: Boolean(token),
+      });
+      const ioMgr = (instance as any).io;
+      console.info('Socket.IO manager', {
+        uri: ioMgr?.uri,
+        path: ioMgr?.opts?.path,
+        transportsOpt: ioMgr?.opts?.transports,
+      });
+    } catch {
+      // swallow logging errors
+    }
+
     const handleConnect = () => {
       setConnected(true)
       setConnectionError(null)
@@ -132,10 +150,24 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       setStatus(reason === 'io client disconnect' ? 'disconnected' : 'connecting')
     }
 
-    const handleError = (error: Error) => {
-      console.warn('Socket.IO error:', error.message)
-      setConnectionError(error.message)
-      setStatus('error')
+    const handleError = (err: unknown) => {
+      // Capture as much context as possible without leaking secrets
+      const e = err as any;
+      const details = {
+        name: e?.name,
+        message: e?.message,
+        code: e?.code,
+        description: e?.description,
+        type: e?.type,
+        data: e?.data,
+        transport: (instance as any)?.io?.engine?.transport?.name,
+        uri: (instance as any)?.io?.uri,
+        path: (instance as any)?.io?.opts?.path,
+      };
+      console.warn('Socket.IO error diagnostic', details);
+      const msg = typeof e?.message === 'string' ? e.message : 'Unknown socket error';
+      setConnectionError(msg);
+      setStatus('error');
       
       // Don't show toast in production to avoid annoying users
       if (!import.meta.env.PROD) {

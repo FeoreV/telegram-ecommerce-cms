@@ -39,8 +39,24 @@ class AuthClient {
   constructor() {
     // Use Vite env variable and ensure /api prefix
     const rawBase = (import.meta.env.VITE_API_URL as string | undefined) || 'localhost';
-    const base = rawBase.replace(/\/$/, '');
-    this.baseURL = base.endsWith('/api') ? base : `${base}/api`;
+    const normalized = rawBase.replace(/\/$/, '');
+    const apiBase = normalized.endsWith('/api') ? normalized : `${normalized}/api`;
+    const isHttpsPage = typeof window !== 'undefined' && window.location?.protocol === 'https:';
+    if (isHttpsPage && apiBase.startsWith('http://')) {
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      const safeBase = `${origin}/api`;
+      console.warn('[authClient] Mixed content prevented: overriding baseURL', { original: apiBase, safeBase });
+      this.baseURL = safeBase;
+    } else {
+      this.baseURL = apiBase;
+    }
+    console.info('[authClient] Base URL resolved', {
+      rawBase,
+      apiBase,
+      baseURL: this.baseURL,
+      location: typeof window !== 'undefined' ? window.location.origin : 'n/a',
+      protocol: typeof window !== 'undefined' ? window.location.protocol : 'n/a'
+    });
     
     this.setupAutoRefresh();
   }

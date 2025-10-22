@@ -17,9 +17,40 @@ const AUTH_BASE = (() => {
   return API_BASE
 })()
 
+// Mixed content guard: if the page is HTTPS and env points to HTTP, fallback to same-origin /api
+const IS_HTTPS_PAGE = typeof window !== 'undefined' && window.location?.protocol === 'https:'
+const SAFE_API_BASE = (() => {
+  if (IS_HTTPS_PAGE && API_BASE.startsWith('http://')) {
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    const safeBase = `${origin}/api`
+    console.warn('[apiClient] Mixed content prevented: overriding API_BASE', { original: API_BASE, safeBase })
+    return safeBase
+  }
+  return API_BASE
+})()
+const SAFE_AUTH_BASE = (() => {
+  if (IS_HTTPS_PAGE && AUTH_BASE.startsWith('http://')) {
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    const safeBase = `${origin}/api`
+    console.warn('[apiClient] Mixed content prevented: overriding AUTH_BASE', { original: AUTH_BASE, safeBase })
+    return safeBase
+  }
+  return AUTH_BASE
+})()
+
+console.info('[apiClient] Base URLs resolved', {
+  RAW_API_BASE,
+  API_BASE,
+  AUTH_BASE,
+  SAFE_API_BASE,
+  SAFE_AUTH_BASE,
+  location: typeof window !== 'undefined' ? window.location.origin : 'n/a',
+  protocol: typeof window !== 'undefined' ? window.location.protocol : 'n/a'
+})
+
 // Create axios instance
 export const apiClient: AxiosInstance = axios.create({
-  baseURL: API_BASE,
+  baseURL: SAFE_API_BASE,
   timeout: 60_000,
   withCredentials: true,
   headers: {
@@ -35,7 +66,7 @@ let csrfFetchingPromise: Promise<string | null> | null = null
 async function fetchCsrfToken(): Promise<string | null> {
   try {
     // API_BASE already includes /api, so just add csrf-token
-    const response = await axios.get(`${API_BASE}/csrf-token`, { withCredentials: true })
+    const response = await axios.get(`${SAFE_API_BASE}/csrf-token`, { withCredentials: true })
     // Token is set in cookie, but also check response body
     const token = (response.data as any)?.csrfToken || (response.data as any)?.message
     csrfToken = typeof token === 'string' ? token : null
@@ -149,7 +180,7 @@ apiClient.interceptors.response.use(
             throw new Error('No refresh token available')
           }
 
-          const response = await axios.post(`${AUTH_BASE}/auth/refresh-token`, { refreshToken }, { withCredentials: true })
+          const response = await axios.post(`${SAFE_AUTH_BASE}/auth/refresh-token`, { refreshToken }, { withCredentials: true })
           const { accessToken, refreshToken: newRefreshToken } = response.data as {
             accessToken: string
             refreshToken?: string
