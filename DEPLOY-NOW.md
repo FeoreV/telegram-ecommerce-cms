@@ -75,24 +75,24 @@ curl http://localhost:3001/api/health
 
 ### 2. Проверьте фронтенд:
 ```bash
-curl -I https://megapenis.work.gd
+curl -I localhost
 ```
 
 Должен вернуть `200 OK` и `Content-Type: text/html`
 
 ### 3. Проверьте API через nginx:
 ```bash
-curl https://megapenis.work.gd/api/health
+curl localhost/api/health
 ```
 
 ### 4. Проверьте CSRF token:
 ```bash
-curl https://megapenis.work.gd/api/csrf-token
+curl localhost/api/csrf-token
 ```
 
 ### 5. Откройте в браузере:
 ```
-https://megapenis.work.gd
+localhost
 ```
 
 Не должно быть ошибок в консоли браузера.
@@ -146,7 +146,7 @@ npm run build
 
 После выполнения всех команд:
 
-1. ✅ Сайт https://megapenis.work.gd открывается без ошибок
+1. ✅ Сайт localhost открывается без ошибок
 2. ✅ В консоли браузера нет ошибок `require is not defined`
 3. ✅ API `/api/health` возвращает 200 OK
 4. ✅ API `/api/csrf-token` возвращает токен

@@ -38,7 +38,7 @@ class AuthClient {
 
   constructor() {
     // Use Vite env variable and ensure /api prefix
-    const rawBase = (import.meta.env.VITE_API_URL as string | undefined) || 'https://megapenis.work.gd';
+    const rawBase = (import.meta.env.VITE_API_URL as string | undefined) || 'localhost';
     const base = rawBase.replace(/\/$/, '');
     this.baseURL = base.endsWith('/api') ? base : `${base}/api`;
     

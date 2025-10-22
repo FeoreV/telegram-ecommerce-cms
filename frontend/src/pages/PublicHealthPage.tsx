@@ -103,7 +103,7 @@ const checkLabel: Record<string, string> = {
 const getReadableCheckName = (technicalName: string) => checkLabel[technicalName] ?? technicalName
 
 const getHealthEndpoint = () => {
-  const rawApiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? 'https://megapenis.work.gd/api'
+  const rawApiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? 'localhost/api'
   const normalizedBase = rawApiBase.replace(/\/$/, '')
   const rootApi = normalizedBase.endsWith('/api') ? normalizedBase.slice(0, -4) : normalizedBase
   return `${rootApi}/health/diagnostics/public`

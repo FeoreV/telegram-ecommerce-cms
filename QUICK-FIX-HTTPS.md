@@ -80,5 +80,5 @@ These are warnings, not errors - the bot will work:
 
 1. **ADMIN_IP_WHITELIST**: Set this to restrict admin access by IP
 2. **TELEGRAM_BOT_TOKEN format**: Token is valid, warning can be ignored
-3. **FRONTEND_URL https**: Already using https://megapenis.work.gd ✓
+3. **FRONTEND_URL https**: Already using localhost ✓
 4. **REDIS_URL**: Already configured ✓

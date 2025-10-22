@@ -9,7 +9,7 @@
 - ✅ Добавлена поддержка credentials
 
 ### 2. Переменные окружения
-- ✅ FRONTEND_URL уже настроен на HTTPS: `https://megapenis.work.gd`
+- ✅ FRONTEND_URL уже настроен на HTTPS: `localhost`
 - ✅ CORS_WHITELIST включает HTTPS домен
 
 ### 3. Nginx конфигурация
@@ -49,7 +49,7 @@ sudo tail -f /var/log/nginx/megapenis-error.log
 
 ### 4. Тест WebSocket соединения
 Откройте браузер и проверьте консоль разработчика (F12):
-- Перейдите на https://megapenis.work.gd
+- Перейдите на localhost
 - Откройте вкладку Network
 - Фильтр: WS (WebSocket)
 - Должно быть соединение к `wss://megapenis.work.gd/socket.io/`
@@ -81,14 +81,14 @@ curl http://localhost:3001/health
 
 ### Frontend через nginx
 ```bash
-curl https://megapenis.work.gd/health
+curl localhost/health
 ```
 
 ### WebSocket через nginx
 ```bash
 curl -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" \
   -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: test" \
-  https://megapenis.work.gd/socket.io/
+  localhost/socket.io/
 ```
 
 ## Дополнительная информация:

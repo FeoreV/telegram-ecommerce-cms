@@ -67,7 +67,7 @@ chmod +x deploy-production.sh
 
 ### 1. Health endpoint:
 ```bash
-curl https://megapenis.work.gd/api/health
+curl localhost/api/health
 ```
 Ожидается:
 ```json
@@ -89,7 +89,7 @@ curl https://megapenis.work.gd/api/health
 
 ### 2. CSRF token:
 ```bash
-curl https://megapenis.work.gd/api/csrf-token
+curl localhost/api/csrf-token
 ```
 Ожидается:
 ```json
@@ -101,13 +101,13 @@ curl https://megapenis.work.gd/api/csrf-token
 
 ### 3. Фронтенд:
 ```bash
-curl -I https://megapenis.work.gd
+curl -I localhost
 ```
 Ожидается: `200 OK` и `Content-Type: text/html`
 
 ### 4. Откройте в браузере:
 ```
-https://megapenis.work.gd
+localhost
 ```
 
 **Проверьте консоль браузера (F12):**
@@ -131,11 +131,11 @@ import { sanitizeForLog } from '../../utils/sanitizer';
 ### frontend/src/utils/authClient.ts
 ```typescript
 // Было:
-private baseURL = process.env.REACT_APP_API_URL || 'https://megapenis.work.gd';
+private baseURL = process.env.REACT_APP_API_URL || 'localhost';
 
 // Стало:
 constructor() {
-  const rawBase = (import.meta.env.VITE_API_URL as string | undefined) || 'https://megapenis.work.gd';
+  const rawBase = (import.meta.env.VITE_API_URL as string | undefined) || 'localhost';
   const base = rawBase.replace(/\/$/, '');
   this.baseURL = base.endsWith('/api') ? base : `${base}/api`;
   this.setupAutoRefresh();
@@ -242,14 +242,14 @@ sudo netstat -tlnp | grep 3001
 
 # Проверьте, что nginx проксирует правильно
 curl -I http://localhost:3001/api/health
-curl -I https://megapenis.work.gd/api/health
+curl -I localhost/api/health
 ```
 
 ## Ожидаемый результат:
 
 После выполнения всех команд:
 
-✅ Сайт https://megapenis.work.gd открывается без ошибок  
+✅ Сайт localhost открывается без ошибок  
 ✅ Консоль браузера чистая (нет ошибок)  
 ✅ API `/api/health` возвращает 200 OK  
 ✅ API `/api/csrf-token` возвращает токен  
@@ -265,7 +265,7 @@ curl -I https://megapenis.work.gd/api/health
 Создайте файл `frontend/.env.production`:
 
 ```env
-VITE_API_URL=https://megapenis.work.gd/api
+VITE_API_URL=localhost/api
 ```
 
 Затем пересоберите:
@@ -316,7 +316,7 @@ pm2 status
 pm2 logs telegram-backend | grep -i socket
 
 # Проверьте endpoint
-curl -I https://megapenis.work.gd/socket.io/
+curl -I localhost/socket.io/
 ```
 
 Если WebSocket не нужен прямо сейчас, можно временно отключить его в коде или просто игнорировать ошибку.

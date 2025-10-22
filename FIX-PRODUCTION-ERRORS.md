@@ -72,8 +72,8 @@ pm2 logs telegram-backend
 ```env
 NODE_ENV=production
 PORT=3001
-FRONTEND_URL=https://megapenis.work.gd
-CORS_ORIGIN=https://megapenis.work.gd
+FRONTEND_URL=localhost
+CORS_ORIGIN=localhost
 ```
 
 ### 6. Полная последовательность команд для сервера:
@@ -113,8 +113,8 @@ pm2 logs telegram-backend --lines 50
 
 1. **Бэкенд работает**: `curl http://localhost:3001/health`
 2. **Фронтенд собран**: `ls -la /root/telegram-ecommerce-cms/frontend/dist`
-3. **Nginx отдает файлы**: `curl -I https://megapenis.work.gd`
-4. **API доступен**: `curl https://megapenis.work.gd/api/csrf-token`
+3. **Nginx отдает файлы**: `curl -I localhost`
+4. **API доступен**: `curl localhost/api/csrf-token`
 
 ## Если ошибки остались:
 
@@ -184,7 +184,7 @@ echo "📊 Checking status..."
 pm2 status
 
 echo ""
-echo "🌐 Your site should now be available at: https://megapenis.work.gd"
+echo "🌐 Your site should now be available at: localhost"
 ```
 
 Сделайте его исполняемым:

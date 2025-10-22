@@ -1,7 +1,7 @@
 # Отладка health endpoint
 
 ## Проблема
-`https://megapenis.work.gd/api/health` возвращает 500 ошибку.
+`localhost/api/health` возвращает 500 ошибку.
 
 ## Возможные причины:
 

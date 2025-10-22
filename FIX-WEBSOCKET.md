@@ -89,7 +89,7 @@ ioInstance = new SocketServer(server, {
 // Initialize Socket.IO with proper CORS configuration
 const allowedOrigins = [
   env.FRONTEND_URL,
-  'https://megapenis.work.gd',
+  'localhost',
   'http://localhost:3000',
   'http://localhost:5173'
 ];
@@ -101,7 +101,7 @@ const io = initSocket(server, allowedOrigins.join(','));
 
 #### Тест 1: Проверьте, что Socket.IO endpoint доступен
 ```bash
-curl -I https://megapenis.work.gd/socket.io/
+curl -I localhost/socket.io/
 ```
 
 Должен вернуть `400 Bad Request` (это нормально для Socket.IO без правильных параметров).
@@ -123,7 +123,7 @@ wscat -c "wss://megapenis.work.gd/socket.io/?EIO=4&transport=websocket"
 console.log(typeof io);
 
 // Попробуйте подключиться вручную
-const socket = io('https://megapenis.work.gd', {
+const socket = io('localhost', {
   transports: ['websocket', 'polling'],
   auth: { token: localStorage.getItem('accessToken') }
 });
@@ -192,7 +192,7 @@ GET /socket.io/?EIO=4&transport=websocket HTTP/1.1" 101
 
 ### 3. Проверьте в браузере:
 
-Откройте https://megapenis.work.gd и в консоли (F12) должно быть:
+Откройте localhost и в консоли (F12) должно быть:
 
 ```
 ✅ Socket connected
@@ -222,7 +222,7 @@ pm2 logs telegram-backend | grep -i "socket"
 **Решение:** Проверьте `backend/src/lib/socket.ts`:
 ```typescript
 cors: {
-  origin: 'https://megapenis.work.gd',
+  origin: 'localhost',
   credentials: true
 }
 ```
@@ -291,7 +291,7 @@ sudo nginx -t
 sudo systemctl reload nginx
 
 # 4. Откройте сайт
-# https://megapenis.work.gd
+# localhost
 
 # 5. Проверьте консоль браузера (F12)
 # Не должно быть ошибок WebSocket

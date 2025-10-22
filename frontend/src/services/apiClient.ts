@@ -2,7 +2,7 @@ import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse, In
 import { toast } from 'react-toastify'
 
 const normalizeApiBase = (rawBase?: string | null) => {
-  const base = (rawBase ?? 'https://megapenis.work.gd').replace(/\/$/, '')
+  const base = (rawBase ?? 'localhost').replace(/\/$/, '')
   return base.endsWith('/api') ? base : `${base}/api`
 }
 

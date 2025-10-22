@@ -34,4 +34,4 @@ echo "🏥 Проверка здоровья backend:"
 curl -s http://localhost:3001/api/health | jq . 2>/dev/null || curl -s http://localhost:3001/api/health
 
 echo ""
-echo "✅ Готово! Проверь сайт: https://megapenis.work.gd"
+echo "✅ Готово! Проверь сайт: localhost"

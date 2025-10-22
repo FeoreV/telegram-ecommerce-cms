@@ -138,7 +138,7 @@ app.set('trust proxy', 1); // Trust first proxy (nginx)
 // Initialize Socket.IO with proper CORS configuration
 const allowedOrigins = [
   env.FRONTEND_URL,
-  'https://megapenis.work.gd',
+  'localhost',
   'http://localhost:3000',
   'http://localhost:5173',
 ].filter(Boolean);
@@ -490,11 +490,14 @@ import { SocketRoomService } from './services/socketRoomService.js';
 io.use(socketAuthMiddleware);
 
 io.on('connection', async (socket: AuthenticatedSocket) => {
-  const { sanitizeForLog } = require('./utils/sanitizer');
-  logger.info(`New authenticated socket connection: ${sanitizeForLog(socket.id)} for user ${sanitizeForLog(socket.user?.id)} (${sanitizeForLog(socket.user?.role)})`);
+  try {
+    const { sanitizeForLog } = require('./utils/sanitizer');
+    logger.info(`New socket connection: ${sanitizeForLog(socket.id)} for user ${sanitizeForLog(socket.user?.id || 'anonymous')}`);
 
-  // Join user to appropriate rooms based on role and permissions
-  await SocketRoomService.joinUserToRooms(socket);
+    // Join user to appropriate rooms based on role and permissions
+    if (socket.user) {
+      await SocketRoomService.joinUserToRooms(socket);
+    }
 
   // Handle custom room joining requests
   socket.on('join_room', async (roomName: string) => {
@@ -552,6 +555,10 @@ io.on('connection', async (socket: AuthenticatedSocket) => {
   socket.on('error', (error: unknown) => {
     logger.error(`Socket error for ${sanitizeForLog(socket.id)}:`, toLogMetadata(error));
   });
+  } catch (error) {
+    logger.error('Socket connection handler error:', error);
+    socket.disconnect(true);
+  }
 });
 
 // Helper function to validate room access

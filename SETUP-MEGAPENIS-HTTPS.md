@@ -76,9 +76,9 @@ docker-compose up -d --build
 ## Шаг 6: Проверка
 
 Откройте в браузере:
-- https://megapenis.work.gd - должен работать frontend
-- https://megapenis.work.gd/api/health - должен вернуть статус API
-- https://megapenis.work.gd/admin - админ панель
+- localhost - должен работать frontend
+- localhost/api/health - должен вернуть статус API
+- localhost/admin - админ панель
 
 ## Альтернатива: Если у вас нет доступа к серверу для установки Certbot
 
@@ -109,4 +109,4 @@ docker-compose up -d --build
 
 ### CORS ошибки
 - Проверьте CORS_WHITELIST в backend/.env
-- Должен содержать: `https://megapenis.work.gd`
+- Должен содержать: `localhost`

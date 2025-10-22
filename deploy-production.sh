@@ -42,7 +42,7 @@ echo "📊 Checking status..."
 pm2 status
 
 echo ""
-echo "🌐 Your site should now be available at: https://megapenis.work.gd"
+echo "🌐 Your site should now be available at: localhost"
 echo ""
 echo "📝 To check logs:"
 echo "   Backend: pm2 logs telegram-backend"

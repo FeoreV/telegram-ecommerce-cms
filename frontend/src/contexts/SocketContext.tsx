@@ -74,7 +74,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
   const socketUrl = useMemo(() => {
     const raw = (import.meta as any).env?.VITE_SOCKET_URL
-    const fallback = (import.meta as any).env?.VITE_API_URL ?? 'https://megapenis.work.gd'
+    const fallback = (import.meta as any).env?.VITE_API_URL ?? 'localhost'
     const normalized = String(raw ?? fallback).replace(/\/$/, '')
     return normalized.endsWith('/api') ? normalized.slice(0, -4) : normalized
   }, [])

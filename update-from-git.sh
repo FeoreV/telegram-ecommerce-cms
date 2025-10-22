@@ -60,7 +60,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "✅ ГОТОВО!"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "Проверь сайт: https://megapenis.work.gd"
+echo "Проверь сайт: localhost"
 echo ""
 echo "Если нужно восстановить старые настройки:"
 echo "  ls -la backend/.env.server-backup-*"
