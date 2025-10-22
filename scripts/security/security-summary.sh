@@ -75,7 +75,7 @@ fi
 if [ -n "$REDIS_URL" ]; then
     check_pass "REDIS_URL: Configured"
 else
-    check_warn "REDIS_URL: Using default (82.147.84.78:6379)"
+    check_warn "REDIS_URL: Using default (localhost:6379)"
 fi
 
 # ====================================

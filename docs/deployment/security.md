@@ -37,7 +37,7 @@ Comprehensive security system for the Telegram E-commerce Backend API.
 **CORS Configuration:**
 - ✅ **Origin Whitelist**: Configurable allowed origins
 - 🍪 **Credentials Support**: Secure cookie handling
-- 🔧 **Development Mode**: Flexible 82.147.84.78 access
+- 🔧 **Development Mode**: Flexible localhost access
 
 **Security Headers (Helmet):**
 - 🛡️ **CSP**: Content Security Policy
@@ -97,7 +97,7 @@ ENABLE_SECURITY_MONITORING=true
 ADMIN_IP_WHITELIST=192.168.1.100,10.0.0.50
 
 # Production: Redis for scalability
-REDIS_URL=redis://82.147.84.78:6379
+REDIS_URL=redis://localhost:6379
 ```
 
 ## 📡 API Endpoints
@@ -271,7 +271,7 @@ NODE_ENV=development
 # → Higher rate limits
 # → More permissive CORS
 # → Detailed error messages
-# → Extended 82.147.84.78 access
+# → Extended localhost access
 ```
 
 ## 🛡️ Security Best Practices

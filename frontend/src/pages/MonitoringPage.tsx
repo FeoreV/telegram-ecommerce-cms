@@ -54,7 +54,7 @@ interface MetricsSummary {
 
 const MonitoringPage: React.FC = () => {
   const [selectedDashboard, setSelectedDashboard] = useState<string>('backend-overview')
-  const [grafanaUrl, setGrafanaUrl] = useState<string>('http://82.147.84.78:3030')
+  const [grafanaUrl, setGrafanaUrl] = useState<string>('http://localhost:3030')
   const [settingsOpen, setSettingsOpen] = useState<boolean>(false)
   const [customUrl, setCustomUrl] = useState<string>('')
   const [metrics, setMetrics] = useState<MetricsSummary | null>(null)
@@ -147,7 +147,7 @@ const MonitoringPage: React.FC = () => {
     const dashboard = dashboards.find((d) => d.id === selectedDashboard)
 
     if (selectedDashboard === 'prometheus') {
-      return 'http://82.147.84.78:9090/graph'
+      return 'http://localhost:9090/graph'
     }
 
     if (dashboard) {
@@ -275,9 +275,9 @@ const MonitoringPage: React.FC = () => {
       <Alert severity="info" sx={{ mb: 3 }}>
         <strong>✅ Мониторинг настроен!</strong> Prometheus и Grafana автоматически запускаются вместе с Docker.
         <br />
-        📊 Grafana: <a href="http://82.147.84.78:3030" target="_blank" rel="noopener noreferrer">http://82.147.84.78:3030</a> (admin/admin)
+        📊 Grafana: <a href="http://localhost:3030" target="_blank" rel="noopener noreferrer">http://localhost:3030</a> (admin/admin)
         {' • '}
-        📈 Prometheus: <a href="http://82.147.84.78:9090" target="_blank" rel="noopener noreferrer">http://82.147.84.78:9090</a>
+        📈 Prometheus: <a href="http://localhost:9090" target="_blank" rel="noopener noreferrer">http://localhost:9090</a>
       </Alert>
 
       {/* Dashboard Selector */}
@@ -332,7 +332,7 @@ const MonitoringPage: React.FC = () => {
               fullWidth
               variant="outlined"
               startIcon={<OpenInNewIcon />}
-              onClick={() => window.open('http://82.147.84.78:3030', '_blank')}
+              onClick={() => window.open('http://localhost:3030', '_blank')}
             >
               Grafana Dashboard
             </Button>
@@ -342,7 +342,7 @@ const MonitoringPage: React.FC = () => {
               fullWidth
               variant="outlined"
               startIcon={<OpenInNewIcon />}
-              onClick={() => window.open('http://82.147.84.78:9090', '_blank')}
+              onClick={() => window.open('http://localhost:9090', '_blank')}
             >
               Prometheus
             </Button>
@@ -381,7 +381,7 @@ const MonitoringPage: React.FC = () => {
             type="text"
             fullWidth
             variant="outlined"
-            placeholder="http://82.147.84.78:3030"
+            placeholder="http://localhost:3030"
             value={customUrl}
             onChange={(e) => setCustomUrl(e.target.value)}
             helperText={`Текущий URL: ${grafanaUrl}`}

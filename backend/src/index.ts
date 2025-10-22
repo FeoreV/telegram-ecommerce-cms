@@ -143,7 +143,7 @@ const allowedOrigins = [
   'http://localhost:5173',
 ].filter(Boolean);
 
-const io = initSocket(server, allowedOrigins.join(','));
+const io = initSocket(server, allowedOrigins);
 
 // Enhanced security middleware bundle
 app.use(securityMiddlewareBundle);
@@ -639,8 +639,8 @@ const PORT = env.PORT || 3001;
 
 server.listen(PORT, async () => {
   logger.info(`🚀 Server running on port ${PORT}`);
-  logger.info(`📊 Admin panel: http://82.147.84.78:3000`);
-  logger.info(`🔧 API: http://82.147.84.78:${PORT}/api`);
+  logger.info(`📊 Admin panel: http://localhost:3000`);
+  logger.info(`🔧 API: http://localhost:${PORT}/api`);
 
   // Initialize services after server starts
   try {

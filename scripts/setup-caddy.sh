@@ -73,7 +73,7 @@ apt install caddy -y
 print_info "Creating Caddyfile..."
 cat > /etc/caddy/Caddyfile << EOF
 $DOMAIN, www.$DOMAIN {
-    reverse_proxy 82.147.84.78:3000
+    reverse_proxy localhost:3000
     
     header {
         Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
@@ -88,7 +88,7 @@ $DOMAIN, www.$DOMAIN {
 }
 
 $API_DOMAIN {
-    reverse_proxy 82.147.84.78:3001 {
+    reverse_proxy localhost:3001 {
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}
         header_up X-Forwarded-Proto {scheme}

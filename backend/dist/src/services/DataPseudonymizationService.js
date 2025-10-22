@@ -345,7 +345,7 @@ class DataPseudonymizationService {
                 eventType: 'data_pseudonymization_applied',
                 severity: 'LOW',
                 category: 'data_access',
-                ipAddress: '82.147.84.78',
+                ipAddress: 'localhost',
                 success: true,
                 details: {
                     tableName,
@@ -673,7 +673,7 @@ class DataPseudonymizationService {
             eventType: 'pseudonymization_reversal_attempted',
             severity: 'HIGH',
             category: 'data_access',
-            ipAddress: '82.147.84.78',
+            ipAddress: 'localhost',
             success: true,
             details: {
                 transformationId,

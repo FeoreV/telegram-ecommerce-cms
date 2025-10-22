@@ -489,7 +489,7 @@ describe('🔒 Security Test Suite - Core Security Controls', () => {
 
     it('should prevent SSRF attacks', async () => {
       const ssrfPayloads = [
-        'http://82.147.84.78:22',
+        'http://localhost:22',
         'http://169.254.169.254/latest/meta-data/',
         'file:///etc/passwd',
         'ftp://internal.server/',

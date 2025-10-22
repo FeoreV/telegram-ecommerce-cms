@@ -334,7 +334,7 @@ class EnvValidator {
         let score = 0;
         const total = 15;
         const recommendations = [];
-        if (env_1.env.DATABASE_URL && !env_1.env.DATABASE_URL.includes('82.147.84.78'))
+        if (env_1.env.DATABASE_URL && !env_1.env.DATABASE_URL.includes('localhost'))
             score++;
         else
             recommendations.push('Use external database in production');

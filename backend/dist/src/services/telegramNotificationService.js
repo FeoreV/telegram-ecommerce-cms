@@ -10,7 +10,7 @@ const logger_1 = require("../utils/logger");
 const sanitizer_1 = require("../utils/sanitizer");
 class TelegramNotificationService {
     constructor() {
-        this.botApiUrl = process.env.TELEGRAM_BOT_API_URL || 'http://82.147.84.78:3003/api';
+        this.botApiUrl = process.env.TELEGRAM_BOT_API_URL || 'http://localhost:3003/api';
     }
     async notifyCustomerPaymentConfirmed(order) {
         try {
@@ -240,7 +240,7 @@ class TelegramNotificationService {
     async checkBotHealth() {
         try {
             const healthUrl = `${this.botApiUrl}/health`;
-            const allowedDomains = ['82.147.84.78', '127.0.0.1'];
+            const allowedDomains = ['localhost', '127.0.0.1'];
             if (process.env.BOT_API_DOMAIN) {
                 allowedDomains.push(process.env.BOT_API_DOMAIN);
             }

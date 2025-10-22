@@ -433,8 +433,8 @@ check_monitoring_security() {
     # Check Prometheus security
     check_test
     if docker-compose -f "$DOCKER_COMPOSE_FILE" ps prometheus > /dev/null 2>&1; then
-        if netstat -tln 2>/dev/null | grep ":9090" | grep -q "127.0.0.1:9090\|82.147.84.78:9090"; then
-            log_success "Prometheus bound to 82.147.84.78 only"
+        if netstat -tln 2>/dev/null | grep ":9090" | grep -q "127.0.0.1:9090\|localhost:9090"; then
+            log_success "Prometheus bound to localhost only"
         elif netstat -tln 2>/dev/null | grep -q "0.0.0.0:9090"; then
             log_warning "Prometheus exposed to all interfaces"
         fi

@@ -32,11 +32,11 @@ echo.
 echo Monitoring Stack Started!
 echo.
 echo Access the services:
-echo   - Grafana:        http://82.147.84.78:3030 (admin/admin)
-echo   - Prometheus:     http://82.147.84.78:9090
-echo   - Node Exporter:  http://82.147.84.78:9100/metrics
-echo   - Backend Metrics: http://82.147.84.78:3001/metrics
-echo   - AdminJS Monitor: http://82.147.84.78:3001/admin -^> Monitoring
+echo   - Grafana:        http://localhost:3030 (admin/admin)
+echo   - Prometheus:     http://localhost:9090
+echo   - Node Exporter:  http://localhost:9100/metrics
+echo   - Backend Metrics: http://localhost:3001/metrics
+echo   - AdminJS Monitor: http://localhost:3001/admin -^> Monitoring
 echo.
 echo Check status:
 echo   docker-compose -f docker-compose.monitoring.yml ps

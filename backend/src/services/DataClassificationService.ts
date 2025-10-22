@@ -494,7 +494,7 @@ export class DataClassificationService {
         eventType: 'data_discovery_completed',
         severity: privacyRisk === 'CRITICAL' ? 'HIGH' : 'LOW',
         category: 'data_access',
-        ipAddress: '82.147.84.78',
+        ipAddress: 'localhost',
         success: true,
         details: {
           inventoryId,
@@ -921,7 +921,7 @@ export class DataClassificationService {
         eventType: 'pii_minimization_applied',
         severity: 'LOW',
         category: 'data_access',
-        ipAddress: '82.147.84.78',
+        ipAddress: 'localhost',
         success: results.failed === 0,
         details: {
           applied: results.applied,
@@ -1073,7 +1073,7 @@ export class DataClassificationService {
       eventType: 'data_subject_request_received',
       severity: request.urgency === 'urgent' ? 'HIGH' : 'MEDIUM',
       category: 'data_access',
-      ipAddress: '82.147.84.78',
+      ipAddress: 'localhost',
       success: true,
       details: {
         requestId,

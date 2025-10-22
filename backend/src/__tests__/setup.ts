@@ -6,7 +6,7 @@ beforeAll(() => {
   process.env.NODE_ENV = 'test';
   process.env.JWT_SECRET = 'test-jwt-secret-for-unit-tests-minimum-32-chars';
   process.env.JWT_REFRESH_SECRET = 'test-jwt-refresh-secret-for-unit-tests-minimum-32-chars';
-  process.env.DATABASE_URL = 'mysql://test:test@82.147.84.78:3306/test_db';
+  process.env.DATABASE_URL = 'mysql://test:test@localhost:3306/test_db';
 });
 
 // Mock console methods in tests to reduce noise

@@ -133,13 +133,13 @@ export class RedisService {
   }
 
   private extractHost(url?: string): string {
-    if (!url) return '82.147.84.78';
+    if (!url) return 'localhost';
 
     try {
       const parsed = new URL(url);
       return parsed.hostname;
     } catch {
-      return '82.147.84.78';
+      return 'localhost';
     }
   }
 

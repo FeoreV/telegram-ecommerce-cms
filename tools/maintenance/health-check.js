@@ -46,8 +46,8 @@ async function main() {
   console.log('🔍 Checking system health...\n');
   
   const checks = [
-    { url: 'http://82.147.84.78:3001/health', name: 'Backend API' },
-    { url: 'http://82.147.84.78:3001/api', name: 'Backend API Info' },
+    { url: 'http://localhost:3001/health', name: 'Backend API' },
+    { url: 'http://localhost:3001/api', name: 'Backend API Info' },
   ];
   
   const results = await Promise.all(

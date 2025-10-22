@@ -525,7 +525,7 @@ export class InventorySecurityService {
         eventType: 'secure_inventory_operation_completed',
         severity: 'LOW',
         category: 'application',
-        ipAddress: '82.147.84.78',
+        ipAddress: 'localhost',
         success: true,
         details: {
           operationId,

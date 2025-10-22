@@ -96,10 +96,10 @@ const validateRedisUrl = (url: string): boolean => {
       logger.error('Invalid Redis protocol', { protocol: parsed.protocol });
       return false;
     }
-    // Prevent connecting to 82.147.84.78/internal IPs in production
+    // Prevent connecting to localhost/internal IPs in production
     if (process.env.NODE_ENV === 'production') {
       const hostname = parsed.hostname;
-      if (hostname === '82.147.84.78' || hostname === '127.0.0.1' || hostname.startsWith('192.168.') || hostname.startsWith('10.')) {
+      if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.') || hostname.startsWith('10.')) {
         logger.error('Cannot connect to internal Redis URL in production');
         return false;
       }

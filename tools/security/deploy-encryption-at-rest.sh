@@ -49,7 +49,7 @@ check_prerequisites() {
     fi
     
     # Check if Vault is available
-    if [ "$USE_VAULT" = "true" ] && ! curl -s http://82.147.84.78:8200/v1/sys/health > /dev/null; then
+    if [ "$USE_VAULT" = "true" ] && ! curl -s http://localhost:8200/v1/sys/health > /dev/null; then
         print_warning "Vault is not accessible. Using local encryption keys."
     fi
     
@@ -165,7 +165,7 @@ echo "Source: $SOURCE_PATH"
 echo "Name: $BACKUP_NAME"
 
 # Call the backup encryption service via API
-curl -X POST "http://82.147.84.78:3001/api/admin/backups/create-encrypted" \
+curl -X POST "http://localhost:3001/api/admin/backups/create-encrypted" \
   -H "Content-Type: application/json" \
   -d "{
     \"backupType\": \"$BACKUP_TYPE\",
@@ -276,7 +276,7 @@ echo ""
 # Check encryption keys status
 echo "🔑 Encryption Keys Status:"
 if [ "$USE_VAULT" = "true" ]; then
-    if curl -s http://82.147.84.78:8200/v1/sys/health > /dev/null; then
+    if curl -s http://localhost:8200/v1/sys/health > /dev/null; then
         echo "✅ Vault is accessible"
         echo "✅ Using Vault-managed encryption keys"
     else
@@ -290,11 +290,11 @@ echo ""
 
 # Application health check
 echo "🏥 Application Health:"
-if curl -s http://82.147.84.78:3001/health > /dev/null; then
+if curl -s http://localhost:3001/health > /dev/null; then
     echo "✅ Backend service is healthy"
     
     # Check encryption service health
-    ENCRYPTION_HEALTH=$(curl -s http://82.147.84.78:3001/api/admin/encryption/health 2>/dev/null || echo "unavailable")
+    ENCRYPTION_HEALTH=$(curl -s http://localhost:3001/api/admin/encryption/health 2>/dev/null || echo "unavailable")
     if [ "$ENCRYPTION_HEALTH" != "unavailable" ]; then
         echo "✅ Encryption services are operational"
     else
@@ -326,7 +326,7 @@ echo "🔄 Starting encryption key rotation..."
 
 # Rotate database encryption keys
 echo "Rotating database encryption keys..."
-curl -X POST "http://82.147.84.78:3001/api/admin/encryption/rotate-keys" \
+curl -X POST "http://localhost:3001/api/admin/encryption/rotate-keys" \
   -H "Content-Type: application/json"
 
 # Rotate Vault keys if using Vault
@@ -352,13 +352,13 @@ echo "🧹 Starting encrypted data cleanup (retention: $RETENTION_DAYS days)..."
 
 # Cleanup old encrypted logs
 echo "Cleaning up old encrypted logs..."
-curl -X POST "http://82.147.84.78:3001/api/admin/logs/cleanup" \
+curl -X POST "http://localhost:3001/api/admin/logs/cleanup" \
   -H "Content-Type: application/json" \
   -d "{\"retentionDays\": $RETENTION_DAYS}"
 
 # Cleanup old encrypted backups
 echo "Cleaning up old encrypted backups..."
-curl -X POST "http://82.147.84.78:3001/api/admin/backups/cleanup" \
+curl -X POST "http://localhost:3001/api/admin/backups/cleanup" \
   -H "Content-Type: application/json" \
   -d "{\"retentionDays\": $RETENTION_DAYS}"
 
@@ -431,9 +431,9 @@ run_encryption_tests() {
     
     # Test application encryption services
     echo "Testing application encryption services..."
-    if curl -s http://82.147.84.78:3001/health > /dev/null; then
+    if curl -s http://localhost:3001/health > /dev/null; then
         # Test encryption service health
-        HEALTH_RESPONSE=$(curl -s http://82.147.84.78:3001/api/admin/encryption/health 2>/dev/null || echo "failed")
+        HEALTH_RESPONSE=$(curl -s http://localhost:3001/api/admin/encryption/health 2>/dev/null || echo "failed")
         if [[ "$HEALTH_RESPONSE" == *"healthy"* ]]; then
             print_success "Application encryption services test passed"
         else

@@ -1043,7 +1043,7 @@ export class PenetrationTestFramework {
 
   private async testA10_ServerSideRequestForgery(): Promise<void> {
     const ssrfPayloads = [
-      'http://82.147.84.78:22',
+      'http://localhost:22',
       'http://127.0.0.1:8080',
       'http://169.254.169.254/latest/meta-data/',
       'file:///etc/passwd'

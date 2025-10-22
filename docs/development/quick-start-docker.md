@@ -29,9 +29,9 @@ chmod +x docker-dev.sh
 
 ## 🌐 Доступ к сервисам
 
-- **Frontend**: http://82.147.84.78:3000
-- **Backend API**: http://82.147.84.78:3001  
-- **AdminJS**: http://82.147.84.78:3001/admin
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:3001  
+- **AdminJS**: http://localhost:3001/admin
 
 ## 🔍 Проверка работы
 

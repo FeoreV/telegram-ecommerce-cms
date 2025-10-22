@@ -88,7 +88,7 @@ function App() {
 npm test
 
 # Проверка текущих настроек
-curl -X GET http://82.147.84.78:3001/auth/health
+curl -X GET http://localhost:3001/auth/health
 ```
 
 ### Ожидаемые результаты:
@@ -160,7 +160,7 @@ window.addEventListener('userLoggedOut', () => {
 
 4. **Тест endpoint-а:**
    ```bash
-   curl -X POST http://82.147.84.78:3001/auth/auto-refresh \
+   curl -X POST http://localhost:3001/auth/auto-refresh \
      -H "Content-Type: application/json" \
      -d '{"accessToken":"your-token","refreshToken":"your-refresh-token"}'
    ```

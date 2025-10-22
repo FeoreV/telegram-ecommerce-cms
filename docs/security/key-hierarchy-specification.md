@@ -86,7 +86,7 @@ vault write pki/config/ca \
 
 # TLS certificate role
 vault write pki/roles/telegram-ecommerce \
-    allowed_domains="botrt.local,82.147.84.78" \
+    allowed_domains="botrt.local,localhost" \
     allow_subdomains=true \
     max_ttl="8760h"
 
@@ -246,7 +246,7 @@ vault audit enable file file_path=/var/log/vault_audit.log
 vault read sys/metrics?format=prometheus | grep transit
 
 # Application metrics
-curl http://82.147.84.78:3001/metrics | grep encryption
+curl http://localhost:3001/metrics | grep encryption
 ```
 
 ## 🚨 Incident Response

@@ -20,8 +20,8 @@ declare module 'express-serve-static-core' {
 // Environment variables with defaults
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const ENABLE_IP_REPUTATION = process.env.ENABLE_IP_REPUTATION !== 'false';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://82.147.84.78:3000';
-const ADMIN_PANEL_URL = process.env.ADMIN_PANEL_URL || 'http://82.147.84.78:3001';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+const ADMIN_PANEL_URL = process.env.ADMIN_PANEL_URL || 'http://localhost:3001';
 const REDIS_URL = process.env.REDIS_URL;
 
 // Enhanced CORS configuration
@@ -30,9 +30,9 @@ const corsOptions: cors.CorsOptions = {
     const allowedOrigins = [
       FRONTEND_URL,
       ADMIN_PANEL_URL,
-      'http://82.147.84.78:3000',
-      'http://82.147.84.78:3001',
-      'http://82.147.84.78:3000', // Vite dev server
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:3000', // Vite dev server
       ...(process.env.ADDITIONAL_CORS_ORIGINS?.split(',').map(o => o.trim()) || [])
     ].filter(Boolean);
 
@@ -730,9 +730,9 @@ export const adminIPWhitelist = (req: Request, res: Response, next: NextFunction
   // Check exact IP matches and common local IPs in development
   let isAllowed = allowedIPs.includes(clientIP);
 
-  // In development, also allow common 82.147.84.78 variants
+  // In development, also allow common localhost variants
   if (NODE_ENV === 'development') {
-    const devIPs = ['127.0.0.1', '::1', '::ffff:127.0.0.1', '82.147.84.78'];
+    const devIPs = ['127.0.0.1', '::1', '::ffff:127.0.0.1', 'localhost'];
     isAllowed = isAllowed || devIPs.includes(clientIP);
   }
 

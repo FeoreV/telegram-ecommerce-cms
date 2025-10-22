@@ -31,7 +31,7 @@ REFRESH_TOKEN_EXPIRY=7d
 BCRYPT_ROUNDS=12
 
 # Redis (Optional but recommended)
-REDIS_URL=redis://82.147.84.78:6379
+REDIS_URL=redis://localhost:6379
 ```
 
 ### 3. Database Schema Updates

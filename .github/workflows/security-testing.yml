@@ -159,8 +159,8 @@ jobs:
     - name: Setup Integration Test Environment
       run: |
         cp .env.integration.example .env.integration
-        echo "DATABASE_URL=postgresql://test_user:test_password@82.147.84.78:5432/test_db" >> .env.integration
-        echo "REDIS_URL=redis://82.147.84.78:6379" >> .env.integration
+        echo "DATABASE_URL=postgresql://test_user:test_password@localhost:5432/test_db" >> .env.integration
+        echo "REDIS_URL=redis://localhost:6379" >> .env.integration
         echo "JWT_SECRET=integration_test_jwt_secret_key" >> .env.integration
         echo "SECURITY_INTEGRATION_TEST=true" >> .env.integration
     
@@ -175,7 +175,7 @@ jobs:
       run: |
         npm run build
         npm run start:test &
-        npx wait-on http://82.147.84.78:3000/health --timeout 60000
+        npx wait-on http://localhost:3000/health --timeout 60000
       env:
         NODE_ENV: integration
         PORT: 3000
@@ -190,7 +190,7 @@ jobs:
           --maxWorkers=2
       env:
         CI: true
-        TEST_BASE_URL: http://82.147.84.78:3000
+        TEST_BASE_URL: http://localhost:3000
     
     - name: Run API Security Tests with Newman
       run: |
@@ -495,8 +495,8 @@ jobs:
     - name: Setup DAST Environment
       run: |
         cp .env.dast.example .env.dast
-        echo "DATABASE_URL=postgresql://dast_test_user:dast_test_password@82.147.84.78:5432/dast_test_db" >> .env.dast
-        echo "REDIS_URL=redis://82.147.84.78:6379" >> .env.dast
+        echo "DATABASE_URL=postgresql://dast_test_user:dast_test_password@localhost:5432/dast_test_db" >> .env.dast
+        echo "REDIS_URL=redis://localhost:6379" >> .env.dast
         echo "SECURITY_TESTING_MODE=true" >> .env.dast
         echo "RATE_LIMIT_DISABLED=true" >> .env.dast
     
@@ -504,7 +504,7 @@ jobs:
       run: |
         npm run build
         npm run start:dast &
-        npx wait-on http://82.147.84.78:3000/health --timeout 120000
+        npx wait-on http://localhost:3000/health --timeout 120000
       env:
         NODE_ENV: dast
         PORT: 3000
@@ -512,7 +512,7 @@ jobs:
     - name: OWASP ZAP Baseline Scan
       uses: zaproxy/action-baseline@v0.12.0
       with:
-        target: 'http://82.147.84.78:3000'
+        target: 'http://localhost:3000'
         rules_file_name: '.zap/rules.tsv'
         cmd_options: '-a -d -T 15 -m 5'
         allow_issue_writing: false
@@ -522,7 +522,7 @@ jobs:
       uses: zaproxy/action-full-scan@v0.10.0
       if: github.event.inputs.test_type == 'full' || github.event_name == 'schedule'
       with:
-        target: 'http://82.147.84.78:3000'
+        target: 'http://localhost:3000'
         rules_file_name: '.zap/rules.tsv'
         cmd_options: '-a -d -T 30 -m 10'
         allow_issue_writing: false
@@ -531,7 +531,7 @@ jobs:
     - name: Custom Penetration Testing Framework
       run: |
         npm run test:security:penetration -- \
-          --target=http://82.147.84.78:3000 \
+          --target=http://localhost:3000 \
           --config=tests/security/pentest-config.json \
           --output=reports/pentest-results.json \
           --format=json \
@@ -539,7 +539,7 @@ jobs:
           --max-duration=20
       env:
         PENTEST_MODE: true
-        PENTEST_TARGET: http://82.147.84.78:3000
+        PENTEST_TARGET: http://localhost:3000
     
     - name: Nuclei Vulnerability Scanner
       run: |
@@ -552,7 +552,7 @@ jobs:
         ./nuclei -update-templates
         
         # Run nuclei scan
-        ./nuclei -u http://82.147.84.78:3000 \
+        ./nuclei -u http://localhost:3000 \
           -t /root/nuclei-templates/ \
           -json -o nuclei-results.json \
           -timeout 10 \
@@ -565,13 +565,13 @@ jobs:
         apt-get update && apt-get install -y sqlmap
         
         # Test key endpoints for SQL injection
-        sqlmap -u "http://82.147.84.78:3000/api/products/search?q=test" \
+        sqlmap -u "http://localhost:3000/api/products/search?q=test" \
           --batch --level=3 --risk=2 \
           --timeout=30 --retries=2 \
           --output-dir=sqlmap-results/ \
           --format=JSON || true
         
-        sqlmap -u "http://82.147.84.78:3000/api/users" \
+        sqlmap -u "http://localhost:3000/api/users" \
           --batch --level=2 --risk=1 \
           --timeout=20 \
           --output-dir=sqlmap-results/ \
@@ -579,7 +579,7 @@ jobs:
     
     - name: Security Headers Analysis
       run: |
-        curl -I http://82.147.84.78:3000 > security-headers.txt
+        curl -I http://localhost:3000 > security-headers.txt
         
         # Check for required security headers
         if ! grep -q "Strict-Transport-Security" security-headers.txt; then
@@ -597,20 +597,20 @@ jobs:
     - name: SSL/TLS Security Testing
       run: |
         # Test SSL configuration (if HTTPS enabled)
-        if curl -k https://82.147.84.78:3443/health 2>/dev/null; then
+        if curl -k https://localhost:3443/health 2>/dev/null; then
           # Install testssl.sh
           git clone https://github.com/drwetter/testssl.sh.git
           cd testssl.sh
           
           # Run SSL tests
-          ./testssl.sh --json 82.147.84.78:3443 > ../ssl-test-results.json || true
+          ./testssl.sh --json localhost:3443 > ../ssl-test-results.json || true
         fi
     
     - name: API Security Testing
       run: |
         # Test API endpoints for common vulnerabilities
         npm run test:security:api -- \
-          --baseUrl=http://82.147.84.78:3000 \
+          --baseUrl=http://localhost:3000 \
           --output=reports/api-security-results.json \
           --include-auth-tests \
           --include-injection-tests \

@@ -320,10 +320,10 @@ node tools/maintenance/health-check.js --service backend
 
 ```bash
 # Application metrics (Prometheus)
-curl http://82.147.84.78:3001/metrics
+curl http://localhost:3001/metrics
 
 # Vault metrics
-curl http://82.147.84.78:8200/v1/sys/metrics
+curl http://localhost:8200/v1/sys/metrics
 
 # System metrics
 docker stats

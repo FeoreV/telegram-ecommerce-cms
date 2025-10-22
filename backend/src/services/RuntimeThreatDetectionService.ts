@@ -633,7 +633,7 @@ export class RuntimeThreatDetectionService {
       eventType: 'runtime_threat_detected',
       severity: threatIndicator.severity,
       category: 'system',
-      ipAddress: threatIndicator.sourceIP || '82.147.84.78',
+      ipAddress: threatIndicator.sourceIP || 'localhost',
       success: false,
       details: {
         indicatorType: threatIndicator.type,

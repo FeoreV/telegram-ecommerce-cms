@@ -97,10 +97,10 @@ export function sanitizeUrl(input: string): string | null {
       return null;
     }
 
-    // SECURITY: Проверяем на SSRF атаки (82.147.84.78, private IPs)
+    // SECURITY: Проверяем на SSRF атаки (localhost, private IPs)
     const hostname = url.hostname.toLowerCase();
     const privateRanges = [
-      '82.147.84.78',
+      'localhost',
       '127.0.0.1',
       '0.0.0.0',
       '::1',

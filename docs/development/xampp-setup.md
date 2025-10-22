@@ -21,7 +21,7 @@
 
 ### Создание базы данных
 
-1. Откройте браузер и перейдите на http://82.147.84.78/phpmyadmin
+1. Откройте браузер и перейдите на http://localhost/phpmyadmin
 2. В левом меню нажмите **Новый**
 3. Введите имя базы данных: `telegram_ecommerce`
 4. Выберите кодировку: `utf8mb4_unicode_ci`
@@ -31,8 +31,8 @@
 
 ```sql
 -- В phpMyAdmin выполните эти SQL команды:
-CREATE USER 'telegram_user'@'82.147.84.78' IDENTIFIED BY 'telegram_pass';
-GRANT ALL PRIVILEGES ON telegram_ecommerce.* TO 'telegram_user'@'82.147.84.78';
+CREATE USER 'telegram_user'@'localhost' IDENTIFIED BY 'telegram_pass';
+GRANT ALL PRIVILEGES ON telegram_ecommerce.* TO 'telegram_user'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
@@ -44,10 +44,10 @@ FLUSH PRIVILEGES;
 
 ```env
 # Database Configuration для XAMPP
-DATABASE_URL="mysql://root:@82.147.84.78:3306/telegram_ecommerce"
+DATABASE_URL="mysql://root:@localhost:3306/telegram_ecommerce"
 
 # Или если создали пользователя:
-# DATABASE_URL="mysql://telegram_user:telegram_pass@82.147.84.78:3306/telegram_ecommerce"
+# DATABASE_URL="mysql://telegram_user:telegram_pass@localhost:3306/telegram_ecommerce"
 
 # Backend
 PORT=3001
@@ -125,11 +125,11 @@ npm run dev:bot       # Telegram Bot
 ## 🔧 Проверка работы
 
 ### 1. Backend API
-- Откройте http://82.147.84.78:3001/health
+- Откройте http://localhost:3001/health
 - Должен вернуть: `{"status":"OK","timestamp":"..."}`
 
 ### 2. Admin Panel
-- Откройте http://82.147.84.78:3001/admin
+- Откройте http://localhost:3001/admin
 - Введите ваш Telegram ID как email и любой пароль для входа
 
 ### 3. Telegram Bot
@@ -204,7 +204,7 @@ PORT=3002
 - Путь: `C:\xampp\apache\logs\access.log`
 
 ### phpMyAdmin
-- URL: http://82.147.84.78/phpmyadmin
+- URL: http://localhost/phpmyadmin
 - Пользователь: root
 - Пароль: (пустой по умолчанию)
 

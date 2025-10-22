@@ -58,7 +58,7 @@ nano .env
 
 Минимальная конфигурация для XAMPP:
 ```env
-DATABASE_URL="mysql://root:@82.147.84.78:3306/telegram_ecommerce"
+DATABASE_URL="mysql://root:@localhost:3306/telegram_ecommerce"
 JWT_SECRET="your-secret-key"
 TELEGRAM_BOT_TOKEN="YOUR_BOT_TOKEN_HERE"
 # SUPER_ADMIN_TELEGRAM_ID removed for security - use AdminJS panel
@@ -69,7 +69,7 @@ TELEGRAM_BOT_TOKEN="YOUR_BOT_TOKEN_HERE"
 ```bash
 # 1. Запустите XAMPP Control Panel
 # 2. Включите Apache и MySQL
-# 3. Откройте phpMyAdmin: http://82.147.84.78/phpmyadmin
+# 3. Откройте phpMyAdmin: http://localhost/phpmyadmin
 # 4. Создайте новую базу данных: telegram_ecommerce
 
 # Перейдите в backend
@@ -94,8 +94,8 @@ npm run dev
 Или запуск по отдельности:
 ```bash
 # В отдельных терминалах:
-npm run dev:backend  # http://82.147.84.78:3001
-npm run dev:frontend # http://82.147.84.78:3000  
+npm run dev:backend  # http://localhost:3001
+npm run dev:frontend # http://localhost:3000  
 npm run dev:bot      # Telegram Bot
 ```
 
@@ -103,7 +103,7 @@ npm run dev:bot      # Telegram Bot
 
 ### 1. Авторизация
 
-1. Откройте http://82.147.84.78:3000
+1. Откройте http://localhost:3000
 2. Войдите используя ваш Telegram ID
 3. Вы автоматически получите роль OWNER
 

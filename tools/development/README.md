@@ -228,10 +228,10 @@ DATABASE_URL=file:./dev.db
 DATABASE_PROVIDER=sqlite
 
 # Redis (optional in dev)
-REDIS_URL=redis://82.147.84.78:6379
+REDIS_URL=redis://localhost:6379
 
 # Frontend
-FRONTEND_URL=http://82.147.84.78:3000
+FRONTEND_URL=http://localhost:3000
 
 # Bot (get from @BotFather)
 TELEGRAM_BOT_TOKEN=your_dev_bot_token
@@ -253,13 +253,13 @@ DATABASE_URL=file:./dev.db
 **MySQL with XAMPP:**
 ```env
 DATABASE_PROVIDER=mysql
-DATABASE_URL=mysql://root:@82.147.84.78:3306/telegram_ecommerce
+DATABASE_URL=mysql://root:@localhost:3306/telegram_ecommerce
 ```
 
 **PostgreSQL with Docker:**
 ```env
 DATABASE_PROVIDER=postgresql
-DATABASE_URL=postgresql://postgres:password@82.147.84.78:5432/telegram_ecommerce
+DATABASE_URL=postgresql://postgres:password@localhost:5432/telegram_ecommerce
 ```
 
 ---

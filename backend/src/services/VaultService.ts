@@ -50,7 +50,7 @@ export class VaultService {
           /^172\.(1[6-9]|2\d|3[01])\./,
           /^192\.168\./,
           /^169\.254\./,
-          /^82.147.84.78$/i,
+          /^localhost$/i,
         ];
 
         for (const pattern of blockedPatterns) {
@@ -254,7 +254,7 @@ let vaultService: VaultService | null = null;
 export const getVaultService = (): VaultService => {
   if (!vaultService) {
     const config: VaultConfig = {
-      address: process.env.VAULT_ADDR || 'http://82.147.84.78:8200',
+      address: process.env.VAULT_ADDR || 'http://localhost:8200',
       roleId: process.env.VAULT_ROLE_ID as string,
       secretId: process.env.VAULT_SECRET_ID as string,
       namespace: process.env.VAULT_NAMESPACE,

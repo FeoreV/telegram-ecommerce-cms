@@ -38,7 +38,7 @@ export default defineConfig({
     allowedHosts: ['megapenis.work.gd', 'www.megapenis.work.gd', 'localhost', '.megapenis.work.gd'],
     proxy: {
       '/api': {
-        target: 'http://82.147.84.78:3001',
+        target: 'http://localhost:3001',
         changeOrigin: true,
       },
     },

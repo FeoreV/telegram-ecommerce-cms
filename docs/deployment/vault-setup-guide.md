@@ -48,7 +48,7 @@ cp config/environments/vault.env.example .env.vault
 
 # Обновить основной .env файл
 echo "USE_VAULT=true" >> .env
-echo "VAULT_ADDR=http://82.147.84.78:8200" >> .env
+echo "VAULT_ADDR=http://localhost:8200" >> .env
 echo "VAULT_ROLE_ID=your-role-id" >> .env
 echo "VAULT_SECRET_ID=your-secret-id" >> .env
 ```
@@ -146,7 +146,7 @@ vault secrets enable database
 # Настроить подключение к PostgreSQL
 vault write database/config/postgresql \
     plugin_name=postgresql-database-plugin \
-    connection_url="postgresql://{{username}}:{{password}}@82.147.84.78:5432/telegram_ecommerce?sslmode=require" \
+    connection_url="postgresql://{{username}}:{{password}}@localhost:5432/telegram_ecommerce?sslmode=require" \
     allowed_roles="telegram-ecommerce-role" \
     username="vault_admin" \
     password="vault_admin_password"
@@ -268,17 +268,17 @@ vault operator raft snapshot restore backup.snap
 
 ```bash
 # Проверка статуса Vault
-curl -s http://82.147.84.78:8200/v1/sys/health | jq
+curl -s http://localhost:8200/v1/sys/health | jq
 
 # Проверка через приложение
-curl -s http://82.147.84.78:3001/health/vault | jq
+curl -s http://localhost:3001/health/vault | jq
 ```
 
 ### Метрики
 
 ```bash
 # Prometheus метрики
-curl -s http://82.147.84.78:8200/v1/sys/metrics?format=prometheus
+curl -s http://localhost:8200/v1/sys/metrics?format=prometheus
 ```
 
 ## 🚨 Troubleshooting
@@ -319,5 +319,5 @@ vault policy read telegram-ecommerce-policy
 vault read auth/approle/role/telegram-ecommerce
 
 # 5. Проверить здоровье приложения
-curl http://82.147.84.78:3001/health/vault
+curl http://localhost:3001/health/vault
 ```

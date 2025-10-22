@@ -230,7 +230,7 @@ export function sanitizeUrl(
   
   // Block internal/private IP addresses (SSRF prevention)
   const blockedHosts = [
-    '82.147.84.78',
+    'localhost',
     '127.0.0.1',
     '0.0.0.0',
     '[::]',

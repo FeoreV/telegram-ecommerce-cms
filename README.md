@@ -21,8 +21,8 @@ cp env.production.example .env
 docker-compose up -d
 
 # 5. Открыть в браузере
-# Frontend: http://82.147.84.78:3000
-# Backend API: http://82.147.84.78:3001
+# Frontend: http://localhost:3000
+# Backend API: http://localhost:3001
 ```
 
 ### Быстрая пересборка (Windows)
@@ -179,12 +179,12 @@ npx prisma studio           # GUI для БД
 
 После запуска доступны:
 
-- **Frontend**: http://82.147.84.78:3000
-- **Backend API**: http://82.147.84.78:3001
-- **Grafana**: http://82.147.84.78:3030 (admin/admin)
-- **Prometheus**: http://82.147.84.78:9090
-- **MySQL**: 82.147.84.78:3307
-- **Redis**: 82.147.84.78:6379
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:3001
+- **Grafana**: http://localhost:3030 (admin/admin)
+- **Prometheus**: http://localhost:9090
+- **MySQL**: localhost:3307
+- **Redis**: localhost:6379
 
 ## 🔐 Безопасность
 
@@ -202,7 +202,7 @@ JWT_SECRET=<your-secret-here>
 JWT_REFRESH_SECRET=<your-secret-here>
 SESSION_SECRET=<your-secret-here>
 ENCRYPTION_KEY=<your-secret-here>
-DATABASE_URL=mysql://user:password@82.147.84.78:3306/dbname
+DATABASE_URL=mysql://user:password@localhost:3306/dbname
 ```
 
 ⚠️ **Никогда не коммитьте .env файлы в git!**
@@ -268,7 +268,7 @@ docker-compose logs --tail=100 bot
 
 Grafana дашборды доступны после запуска:
 
-1. Откройте http://82.147.84.78:3030
+1. Откройте http://localhost:3030
 2. Войдите (admin/admin)
 3. Импортируйте дашборды из `config/grafana/dashboards/`
 

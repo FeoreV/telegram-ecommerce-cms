@@ -297,7 +297,7 @@ source .env.production
 node tools/database/test-connection.js
 
 # Test Redis connection
-redis-cli -h 82.147.84.78 -p 6379 ping
+redis-cli -h localhost -p 6379 ping
 ```
 
 ---

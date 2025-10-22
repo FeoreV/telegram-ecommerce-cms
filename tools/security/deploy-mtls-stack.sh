@@ -302,7 +302,7 @@ run_security_tests() {
     
     # Test HTTPS endpoint
     print_status "Testing HTTPS endpoint..."
-    if curl -k -s --max-time 10 https://82.147.84.78/health > /dev/null; then
+    if curl -k -s --max-time 10 https://localhost/health > /dev/null; then
         print_success "HTTPS endpoint is accessible"
     else
         print_warning "HTTPS endpoint test failed"
@@ -310,7 +310,7 @@ run_security_tests() {
     
     # Test certificate validation
     print_status "Testing certificate validation..."
-    if openssl s_client -connect 82.147.84.78:443 -verify 8 -CAfile "$CA_DIR/certs/ca.cert.pem" < /dev/null 2>/dev/null | grep -q "Verify return code: 0"; then
+    if openssl s_client -connect localhost:443 -verify 8 -CAfile "$CA_DIR/certs/ca.cert.pem" < /dev/null 2>/dev/null | grep -q "Verify return code: 0"; then
         print_success "Certificate validation passed"
     else
         print_warning "Certificate validation test failed"
@@ -342,11 +342,11 @@ show_deployment_summary() {
     echo "├── Service Certificates: Generated for ${#SERVICES[@]} services"
     echo "├── Docker Network: botrt-secure (172.20.0.0/16)"
     echo "├── TLS Endpoints:"
-    echo "│   ├── Frontend: https://82.147.84.78 (port 443)"
-    echo "│   ├── Backend API: https://82.147.84.78/api"
-    echo "│   ├── PostgreSQL: 82.147.84.78:5432 (TLS required)"
-    echo "│   ├── Redis: 82.147.84.78:6380 (TLS only)"
-    echo "│   └── Vault: https://82.147.84.78:8200"
+    echo "│   ├── Frontend: https://localhost (port 443)"
+    echo "│   ├── Backend API: https://localhost/api"
+    echo "│   ├── PostgreSQL: localhost:5432 (TLS required)"
+    echo "│   ├── Redis: localhost:6380 (TLS only)"
+    echo "│   └── Vault: https://localhost:8200"
     echo "└── Monitoring: Certificate expiry check script created"
     echo ""
     echo "🔐 Security Features Enabled:"

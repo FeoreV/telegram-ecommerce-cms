@@ -423,7 +423,7 @@ export class EnvValidator {
     const recommendations: string[] = [];
 
     // Database security
-    if (env.DATABASE_URL && !env.DATABASE_URL.includes('82.147.84.78')) score++;
+    if (env.DATABASE_URL && !env.DATABASE_URL.includes('localhost')) score++;
     else recommendations.push('Use external database in production');
 
     // JWT security

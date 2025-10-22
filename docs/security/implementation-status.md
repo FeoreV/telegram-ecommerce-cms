@@ -274,9 +274,9 @@ crontab /tmp/encryption-cron
 ./tools/security/cleanup-encrypted-data.sh
 
 # Health checks
-curl -k https://82.147.84.78/health/vault
-curl -k https://82.147.84.78/health/mtls
-curl -k https://82.147.84.78/api/admin/encryption/health
+curl -k https://localhost/health/vault
+curl -k https://localhost/health/mtls
+curl -k https://localhost/api/admin/encryption/health
 
 # Certificate monitoring
 /tmp/check-cert-expiry.sh

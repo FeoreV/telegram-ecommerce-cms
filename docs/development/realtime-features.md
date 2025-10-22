@@ -165,7 +165,7 @@ io.on('connection', (socket) => {
 ## Переменные окружения
 
 ```env
-VITE_SOCKET_URL=http://82.147.84.78:3001  # URL Socket.IO сервера
+VITE_SOCKET_URL=http://localhost:3001  # URL Socket.IO сервера
 ```
 
 ## Отладка

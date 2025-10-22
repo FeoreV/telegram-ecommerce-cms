@@ -737,7 +737,7 @@ export class AlertThrottlingService {
         eventType: 'alert_processed',
         severity: alert.securityRelevant ? 'HIGH' : 'LOW',
         category: 'system',
-        ipAddress: '82.147.84.78',
+        ipAddress: 'localhost',
         success: true,
         details: {
           alertId,

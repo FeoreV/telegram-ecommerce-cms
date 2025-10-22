@@ -181,7 +181,7 @@ export class WAFSecurityService {
       /\|\s*(cat|ls|pwd|whoami|id|uname)/i,
 
       // XXE/SSRF
-      /<!entity|<!doctype.*entity|file:\/\/|http:\/\/82.147.84.78/i,
+      /<!entity|<!doctype.*entity|file:\/\/|http:\/\/localhost/i,
 
       // Template injection
       /\{\{.*\}\}|\$\{.*\}|<%.*%>/i,

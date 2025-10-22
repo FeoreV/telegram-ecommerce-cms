@@ -40,6 +40,7 @@ const config_1 = __importDefault(require("./routes/config"));
 const customRoleRoutes_1 = __importDefault(require("./routes/customRoleRoutes"));
 const employeeRoutes_1 = __importDefault(require("./routes/employeeRoutes"));
 const health_1 = __importDefault(require("./routes/health"));
+const simple_health_1 = __importDefault(require("./routes/simple-health"));
 const integration_1 = __importDefault(require("./routes/integration"));
 const invitationRoutes_1 = __importDefault(require("./routes/invitationRoutes"));
 const inviteLinkRoutes_1 = __importDefault(require("./routes/inviteLinkRoutes"));
@@ -107,8 +108,14 @@ const initializeAdminJS = async () => {
 const app = (0, express_1.default)();
 exports.app = app;
 const server = (0, http_1.createServer)(app);
-app.set('trust proxy', true);
-const io = (0, socket_1.initSocket)(server, env_1.env.FRONTEND_URL || "http://82.147.84.78:3000");
+app.set('trust proxy', 1);
+const allowedOrigins = [
+    env_1.env.FRONTEND_URL,
+    'localhost',
+    'http://localhost:3000',
+    'http://localhost:5173',
+].filter(Boolean);
+const io = (0, socket_1.initSocket)(server, allowedOrigins.join(','));
 app.use(security_1.securityMiddlewareBundle);
 app.use(contentTypeValidation_1.validateContentType);
 app.use(compromiseGuard_1.compromiseGuard);
@@ -274,6 +281,29 @@ app.get('/api/metrics', auth_2.authMiddleware, (req, res) => {
     const metrics = (0, metrics_1.getMetrics)();
     res.json(metrics);
 });
+app.get('/', (req, res) => {
+    const acceptsHtml = req.accepts('html');
+    if (acceptsHtml && env_1.env.FRONTEND_URL) {
+        res.redirect(env_1.env.FRONTEND_URL);
+    }
+    else {
+        res.json({
+            message: 'Telegram E-commerce Bot API',
+            version: '1.0.0',
+            endpoints: {
+                auth: '/api/auth/telegram (POST)',
+                stores: '/api/stores (GET)',
+                products: '/api/products (GET)',
+                orders: '/api/orders (GET)',
+                admin: '/api/admin/dashboard (GET)',
+                csrf: '/api/csrf-token (GET)'
+            },
+            health: '/health',
+            documentation: '/api',
+            timestamp: new Date().toISOString()
+        });
+    }
+});
 app.get('/api', (req, res) => {
     res.json({
         message: 'Telegram E-commerce Bot API',
@@ -300,9 +330,9 @@ app.get('/api/csrf-token', csrfProtection_1.getCsrfTokenHandler, (req, res) => {
 backupService_1.BackupService.initialize().catch(error => {
     loggerEnhanced_1.logger.error('Failed to initialize backup service:', { error: error instanceof Error ? error.message : String(error) });
 });
-app.use('/health', health_1.default);
-app.use('/api/health', health_1.default);
-app.use('/api/health', health_1.default);
+app.use('/health', simple_health_1.default);
+app.use('/api/health', simple_health_1.default);
+app.use('/api/health/detailed', health_1.default);
 app.use('/api/security', security_2.default);
 app.use('/api/auth', SecureAuthRoutes_1.default);
 app.use('/auth', SecureAuthRoutes_1.default);
@@ -346,53 +376,61 @@ const socketAuth_js_1 = require("./middleware/socketAuth.js");
 const socketRoomService_js_1 = require("./services/socketRoomService.js");
 io.use(socketAuth_js_1.socketAuthMiddleware);
 io.on('connection', async (socket) => {
-    const { sanitizeForLog } = require('./utils/sanitizer');
-    loggerEnhanced_1.logger.info(`New authenticated socket connection: ${sanitizeForLog(socket.id)} for user ${sanitizeForLog(socket.user?.id)} (${sanitizeForLog(socket.user?.role)})`);
-    await socketRoomService_js_1.SocketRoomService.joinUserToRooms(socket);
-    socket.on('join_room', async (roomName) => {
-        if (!socket.user) {
-            socket.emit('error', { message: 'Not authenticated' });
-            return;
+    try {
+        const { sanitizeForLog } = require('./utils/sanitizer');
+        loggerEnhanced_1.logger.info(`New socket connection: ${sanitizeForLog(socket.id)} for user ${sanitizeForLog(socket.user?.id || 'anonymous')}`);
+        if (socket.user) {
+            await socketRoomService_js_1.SocketRoomService.joinUserToRooms(socket);
         }
-        const canJoin = await validateRoomAccess({ ...socket.user, role: socket.user.role }, roomName);
-        if (canJoin) {
-            socket.join(roomName);
-            socket.emit('room_joined', { room: roomName });
-            loggerEnhanced_1.logger.info(`User ${socket.user.id} joined custom room: ${sanitizeForLog(roomName)}`);
-        }
-        else {
-            socket.emit('error', { message: `Access denied to room: ${roomName}` });
-            loggerEnhanced_1.logger.warn(`User ${sanitizeForLog(socket.user.id)} denied access to room: ${sanitizeForLog(roomName)}`);
-        }
-    });
-    socket.on('leave_room', (roomName) => {
-        socket.leave(roomName);
-        socket.emit('room_left', { room: roomName });
-        loggerEnhanced_1.logger.info(`User ${socket.user?.id} left room: ${sanitizeForLog(roomName)}`);
-    });
-    socket.on('get_room_info', async (roomName) => {
-        if (!socket.user || !['OWNER', 'ADMIN'].includes(socket.user.role)) {
-            socket.emit('error', { message: 'Access denied' });
-            return;
-        }
-        const roomInfo = await socketRoomService_js_1.SocketRoomService.getRoomInfo(roomName);
-        socket.emit('room_info', { room: roomName, ...roomInfo });
-    });
-    socket.on('get_socket_stats', async () => {
-        if (!socket.user || !['OWNER', 'ADMIN'].includes(socket.user.role)) {
-            socket.emit('error', { message: 'Access denied' });
-            return;
-        }
-        const stats = await socketRoomService_js_1.SocketRoomService.getSocketStats();
-        socket.emit('socket_stats', stats);
-    });
-    socket.on('disconnect', (reason) => {
-        loggerEnhanced_1.logger.info(`Socket disconnected: ${socket.id} (${sanitizeForLog(reason)}) for user ${socket.user?.id}`);
-        socketRoomService_js_1.SocketRoomService.leaveUserFromRooms(socket);
-    });
-    socket.on('error', (error) => {
-        loggerEnhanced_1.logger.error(`Socket error for ${sanitizeForLog(socket.id)}:`, (0, loggerEnhanced_1.toLogMetadata)(error));
-    });
+        socket.on('join_room', async (roomName) => {
+            if (!socket.user) {
+                socket.emit('error', { message: 'Not authenticated' });
+                return;
+            }
+            const canJoin = await validateRoomAccess({ ...socket.user, role: socket.user.role }, roomName);
+            if (canJoin) {
+                socket.join(roomName);
+                socket.emit('room_joined', { room: roomName });
+                loggerEnhanced_1.logger.info(`User ${socket.user.id} joined custom room: ${sanitizeForLog(roomName)}`);
+            }
+            else {
+                socket.emit('error', { message: `Access denied to room: ${roomName}` });
+                loggerEnhanced_1.logger.warn(`User ${sanitizeForLog(socket.user.id)} denied access to room: ${sanitizeForLog(roomName)}`);
+            }
+        });
+        socket.on('leave_room', (roomName) => {
+            socket.leave(roomName);
+            socket.emit('room_left', { room: roomName });
+            loggerEnhanced_1.logger.info(`User ${socket.user?.id} left room: ${sanitizeForLog(roomName)}`);
+        });
+        socket.on('get_room_info', async (roomName) => {
+            if (!socket.user || !['OWNER', 'ADMIN'].includes(socket.user.role)) {
+                socket.emit('error', { message: 'Access denied' });
+                return;
+            }
+            const roomInfo = await socketRoomService_js_1.SocketRoomService.getRoomInfo(roomName);
+            socket.emit('room_info', { room: roomName, ...roomInfo });
+        });
+        socket.on('get_socket_stats', async () => {
+            if (!socket.user || !['OWNER', 'ADMIN'].includes(socket.user.role)) {
+                socket.emit('error', { message: 'Access denied' });
+                return;
+            }
+            const stats = await socketRoomService_js_1.SocketRoomService.getSocketStats();
+            socket.emit('socket_stats', stats);
+        });
+        socket.on('disconnect', (reason) => {
+            loggerEnhanced_1.logger.info(`Socket disconnected: ${socket.id} (${sanitizeForLog(reason)}) for user ${socket.user?.id}`);
+            socketRoomService_js_1.SocketRoomService.leaveUserFromRooms(socket);
+        });
+        socket.on('error', (error) => {
+            loggerEnhanced_1.logger.error(`Socket error for ${sanitizeForLog(socket.id)}:`, (0, loggerEnhanced_1.toLogMetadata)(error));
+        });
+    }
+    catch (error) {
+        loggerEnhanced_1.logger.error('Socket connection handler error:', error);
+        socket.disconnect(true);
+    }
 });
 async function validateRoomAccess(user, roomName) {
     try {
@@ -453,8 +491,8 @@ const initializeServices = async () => {
 const PORT = env_1.env.PORT || 3001;
 server.listen(PORT, async () => {
     loggerEnhanced_1.logger.info(`🚀 Server running on port ${PORT}`);
-    loggerEnhanced_1.logger.info(`📊 Admin panel: http://82.147.84.78:3000`);
-    loggerEnhanced_1.logger.info(`🔧 API: http://82.147.84.78:${PORT}/api`);
+    loggerEnhanced_1.logger.info(`📊 Admin panel: http://localhost:3000`);
+    loggerEnhanced_1.logger.info(`🔧 API: http://localhost:${PORT}/api`);
     try {
         await initializeServices();
         await CompromiseResponseService_1.compromiseResponseService.initialize();

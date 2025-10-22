@@ -503,7 +503,7 @@ class DataMaskingService {
                 eventType: 'data_masking_job_completed',
                 severity: job.results.validationErrors.length > 0 ? 'MEDIUM' : 'LOW',
                 category: 'data_access',
-                ipAddress: '82.147.84.78',
+                ipAddress: 'localhost',
                 success: job.status === 'completed',
                 details: {
                     jobId,

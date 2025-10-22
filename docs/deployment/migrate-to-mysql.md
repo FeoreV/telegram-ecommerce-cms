@@ -25,7 +25,7 @@ docker-compose up -d
 1. Скачайте XAMPP с https://www.apachefriends.org/
 2. Установите и запустите XAMPP Control Panel  
 3. Включите Apache и MySQL
-4. Откройте http://82.147.84.78/phpmyadmin
+4. Откройте http://localhost/phpmyadmin
 5. Создайте базу данных: `telegram_ecommerce` (кодировка `utf8mb4_unicode_ci`)
 
 ### Вариант 2: MySQL Community Server
@@ -79,7 +79,7 @@ DATABASE_URL=file:./dev.db
 #### Для продакшена (MySQL):
 ```env
 DATABASE_PROVIDER=mysql
-DATABASE_URL=mysql://telegram_user:telegram_pass@82.147.84.78:3306/telegram_ecommerce
+DATABASE_URL=mysql://telegram_user:telegram_pass@localhost:3306/telegram_ecommerce
 ```
 
 #### Docker контейнеры:
@@ -166,14 +166,14 @@ npm run dev
 
 ### 1. Тест API
 ```bash
-curl http://82.147.84.78:3001/health
+curl http://localhost:3001/health
 ```
 
 ### 2. Проверка базы данных
 В phpMyAdmin должны появиться таблицы проекта.
 
 ### 3. Тест админ-панели
-Откройте http://82.147.84.78:3000
+Откройте http://localhost:3000
 
 ### 4. Тест Telegram бота
 Отправьте `/start` вашему боту.

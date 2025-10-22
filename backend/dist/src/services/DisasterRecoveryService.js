@@ -306,7 +306,7 @@ class DisasterRecoveryService {
                 eventType: 'rpo_violation',
                 severity: 'HIGH',
                 category: 'system',
-                ipAddress: '82.147.84.78',
+                ipAddress: 'localhost',
                 success: false,
                 details: {
                     timeSinceLastBackup,
@@ -624,7 +624,7 @@ class DisasterRecoveryService {
             eventType: `recovery_${action}`,
             severity: outcome === 'failure' ? 'HIGH' : 'LOW',
             category: 'system',
-            ipAddress: '82.147.84.78',
+            ipAddress: 'localhost',
             success: outcome === 'success',
             details: {
                 testId,

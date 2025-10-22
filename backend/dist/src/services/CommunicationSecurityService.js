@@ -536,7 +536,7 @@ If this was not you, please contact support immediately.`,
                 eventType: 'secure_notification_processed',
                 severity: 'LOW',
                 category: 'network',
-                ipAddress: '82.147.84.78',
+                ipAddress: 'localhost',
                 success: true,
                 details: {
                     notificationId,

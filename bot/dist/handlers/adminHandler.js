@@ -475,7 +475,7 @@ async function showOrderVerification(bot, chatId, order, session) {
     };
     if (order.paymentProof) {
         try {
-            const photoUrl = `${process.env.API_URL || 'http://82.147.84.78:3001'}${order.paymentProof}`;
+            const photoUrl = `${process.env.API_URL || 'http://localhost:3001'}${order.paymentProof}`;
             await bot.sendPhoto(chatId, photoUrl, {
                 caption: `💳 Чек об оплате заказа #${orderNumber}`
             });

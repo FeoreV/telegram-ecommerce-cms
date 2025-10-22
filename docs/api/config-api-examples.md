@@ -283,7 +283,7 @@ Configuration can be set via environment variables:
 
 ## Redis Configuration
 
-- `REDIS_URL=redis://82.147.84.78:6379` - Redis connection URL
+- `REDIS_URL=redis://localhost:6379` - Redis connection URL
 - Used for: session storage, rate limiting, token blacklist, caching
 
 ## SSL/HTTPS Configuration

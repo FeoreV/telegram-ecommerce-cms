@@ -8,19 +8,20 @@ const socketAuthMiddleware = async (socket, next) => {
     try {
         const token = socket.handshake.auth.token;
         if (!token) {
-            logger_1.logger.warn(`Socket authentication failed: No token provided for ${socket.id}`);
-            return next(new Error('Authentication failed: No token provided'));
+            logger_1.logger.warn(`Socket connection without token: ${socket.id}`);
+            socket.userId = undefined;
+            socket.user = undefined;
+            return next();
         }
         let decoded;
         try {
             decoded = (0, jwt_1.verifyToken)(token);
         }
         catch (error) {
-            logger_1.logger.warn(`Socket authentication failed: ${error.message} for ${socket.id}`);
-            if (error.message === 'Token expired') {
-                return next(new Error('Authentication failed: Token expired'));
-            }
-            return next(new Error('Authentication failed: Invalid token'));
+            logger_1.logger.warn(`Socket token invalid: ${error.message} for ${socket.id}`);
+            socket.userId = undefined;
+            socket.user = undefined;
+            return next();
         }
         const user = await prisma_1.prisma.user.findUnique({
             where: { id: decoded.userId },
@@ -35,8 +36,10 @@ const socketAuthMiddleware = async (socket, next) => {
             },
         });
         if (!user || !user.isActive) {
-            logger_1.logger.warn(`Socket authentication failed: User not found or inactive for ${socket.id}`);
-            return next(new Error('Authentication failed: User not found or inactive'));
+            logger_1.logger.warn(`Socket user not found or inactive for ${socket.id}`);
+            socket.userId = undefined;
+            socket.user = undefined;
+            return next();
         }
         socket.userId = user.id;
         socket.user = {

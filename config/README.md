@@ -247,7 +247,7 @@ docker exec -it postgres psql -U postgres -d telegram_ecommerce \
 
 ```bash
 # Application has built-in /metrics endpoint (JSON format)
-curl http://82.147.84.78:3001/metrics
+curl http://localhost:3001/metrics
 
 # For advanced monitoring, you can integrate external tools
 # See: config/docker/docker-compose.secure-infrastructure.yml

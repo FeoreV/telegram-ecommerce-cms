@@ -82,7 +82,7 @@ export class CorsSecurityService {
   }
 
   private parseAllowedOrigins(): string[] {
-    const origins = process.env.ALLOWED_ORIGINS || 'http://82.147.84.78:3000,http://82.147.84.78:3001';
+    const origins = process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:3001';
     return origins.split(',').map(origin => origin.trim()).filter(Boolean);
   }
 
@@ -94,8 +94,8 @@ export class CorsSecurityService {
     // Add development origins if in development mode
     if (process.env.NODE_ENV === 'development') {
       const devOrigins = [
-        'http://82.147.84.78:3000',
-        'http://82.147.84.78:3001',
+        'http://localhost:3000',
+        'http://localhost:3001',
         'http://127.0.0.1:3000',
         'http://127.0.0.1:3001'
       ];
