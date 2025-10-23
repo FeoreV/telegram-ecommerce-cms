@@ -13,7 +13,7 @@ This feature addresses the WebSocket connection error ("xhr poll error") between
 #### Acceptance Criteria
 
 1. WHEN the frontend application initializes THEN it SHALL use the correct backend URL with port number for WebSocket connections
-2. WHEN the VITE_SOCKET_URL environment variable is read THEN it SHALL include the complete URL with protocol, host, and port (e.g., http://localhost:3001)
+2. WHEN the VITE_SOCKET_URL environment variable is read THEN it SHALL include the complete URL with protocol, host, and port (e.g., http://82.147.84.78:3001)
 3. IF the backend is running on a non-standard port THEN the frontend SHALL include that port in the Socket.IO connection URL
 4. WHEN the Socket.IO client is configured THEN it SHALL use the VITE_SOCKET_URL or fallback to VITE_API_URL for connection
 
@@ -25,7 +25,7 @@ This feature addresses the WebSocket connection error ("xhr poll error") between
 
 1. WHEN a WebSocket connection request arrives THEN the backend SHALL validate the origin against the CORS_WHITELIST
 2. WHEN the CORS_WHITELIST is configured THEN it SHALL include all valid frontend URLs (with and without ports)
-3. IF the frontend is running on localhost with a specific port THEN that exact origin SHALL be included in CORS_WHITELIST
+3. IF the frontend is running on 82.147.84.78 with a specific port THEN that exact origin SHALL be included in CORS_WHITELIST
 4. WHEN Socket.IO is initialized THEN it SHALL use the CORS configuration from environment variables
 
 ### Requirement 3: Environment Variable Consistency
@@ -56,7 +56,7 @@ This feature addresses the WebSocket connection error ("xhr poll error") between
 
 #### Acceptance Criteria
 
-1. WHEN running in development mode THEN the application SHALL use localhost URLs with appropriate ports
+1. WHEN running in development mode THEN the application SHALL use 82.147.84.78 URLs with appropriate ports
 2. WHEN running in production mode THEN the application SHALL use the production domain URLs
 3. IF the NODE_ENV changes THEN the connection configuration SHALL adapt accordingly
 4. WHEN deploying to production THEN the environment variables SHALL be validated before startup

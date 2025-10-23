@@ -76,9 +76,9 @@ docker-compose up -d --build
 ## Шаг 6: Проверка
 
 Откройте в браузере:
-- localhost - должен работать frontend
-- localhost/api/health - должен вернуть статус API
-- localhost/admin - админ панель
+- 82.147.84.78 - должен работать frontend
+- 82.147.84.78/api/health - должен вернуть статус API
+- 82.147.84.78/admin - админ панель
 
 ## Альтернатива: Если у вас нет доступа к серверу для установки Certbot
 
@@ -109,4 +109,4 @@ docker-compose up -d --build
 
 ### CORS ошибки
 - Проверьте CORS_WHITELIST в backend/.env
-- Должен содержать: `localhost`
+- Должен содержать: `82.147.84.78`

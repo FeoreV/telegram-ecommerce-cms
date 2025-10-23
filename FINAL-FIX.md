@@ -67,7 +67,7 @@ chmod +x deploy-production.sh
 
 ### 1. Health endpoint:
 ```bash
-curl localhost/api/health
+curl 82.147.84.78/api/health
 ```
 Ожидается:
 ```json
@@ -89,7 +89,7 @@ curl localhost/api/health
 
 ### 2. CSRF token:
 ```bash
-curl localhost/api/csrf-token
+curl 82.147.84.78/api/csrf-token
 ```
 Ожидается:
 ```json
@@ -101,13 +101,13 @@ curl localhost/api/csrf-token
 
 ### 3. Фронтенд:
 ```bash
-curl -I localhost
+curl -I 82.147.84.78
 ```
 Ожидается: `200 OK` и `Content-Type: text/html`
 
 ### 4. Откройте в браузере:
 ```
-localhost
+82.147.84.78
 ```
 
 **Проверьте консоль браузера (F12):**
@@ -131,11 +131,11 @@ import { sanitizeForLog } from '../../utils/sanitizer';
 ### frontend/src/utils/authClient.ts
 ```typescript
 // Было:
-private baseURL = process.env.REACT_APP_API_URL || 'localhost';
+private baseURL = process.env.REACT_APP_API_URL || '82.147.84.78';
 
 // Стало:
 constructor() {
-  const rawBase = (import.meta.env.VITE_API_URL as string | undefined) || 'localhost';
+  const rawBase = (import.meta.env.VITE_API_URL as string | undefined) || '82.147.84.78';
   const base = rawBase.replace(/\/$/, '');
   this.baseURL = base.endsWith('/api') ? base : `${base}/api`;
   this.setupAutoRefresh();
@@ -241,15 +241,15 @@ sudo systemctl restart nginx
 sudo netstat -tlnp | grep 3001
 
 # Проверьте, что nginx проксирует правильно
-curl -I http://localhost:3001/api/health
-curl -I localhost/api/health
+curl -I http://82.147.84.78:3001/api/health
+curl -I 82.147.84.78/api/health
 ```
 
 ## Ожидаемый результат:
 
 После выполнения всех команд:
 
-✅ Сайт localhost открывается без ошибок  
+✅ Сайт 82.147.84.78 открывается без ошибок  
 ✅ Консоль браузера чистая (нет ошибок)  
 ✅ API `/api/health` возвращает 200 OK  
 ✅ API `/api/csrf-token` возвращает токен  
@@ -265,7 +265,7 @@ curl -I localhost/api/health
 Создайте файл `frontend/.env.production`:
 
 ```env
-VITE_API_URL=localhost/api
+VITE_API_URL=82.147.84.78/api
 ```
 
 Затем пересоберите:
@@ -316,7 +316,7 @@ pm2 status
 pm2 logs telegram-backend | grep -i socket
 
 # Проверьте endpoint
-curl -I localhost/socket.io/
+curl -I 82.147.84.78/socket.io/
 ```
 
 Если WebSocket не нужен прямо сейчас, можно временно отключить его в коде или просто игнорировать ошибку.

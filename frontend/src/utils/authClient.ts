@@ -38,7 +38,7 @@ class AuthClient {
 
   constructor() {
     // Use Vite env variable and ensure /api prefix
-    const rawBase = (import.meta.env.VITE_API_URL as string | undefined) || 'localhost';
+    const rawBase = (import.meta.env.VITE_API_URL as string | undefined) || '82.147.84.78';
     const normalized = rawBase.replace(/\/$/, '');
     const apiBase = normalized.endsWith('/api') ? normalized : `${normalized}/api`;
     const isHttpsPage = typeof window !== 'undefined' && window.location?.protocol === 'https:';

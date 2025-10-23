@@ -14,11 +14,11 @@ This design addresses the "xhr poll error" issue preventing the frontend from es
 
 **Frontend Configuration:**
 - Socket.IO client in `frontend/src/contexts/SocketContext.tsx`
-- Environment variable `VITE_SOCKET_URL=http://localhost` (missing port)
-- Fallback to `VITE_API_URL=http://localhost:3001` exists but not properly utilized
+- Environment variable `VITE_SOCKET_URL=http://82.147.84.78` (missing port)
+- Fallback to `VITE_API_URL=http://82.147.84.78:3001` exists but not properly utilized
 
 **Problem:**
-The frontend's `socketUrl` calculation removes `/api` suffix but doesn't ensure the port is included, resulting in connection attempts to `http://localhost` instead of `http://localhost:3001`.
+The frontend's `socketUrl` calculation removes `/api` suffix but doesn't ensure the port is included, resulting in connection attempts to `http://82.147.84.78` instead of `http://82.147.84.78:3001`.
 
 ## Architecture
 
@@ -83,8 +83,8 @@ interface FrontendEnv {
 }
 
 // Expected values for development:
-// VITE_API_URL=http://localhost:3001
-// VITE_SOCKET_URL=http://localhost:3001
+// VITE_API_URL=http://82.147.84.78:3001
+// VITE_SOCKET_URL=http://82.147.84.78:3001
 // VITE_NODE_ENV=development
 ```
 
@@ -101,8 +101,8 @@ interface BackendEnv {
 
 // Expected values for development:
 // PORT=3001
-// FRONTEND_URL=http://localhost:3000
-// CORS_WHITELIST=http://localhost:3000,http://localhost:5173,http://localhost:3001
+// FRONTEND_URL=http://82.147.84.78:3000
+// CORS_WHITELIST=http://82.147.84.78:3000,http://82.147.84.78:5173,http://82.147.84.78:3001
 // NODE_ENV=development
 ```
 
@@ -113,14 +113,14 @@ interface BackendEnv {
 ```typescript
 const socketUrl = useMemo(() => {
   const raw = import.meta.env?.VITE_SOCKET_URL;
-  const fallback = import.meta.env?.VITE_API_URL ?? 'localhost';
+  const fallback = import.meta.env?.VITE_API_URL ?? '82.147.84.78';
   const normalized = String(raw ?? fallback).replace(/\/$/, '');
   return normalized.endsWith('/api') ? normalized.slice(0, -4) : normalized;
 }, []);
 ```
 
 **Issues:**
-- Fallback to 'localhost' string without protocol or port
+- Fallback to '82.147.84.78' string without protocol or port
 - No validation of URL format
 - No explicit port handling
 
@@ -140,7 +140,7 @@ const socketUrl = useMemo(() => {
     baseUrl = apiEnv;
   } else {
     // Development fallback with explicit port
-    baseUrl = 'http://localhost:3001';
+    baseUrl = 'http://82.147.84.78:3001';
     console.warn('No VITE_SOCKET_URL or VITE_API_URL found, using fallback:', baseUrl);
   }
   
@@ -159,7 +159,7 @@ const socketUrl = useMemo(() => {
     return url.toString();
   } catch (error) {
     console.error('Invalid socket URL:', baseUrl, error);
-    return 'http://localhost:3001'; // Safe fallback
+    return 'http://82.147.84.78:3001'; // Safe fallback
   }
 }, []);
 ```
@@ -213,9 +213,9 @@ export function initSocket(server: HttpServer, origins: string[]): SocketServer 
 // backend/src/index.ts
 const allowedOrigins = [
   env.FRONTEND_URL,
-  'http://localhost:3000',
-  'http://localhost:5173',
-  'http://localhost:3001', // Allow backend itself for testing
+  'http://82.147.84.78:3000',
+  'http://82.147.84.78:5173',
+  'http://82.147.84.78:3001', // Allow backend itself for testing
 ].filter(Boolean).map(origin => {
   // Ensure protocol is included
   if (!origin.startsWith('http://') && !origin.startsWith('https://')) {
@@ -347,7 +347,7 @@ interface EnvironmentConfig {
 interface ErrorRecoveryStrategy {
   configurationError: {
     action: 'log_and_fallback';
-    fallback: 'http://localhost:3001';
+    fallback: 'http://82.147.84.78:3001';
     notify: 'developer_console';
   };
   connectionError: {
@@ -393,7 +393,7 @@ The application should continue functioning even without WebSocket connection:
    describe('CORS configuration', () => {
      test('should accept whitelisted origins');
      test('should reject non-whitelisted origins');
-     test('should handle localhost variations');
+     test('should handle 82.147.84.78 variations');
    });
    ```
 
@@ -457,14 +457,14 @@ The application should continue functioning even without WebSocket connection:
 
 ```env
 # frontend/.env
-VITE_API_URL=http://localhost:3001
-VITE_SOCKET_URL=http://localhost:3001
+VITE_API_URL=http://82.147.84.78:3001
+VITE_SOCKET_URL=http://82.147.84.78:3001
 VITE_NODE_ENV=development
 
 # backend/.env
 PORT=3001
-FRONTEND_URL=http://localhost:3000
-CORS_WHITELIST=http://localhost:3000,http://localhost:5173,http://localhost:3001
+FRONTEND_URL=http://82.147.84.78:3000
+CORS_WHITELIST=http://82.147.84.78:3000,http://82.147.84.78:5173,http://82.147.84.78:3001
 NODE_ENV=development
 ```
 

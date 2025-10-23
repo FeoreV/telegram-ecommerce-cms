@@ -19,7 +19,7 @@ netstat -ano | findstr ":3001"
 
 ### 3. Проверьте health endpoint
 ```bash
-curl http://localhost:3001/health
+curl http://82.147.84.78:3001/health
 ```
 
 Должен вернуть: `{"status":"OK","timestamp":"..."}`
@@ -51,7 +51,7 @@ Access to fetch at 'https://megapenis.work.gd/api/...' from origin 'https://mega
 **Решение:**
 Убедитесь, что в `backend/.env` правильно настроен CORS:
 ```env
-CORS_WHITELIST=https://megapenis.work.gd,http://localhost:3000,http://localhost:5173
+CORS_WHITELIST=https://megapenis.work.gd,http://82.147.84.78:3000,http://82.147.84.78:5173
 FRONTEND_URL=https://megapenis.work.gd
 ```
 
@@ -103,8 +103,8 @@ server.listen(PORT, '127.0.0.1', async () => {
 # Проверка firewall
 ufw status
 
-# Если порт 3001 не открыт для localhost, это нормально
-# Nginx должен иметь доступ к localhost
+# Если порт 3001 не открыт для 82.147.84.78, это нормально
+# Nginx должен иметь доступ к 82.147.84.78
 ```
 
 ### Причина 6: Frontend неправильно собран
@@ -134,7 +134,7 @@ cd frontend
 npm run dev
 ```
 
-Откройте http://localhost:3000
+Откройте http://82.147.84.78:3000
 
 ### Вариант 2: Production на сервере
 
@@ -162,7 +162,7 @@ systemctl restart nginx
 
 1. **Backend health:**
 ```bash
-curl http://localhost:3001/health
+curl http://82.147.84.78:3001/health
 ```
 
 2. **API через nginx:**
@@ -197,8 +197,8 @@ tail -f /var/log/nginx/megapenis-access.log
 ## Контрольный список
 
 - [ ] Backend запущен и слушает порт 3001
-- [ ] `curl http://localhost:3001/health` возвращает OK
-- [ ] `curl http://localhost:3001/api` возвращает JSON
+- [ ] `curl http://82.147.84.78:3001/health` возвращает OK
+- [ ] `curl http://82.147.84.78:3001/api` возвращает JSON
 - [ ] CORS_WHITELIST включает https://megapenis.work.gd
 - [ ] Nginx конфигурация корректна (`nginx -t`)
 - [ ] Nginx запущен (`systemctl status nginx`)

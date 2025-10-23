@@ -11,13 +11,13 @@ echo.
 
 echo 2. Проверка backend health:
 echo.
-curl -v http://localhost:3001/health
+curl -v http://82.147.84.78:3001/health
 echo.
 echo.
 
 echo 3. Проверка API endpoint:
 echo.
-curl -v http://localhost:3001/api
+curl -v http://82.147.84.78:3001/api
 echo.
 echo.
 

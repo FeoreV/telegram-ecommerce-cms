@@ -38,10 +38,10 @@ echo ""
 # 5. Тест подключения
 echo "5️⃣ Тест локальных подключений:"
 echo "Backend health:"
-curl -s http://localhost:3001/api/health || echo "❌ Backend не отвечает"
+curl -s http://82.147.84.78:3001/api/health || echo "❌ Backend не отвечает"
 echo ""
 echo "Frontend:"
-curl -s -I http://localhost:3000 | head -5 || echo "❌ Frontend не отвечает"
+curl -s -I http://82.147.84.78:3000 | head -5 || echo "❌ Frontend не отвечает"
 echo ""
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -81,7 +81,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     
     echo ""
     echo "Тест backend:"
-    curl -s http://localhost:3001/api/health | jq . || curl -s http://localhost:3001/api/health
+    curl -s http://82.147.84.78:3001/api/health | jq . || curl -s http://82.147.84.78:3001/api/health
 fi
 
 echo ""
@@ -93,7 +93,7 @@ echo "1. Проверь логи в реальном времени:"
 echo "   pm2 logs"
 echo ""
 echo "2. Проверь сайт:"
-echo "   localhost"
+echo "   82.147.84.78"
 echo ""
 echo "3. Если всё ещё 502, проверь nginx логи:"
 echo "   tail -f /var/log/nginx/megapenis-error.log"

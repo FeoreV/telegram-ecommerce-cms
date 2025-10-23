@@ -23,7 +23,7 @@ const app = express();
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: process.env.FRONTEND_URL || 'http://82.147.84.78:3000',
   credentials: true
 }));
 app.use(cookieParser());
@@ -56,7 +56,7 @@ JWT_REFRESH_SECRET=your-different-super-secure-256-bit-refresh-key-here
 ACCESS_TOKEN_EXPIRY=15m
 REFRESH_TOKEN_EXPIRY=7d
 BCRYPT_ROUNDS=12
-REDIS_URL=redis://localhost:6379
+REDIS_URL=redis://82.147.84.78:6379
 ```
 
 ## API Endpoints
@@ -231,7 +231,7 @@ export const useAuth = () => {
 ```typescript
 // apiClient.ts
 class APIClient {
-  private baseURL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+  private baseURL = process.env.REACT_APP_API_URL || 'http://82.147.84.78:3001';
 
   async request(endpoint: string, options: RequestInit = {}) {
     const token = localStorage.getItem('accessToken');

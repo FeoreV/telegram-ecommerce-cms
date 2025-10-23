@@ -89,9 +89,9 @@ ioInstance = new SocketServer(server, {
 // Initialize Socket.IO with proper CORS configuration
 const allowedOrigins = [
   env.FRONTEND_URL,
-  'localhost',
-  'http://localhost:3000',
-  'http://localhost:5173'
+  '82.147.84.78',
+  'http://82.147.84.78:3000',
+  'http://82.147.84.78:5173'
 ];
 
 const io = initSocket(server, allowedOrigins.join(','));
@@ -101,7 +101,7 @@ const io = initSocket(server, allowedOrigins.join(','));
 
 #### Тест 1: Проверьте, что Socket.IO endpoint доступен
 ```bash
-curl -I localhost/socket.io/
+curl -I 82.147.84.78/socket.io/
 ```
 
 Должен вернуть `400 Bad Request` (это нормально для Socket.IO без правильных параметров).
@@ -123,7 +123,7 @@ wscat -c "wss://megapenis.work.gd/socket.io/?EIO=4&transport=websocket"
 console.log(typeof io);
 
 // Попробуйте подключиться вручную
-const socket = io('localhost', {
+const socket = io('82.147.84.78', {
   transports: ['websocket', 'polling'],
   auth: { token: localStorage.getItem('accessToken') }
 });
@@ -192,7 +192,7 @@ GET /socket.io/?EIO=4&transport=websocket HTTP/1.1" 101
 
 ### 3. Проверьте в браузере:
 
-Откройте localhost и в консоли (F12) должно быть:
+Откройте 82.147.84.78 и в консоли (F12) должно быть:
 
 ```
 ✅ Socket connected
@@ -222,7 +222,7 @@ pm2 logs telegram-backend | grep -i "socket"
 **Решение:** Проверьте `backend/src/lib/socket.ts`:
 ```typescript
 cors: {
-  origin: 'localhost',
+  origin: '82.147.84.78',
   credentials: true
 }
 ```
@@ -291,7 +291,7 @@ sudo nginx -t
 sudo systemctl reload nginx
 
 # 4. Откройте сайт
-# localhost
+# 82.147.84.78
 
 # 5. Проверьте консоль браузера (F12)
 # Не должно быть ошибок WebSocket

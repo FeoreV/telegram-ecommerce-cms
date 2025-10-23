@@ -25,11 +25,11 @@ if %errorlevel% equ 0 (
 echo.
 echo Шаг 2: Тест локального подключения к backend...
 echo.
-curl -s http://localhost:3001/health
+curl -s http://82.147.84.78:3001/health
 if %errorlevel% equ 0 (
     echo [OK] Backend отвечает локально
 ) else (
-    echo [ОШИБКА] Backend не отвечает на localhost:3001
+    echo [ОШИБКА] Backend не отвечает на 82.147.84.78:3001
     echo Проверьте логи backend
     pause
     exit /b 1
@@ -51,7 +51,7 @@ echo.
 echo.
 echo Шаг 4: Проверка API endpoint...
 echo.
-curl -s http://localhost:3001/api
+curl -s http://82.147.84.78:3001/api
 echo.
 echo.
 

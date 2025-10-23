@@ -5,7 +5,7 @@
 # Frontend - Main domain
 yourdomain.com, www.yourdomain.com {
     # Reverse proxy to frontend (port 3000)
-    reverse_proxy localhost:3000
+    reverse_proxy 82.147.84.78:3000
     
     # Security headers
     header {
@@ -36,7 +36,7 @@ yourdomain.com, www.yourdomain.com {
 # Backend API - API subdomain
 api.yourdomain.com {
     # Reverse proxy to backend (port 3001)
-    reverse_proxy localhost:3001 {
+    reverse_proxy 82.147.84.78:3001 {
         # WebSocket support
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}
@@ -88,15 +88,15 @@ api.yourdomain.com {
 
 # Optional: Admin subdomain (if you want separate admin panel)
 # admin.yourdomain.com {
-#     reverse_proxy localhost:3001/admin
+#     reverse_proxy 82.147.84.78:3001/admin
 #     
 #     # Restrict access by IP (optional)
 #     @allowed {
-#         remote_ip localhost 192.168.1.0/24
+#         remote_ip 82.147.84.78 192.168.1.0/24
 #     }
 #     
 #     handle @allowed {
-#         reverse_proxy localhost:3001
+#         reverse_proxy 82.147.84.78:3001
 #     }
 #     
 #     handle {

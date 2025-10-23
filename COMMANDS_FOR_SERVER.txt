@@ -61,7 +61,7 @@ pm2 logs --lines 30
 === БЫСТРАЯ ПРОВЕРКА ===
 
 # Проверить что backend запущен
-curl http://localhost:3001/health
+curl http://82.147.84.78:3001/health
 
 # Проверить что frontend собран
 ls -la frontend/dist/

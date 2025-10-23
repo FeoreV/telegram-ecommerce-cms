@@ -72,8 +72,8 @@ pm2 logs telegram-backend
 ```env
 NODE_ENV=production
 PORT=3001
-FRONTEND_URL=localhost
-CORS_ORIGIN=localhost
+FRONTEND_URL=82.147.84.78
+CORS_ORIGIN=82.147.84.78
 ```
 
 ### 6. Полная последовательность команд для сервера:
@@ -111,10 +111,10 @@ pm2 logs telegram-backend --lines 50
 
 После выполнения команд проверьте:
 
-1. **Бэкенд работает**: `curl http://localhost:3001/health`
+1. **Бэкенд работает**: `curl http://82.147.84.78:3001/health`
 2. **Фронтенд собран**: `ls -la /root/telegram-ecommerce-cms/frontend/dist`
-3. **Nginx отдает файлы**: `curl -I localhost`
-4. **API доступен**: `curl localhost/api/csrf-token`
+3. **Nginx отдает файлы**: `curl -I 82.147.84.78`
+4. **API доступен**: `curl 82.147.84.78/api/csrf-token`
 
 ## Если ошибки остались:
 
@@ -184,7 +184,7 @@ echo "📊 Checking status..."
 pm2 status
 
 echo ""
-echo "🌐 Your site should now be available at: localhost"
+echo "🌐 Your site should now be available at: 82.147.84.78"
 ```
 
 Сделайте его исполняемым:

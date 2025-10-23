@@ -58,7 +58,7 @@ chmod +x deploy-production.sh
 
 ### 1. Проверьте health endpoint:
 ```bash
-curl http://localhost:3001/api/health
+curl http://82.147.84.78:3001/api/health
 ```
 
 Должен вернуть:
@@ -75,24 +75,24 @@ curl http://localhost:3001/api/health
 
 ### 2. Проверьте фронтенд:
 ```bash
-curl -I localhost
+curl -I 82.147.84.78
 ```
 
 Должен вернуть `200 OK` и `Content-Type: text/html`
 
 ### 3. Проверьте API через nginx:
 ```bash
-curl localhost/api/health
+curl 82.147.84.78/api/health
 ```
 
 ### 4. Проверьте CSRF token:
 ```bash
-curl localhost/api/csrf-token
+curl 82.147.84.78/api/csrf-token
 ```
 
 ### 5. Откройте в браузере:
 ```
-localhost
+82.147.84.78
 ```
 
 Не должно быть ошибок в консоли браузера.
@@ -146,7 +146,7 @@ npm run build
 
 После выполнения всех команд:
 
-1. ✅ Сайт localhost открывается без ошибок
+1. ✅ Сайт 82.147.84.78 открывается без ошибок
 2. ✅ В консоли браузера нет ошибок `require is not defined`
 3. ✅ API `/api/health` возвращает 200 OK
 4. ✅ API `/api/csrf-token` возвращает токен

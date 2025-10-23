@@ -81,7 +81,7 @@ const PageDebugger: React.FC<PageDebuggerProps> = ({ pageName, children }) => {
   const [forceDebug, setForceDebug] = useState(false)
 
   const healthCheckUrl = useMemo(() => {
-    const rawBase = (import.meta as ImportMeta).env?.VITE_API_URL ?? 'localhost/api'
+    const rawBase = (import.meta as ImportMeta).env?.VITE_API_URL ?? '82.147.84.78/api'
     const normalized = String(rawBase).replace(/\/$/, '')
     return `${normalized}/health`
   }, [])

@@ -81,8 +81,8 @@ FRONTEND_ENV="frontend/.env"
 if [ ! -f "$FRONTEND_ENV" ]; then
     echo -e "${YELLOW}⚠️  Frontend .env not found, creating...${NC}"
     cat > "$FRONTEND_ENV" << EOF
-VITE_API_URL=http://localhost:3002
-VITE_WS_URL=ws://localhost:3002
+VITE_API_URL=http://82.147.84.78:3002
+VITE_WS_URL=ws://82.147.84.78:3002
 NODE_ENV=production
 EOF
     echo -e "${GREEN}✓ Created frontend/.env${NC}"
@@ -195,7 +195,7 @@ fi
 
 # Set bot API URL if missing
 if ! check_env_var "API_URL" "$BOT_ENV"; then
-    set_env_var "API_URL" "http://localhost:3002" "$BOT_ENV"
+    set_env_var "API_URL" "http://82.147.84.78:3002" "$BOT_ENV"
     echo -e "${GREEN}✓${NC} Set default API_URL for bot"
 fi
 

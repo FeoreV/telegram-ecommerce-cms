@@ -18,7 +18,7 @@ ENABLE_SECURITY_HEADERS=true
 
 TELEGRAM_BOT_TOKEN=8464947827:AAFia8hIsM8yNnQgAOkrw3Sb34SuzvElpNo
 
-REDIS_URL=redis://localhost:6379
+REDIS_URL=redis://82.147.84.78:6379
 
 ADMIN_IP_WHITELIST=
 ```
@@ -70,8 +70,8 @@ pm2 logs
 4. Verify services are running:
 ```bash
 pm2 status
-curl http://localhost:3003/health
-curl http://localhost:3001/api/health
+curl http://82.147.84.78:3003/health
+curl http://82.147.84.78:3001/api/health
 ```
 
 ## Warnings to Address (Optional)
@@ -80,5 +80,5 @@ These are warnings, not errors - the bot will work:
 
 1. **ADMIN_IP_WHITELIST**: Set this to restrict admin access by IP
 2. **TELEGRAM_BOT_TOKEN format**: Token is valid, warning can be ignored
-3. **FRONTEND_URL https**: Already using localhost ✓
+3. **FRONTEND_URL https**: Already using 82.147.84.78 ✓
 4. **REDIS_URL**: Already configured ✓

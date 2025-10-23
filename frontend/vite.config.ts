@@ -35,10 +35,10 @@ export default defineConfig({
   server: {
     port: 3000,
     host: '0.0.0.0',
-    allowedHosts: ['megapenis.work.gd', 'www.megapenis.work.gd', 'localhost', '.megapenis.work.gd'],
+    allowedHosts: ['megapenis.work.gd', 'www.megapenis.work.gd', '82.147.84.78', '.megapenis.work.gd'],
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: 'http://82.147.84.78:3001',
         changeOrigin: true,
       },
     },
@@ -46,7 +46,7 @@ export default defineConfig({
   preview: {
     port: 3000,
     host: '0.0.0.0',
-    allowedHosts: ['megapenis.work.gd', 'www.megapenis.work.gd', 'localhost'],
+    allowedHosts: ['megapenis.work.gd', 'www.megapenis.work.gd', '82.147.84.78'],
   },
   build: {
     outDir: 'dist',

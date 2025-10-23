@@ -31,7 +31,7 @@ netstat -tlnp | grep -E '3000|3001|3003'
 
 echo ""
 echo "🏥 Проверка здоровья backend:"
-curl -s http://localhost:3001/api/health | jq . 2>/dev/null || curl -s http://localhost:3001/api/health
+curl -s http://82.147.84.78:3001/api/health | jq . 2>/dev/null || curl -s http://82.147.84.78:3001/api/health
 
 echo ""
-echo "✅ Готово! Проверь сайт: localhost"
+echo "✅ Готово! Проверь сайт: 82.147.84.78"

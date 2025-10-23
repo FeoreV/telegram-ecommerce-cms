@@ -9,7 +9,7 @@
 - ✅ Добавлена поддержка credentials
 
 ### 2. Переменные окружения
-- ✅ FRONTEND_URL уже настроен на HTTPS: `localhost`
+- ✅ FRONTEND_URL уже настроен на HTTPS: `82.147.84.78`
 - ✅ CORS_WHITELIST включает HTTPS домен
 
 ### 3. Nginx конфигурация
@@ -49,7 +49,7 @@ sudo tail -f /var/log/nginx/megapenis-error.log
 
 ### 4. Тест WebSocket соединения
 Откройте браузер и проверьте консоль разработчика (F12):
-- Перейдите на localhost
+- Перейдите на 82.147.84.78
 - Откройте вкладку Network
 - Фильтр: WS (WebSocket)
 - Должно быть соединение к `wss://megapenis.work.gd/socket.io/`
@@ -76,19 +76,19 @@ sudo tail -f /var/log/nginx/megapenis-error.log
 
 ### Backend
 ```bash
-curl http://localhost:3001/health
+curl http://82.147.84.78:3001/health
 ```
 
 ### Frontend через nginx
 ```bash
-curl localhost/health
+curl 82.147.84.78/health
 ```
 
 ### WebSocket через nginx
 ```bash
 curl -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" \
   -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: test" \
-  localhost/socket.io/
+  82.147.84.78/socket.io/
 ```
 
 ## Дополнительная информация:
@@ -99,7 +99,7 @@ curl -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" \
 - Nginx: 443 (HTTPS), 80 (HTTP redirect)
 
 ### WebSocket URL:
-- Локально: `ws://localhost:3001`
+- Локально: `ws://82.147.84.78:3001`
 - Через nginx: `wss://megapenis.work.gd/socket.io/`
 
 ### Транспорты Socket.IO:

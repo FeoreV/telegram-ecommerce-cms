@@ -42,7 +42,7 @@ echo "📊 Checking status..."
 pm2 status
 
 echo ""
-echo "🌐 Your site should now be available at: localhost"
+echo "🌐 Your site should now be available at: 82.147.84.78"
 echo ""
 echo "📝 To check logs:"
 echo "   Backend: pm2 logs telegram-backend"

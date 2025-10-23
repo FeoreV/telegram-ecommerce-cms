@@ -9,26 +9,26 @@ This guide will help you set up HTTPS for your production server using:
 
 ## Prerequisites
 
-- Domain name pointing to your server IP (localhost)
+- Domain name pointing to your server IP (82.147.84.78)
 - SSH access to the server
 - Root or sudo privileges
 
 ## Step 1: Get a Domain Name
 
-You need a domain name (e.g., `mystore.com`) pointing to `localhost`
+You need a domain name (e.g., `mystore.com`) pointing to `82.147.84.78`
 
 ### Option A: Use your own domain
 1. Buy domain from registrar (Namecheap, GoDaddy, etc.)
 2. Add A records:
    ```
-   @ (or mystore.com)     A    localhost
-   www                    A    localhost
-   api                    A    localhost
+   @ (or mystore.com)     A    82.147.84.78
+   www                    A    82.147.84.78
+   api                    A    82.147.84.78
    ```
 
 ### Option B: Free subdomain services
 - Use services like FreeDNS, Duck DNS, or No-IP
-- Point subdomain to localhost
+- Point subdomain to 82.147.84.78
 
 For this guide, let's assume your domain is: `yourdomain.com`
 
@@ -74,7 +74,7 @@ server {
     server_name yourdomain.com www.yourdomain.com;
 
     location / {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://82.147.84.78:3000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -95,7 +95,7 @@ server {
     client_max_body_size 10M;
 
     location / {
-        proxy_pass http://localhost:3001;
+        proxy_pass http://82.147.84.78:3001;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -119,7 +119,7 @@ server {
     
     # WebSocket support for Socket.IO
     location /socket.io/ {
-        proxy_pass http://localhost:3001;
+        proxy_pass http://82.147.84.78:3001;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -296,7 +296,7 @@ server {
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
 
     location / {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://82.147.84.78:3000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -390,11 +390,11 @@ sudo nano /etc/caddy/Caddyfile
 Add:
 ```
 yourdomain.com, www.yourdomain.com {
-    reverse_proxy localhost:3000
+    reverse_proxy 82.147.84.78:3000
 }
 
 api.yourdomain.com {
-    reverse_proxy localhost:3001
+    reverse_proxy 82.147.84.78:3001
 }
 ```
 

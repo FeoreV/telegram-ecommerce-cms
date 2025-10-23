@@ -31,8 +31,8 @@ cp bot/env.example bot/.env
 # Отредактируйте .env файл:
 TELEGRAM_BOT_TOKEN=your_bot_token_here
 NODE_ENV=development
-API_URL=http://localhost:3001
-REDIS_URL=redis://localhost:6379  # Опционально
+API_URL=http://82.147.84.78:3001
+REDIS_URL=redis://82.147.84.78:6379  # Опционально
 ```
 
 **Для продакшена:**
@@ -155,7 +155,7 @@ server {
     ssl_certificate_key /path/to/private.key;
     
     location /webhook/telegram {
-        proxy_pass http://localhost:8443;
+        proxy_pass http://82.147.84.78:8443;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
@@ -177,11 +177,11 @@ server {
 
 ```bash
 # Проверка состояния бота
-curl http://localhost:8443/health
+curl http://82.147.84.78:8443/health
 
 # Получение статистики безопасности (требует авторизации)
 curl -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
-     http://localhost:8443/api/security-stats
+     http://82.147.84.78:8443/api/security-stats
 ```
 
 ### Ответ Health Check
@@ -219,7 +219,7 @@ curl -X POST \
      -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
      -H "Content-Type: application/json" \
      -d '{"userId": 123456789}' \
-     http://localhost:8443/api/unblock-user
+     http://82.147.84.78:8443/api/unblock-user
 ```
 
 ---
@@ -314,8 +314,8 @@ spec:
 | `TELEGRAM_BOT_TOKEN` | ✅ | Токен Telegram бота | `1234567890:ABCdef...` |
 | `WEBHOOK_BASE_URL` | ⚠️ Prod | URL для webhook | `https://yourdomain.com` |
 | `WEBHOOK_SECRET` | ⚠️ Prod | Secret token для webhook | `your-secure-secret` |
-| `REDIS_URL` | ⚠️ Prod | URL Redis сервера | `redis://localhost:6379` |
-| `API_URL` | ✅ | URL backend API | `http://localhost:3001` |
+| `REDIS_URL` | ⚠️ Prod | URL Redis сервера | `redis://82.147.84.78:6379` |
+| `API_URL` | ✅ | URL backend API | `http://82.147.84.78:3001` |
 | `WEBHOOK_ADMIN_TOKEN` | ⚠️ | Token для admin endpoints | `secure-admin-token` |
 | `LOG_LEVEL` | ❌ | Уровень логирования | `info` |
 
@@ -328,7 +328,7 @@ spec:
 #### 1. Бот не отвечает на сообщения
 ```bash
 # Проверьте статус
-curl http://localhost:8443/health
+curl http://82.147.84.78:8443/health
 
 # Проверьте логи
 docker logs telegram-bot-container
@@ -357,7 +357,7 @@ curl "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"
 #### 3. Redis connection errors
 ```bash
 # Проверьте подключение к Redis
-redis-cli -h localhost -p 6379 ping
+redis-cli -h 82.147.84.78 -p 6379 ping
 
 # Проверьте переменные окружения
 echo $REDIS_URL
@@ -370,7 +370,7 @@ curl -X POST \
      -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
      -H "Content-Type: application/json" \
      -d '{"userId": USER_TELEGRAM_ID}' \
-     http://localhost:8443/api/unblock-user
+     http://82.147.84.78:8443/api/unblock-user
 
 # Измените настройки rate limiting в .env
 RATE_LIMIT_MAX_REQUESTS=50
@@ -384,7 +384,7 @@ RATE_LIMIT_WINDOW_MS=60000
 tail -f bot/logs/bot-combined.log
 
 # Проверка статистики в реальном времени
-watch -n 5 'curl -H "Authorization: Bearer TOKEN" localhost:8443/api/security-stats'
+watch -n 5 'curl -H "Authorization: Bearer TOKEN" 82.147.84.78:8443/api/security-stats'
 
 # Monitoring с Grafana/Prometheus
 # Бот экспортирует метрики на /metrics endpoint (если настроен)
@@ -459,7 +459,7 @@ cp .env .env.backup.$(date +%Y%m%d)
 
 - **Документация API:** [Backend API Documentation](../backend/CONFIG_API_EXAMPLES.md)
 - **Логи:** `bot/logs/`
-- **Health Check:** `http://localhost:8443/health`
+- **Health Check:** `http://82.147.84.78:8443/health`
 - **Admin Panel:** Доступен через backend на `/admin`
 
 Для дополнительных вопросов обратитесь к [Telegram Store Integration Guide](TELEGRAM_STORE_INTEGRATION.md).

@@ -153,8 +153,8 @@ echo -e "   Then: ${GREEN}pm2 restart telegram-bot${NC}"
 echo ""
 
 echo -e "4. ${BOLD}Access your application:${NC}"
-echo -e "   Frontend:  ${GREEN}http://localhost:3000${NC}"
-echo -e "   Backend:   ${GREEN}http://localhost:3002${NC}"
+echo -e "   Frontend:  ${GREEN}http://82.147.84.78:3000${NC}"
+echo -e "   Backend:   ${GREEN}http://82.147.84.78:3002${NC}"
 echo ""
 
 echo -e "${YELLOW}⚠️  Important Security Notes:${NC}"

@@ -22,7 +22,7 @@ console.log('   User Agent:', navigator.userAgent);
 
 // 4. Test backend health
 console.log('\n4. Testing Backend Connection...');
-const apiUrl = import.meta?.env?.VITE_API_URL || 'http://localhost:3001';
+const apiUrl = import.meta?.env?.VITE_API_URL || 'http://82.147.84.78:3001';
 fetch(`${apiUrl}/health`)
   .then(res => res.json())
   .then(data => {
@@ -34,7 +34,7 @@ fetch(`${apiUrl}/health`)
 
 // 5. Test Socket.IO connection manually
 console.log('\n5. Testing Socket.IO Connection...');
-const socketUrl = import.meta?.env?.VITE_SOCKET_URL || import.meta?.env?.VITE_API_URL || 'http://localhost:3001';
+const socketUrl = import.meta?.env?.VITE_SOCKET_URL || import.meta?.env?.VITE_API_URL || 'http://82.147.84.78:3001';
 console.log('   Attempting to connect to:', socketUrl);
 
 // Check if socket.io-client is available

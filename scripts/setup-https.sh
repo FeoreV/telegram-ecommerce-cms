@@ -86,7 +86,7 @@ server {
     server_name $DOMAIN www.$DOMAIN;
 
     location / {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://82.147.84.78:3000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -106,7 +106,7 @@ server {
     client_max_body_size 10M;
 
     location / {
-        proxy_pass http://localhost:3001;
+        proxy_pass http://82.147.84.78:3001;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -119,7 +119,7 @@ server {
     
     # WebSocket support
     location /socket.io/ {
-        proxy_pass http://localhost:3001;
+        proxy_pass http://82.147.84.78:3001;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";

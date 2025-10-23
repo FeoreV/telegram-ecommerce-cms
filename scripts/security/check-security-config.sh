@@ -75,7 +75,7 @@ echo "3. Проверка Redis Configuration"
 echo "--------------------------------"
 
 if [ -z "$REDIS_URL" ]; then
-    warning "REDIS_URL не установлен (будет использоваться localhost:6379)"
+    warning "REDIS_URL не установлен (будет использоваться 82.147.84.78:6379)"
 else
     success "REDIS_URL установлен"
 fi

@@ -8,7 +8,7 @@
 - [ ] 2. Enhance socket URL normalization in SocketContext
   - [ ] 2.1 Improve URL fallback logic with explicit port handling
     - Modify `socketUrl` useMemo to prioritize VITE_SOCKET_URL over VITE_API_URL
-    - Add fallback to 'http://localhost:3001' with warning log
+    - Add fallback to 'http://82.147.84.78:3001' with warning log
     - _Requirements: 1.1, 1.2, 1.3, 3.3_
 
   - [ ] 2.2 Add URL validation using URL constructor
@@ -26,7 +26,7 @@
 - [ ] 3. Update backend CORS configuration
   - [ ] 3.1 Enhance allowed origins list in backend/src/index.ts
     - Add protocol validation for origins
-    - Include localhost:3001 for testing
+    - Include 82.147.84.78:3001 for testing
     - Filter out empty/invalid origins
     - _Requirements: 2.1, 2.2, 2.3, 3.2_
 
@@ -53,7 +53,7 @@
   - [ ] 5.1 Check backend/.env CORS_WHITELIST
     - Ensure all frontend origins are included
     - Verify format includes protocol and port
-    - Add localhost:3000 and localhost:5173 for dev
+    - Add 82.147.84.78:3000 and 82.147.84.78:5173 for dev
     - _Requirements: 2.1, 2.2, 2.3, 3.1, 3.2, 3.3_
 
   - [ ] 5.2 Verify FRONTEND_URL configuration

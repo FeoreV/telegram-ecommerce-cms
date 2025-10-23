@@ -1,7 +1,7 @@
 # Отладка health endpoint
 
 ## Проблема
-`localhost/api/health` возвращает 500 ошибку.
+`82.147.84.78/api/health` возвращает 500 ошибку.
 
 ## Возможные причины:
 
@@ -111,7 +111,7 @@ pm2 logs telegram-backend --lines 50
 Если сложный health check не нужен, используйте простой эндпоинт на `/health` (без `/api`):
 
 ```bash
-curl http://localhost:3001/health
+curl http://82.147.84.78:3001/health
 ```
 
 Этот эндпоинт уже работает и определен в `index.ts` на строке 337:

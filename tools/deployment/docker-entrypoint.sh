@@ -92,7 +92,7 @@ echo "🔍 Setting up health checks..."
 
 # Create health check endpoint test
 health_check() {
-    curl -f http://localhost:3001/health > /dev/null 2>&1
+    curl -f http://82.147.84.78:3001/health > /dev/null 2>&1
 }
 
 # =============================================================================

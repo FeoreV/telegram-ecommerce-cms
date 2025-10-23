@@ -98,7 +98,7 @@ fi
 
 # Set API URL if missing
 if ! grep -q "^API_URL=" "$BOT_ENV"; then
-    echo "API_URL=http://localhost:3002" >> "$BOT_ENV"
+    echo "API_URL=http://82.147.84.78:3002" >> "$BOT_ENV"
     echo -e "${GREEN}✓${NC} Set default API_URL"
 fi
 

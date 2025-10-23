@@ -124,7 +124,7 @@ NODE_ENV=development
 DATABASE_URL="file:./prisma/dev.db"
 
 # Redis
-REDIS_HOST=localhost
+REDIS_HOST=82.147.84.78
 REDIS_PORT=6379
 
 # JWT

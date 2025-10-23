@@ -16,11 +16,11 @@ if [ ! -f backend/.env ]; then
 PORT=3001
 NODE_ENV=development
 JWT_SECRET=dev-jwt-secret-change-in-production
-DATABASE_URL=mysql://telegram_user:telegram_pass@localhost:3306/telegram_ecommerce
-REDIS_URL=redis://localhost:6379
-FRONTEND_URL=http://localhost:3000
+DATABASE_URL=mysql://telegram_user:telegram_pass@82.147.84.78:3306/telegram_ecommerce
+REDIS_URL=redis://82.147.84.78:6379
+FRONTEND_URL=http://82.147.84.78:3000
 ENABLE_ADMINJS=true
-MEDUSA_BASE_URL=http://localhost:9000
+MEDUSA_BASE_URL=http://82.147.84.78:9000
 MEDUSA_WEBHOOK_TOKEN=dev-webhook-token
 EOF
     echo "✅ Created backend/.env"
@@ -29,8 +29,8 @@ fi
 if [ ! -f frontend/.env ]; then
     echo "📝 Creating frontend .env file..."
     cat > frontend/.env << 'EOF'
-VITE_API_URL=http://localhost:3001/api
-VITE_SOCKET_URL=http://localhost:3001
+VITE_API_URL=http://82.147.84.78:3001/api
+VITE_SOCKET_URL=http://82.147.84.78:3001
 EOF
     echo "✅ Created frontend/.env"
 fi
