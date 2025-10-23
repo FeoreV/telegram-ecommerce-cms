@@ -27,26 +27,44 @@ const REDIS_URL = process.env.REDIS_URL;
 // Enhanced CORS configuration
 const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
-    const allowedOrigins = [
+    const normalize = (url?: string) => (url || '').replace(/\/$/, '').toLowerCase();
+
+    // Base allowed origins (used outside strict production whitelist)
+    const baseAllowedOrigins = [
       FRONTEND_URL,
       ADMIN_PANEL_URL,
       'http://localhost:3000',
       'http://localhost:3001',
-      'http://localhost:3000', // Vite dev server
+      'http://localhost:5173', // Vite dev server
+      'http://localhost:4173', // Vite preview
       ...(process.env.ADDITIONAL_CORS_ORIGINS?.split(',').map(o => o.trim()) || [])
-    ].filter(Boolean);
+    ]
+      .filter(Boolean)
+      .map(normalize);
 
-    // In production, be more strict
-    if (NODE_ENV === 'production') {
-      // Only allow explicitly whitelisted origins in production
-      const productionOrigins = process.env.CORS_WHITELIST?.split(',').map(o => o.trim()) || [];
-      if (productionOrigins.length > 0) {
-        if (!origin || !productionOrigins.includes(origin)) {
-          logger.warn('CORS blocked request from origin in production:', { origin, allowedOrigins: productionOrigins });
-          return callback(new Error('Not allowed by CORS policy'));
-        }
-        return callback(null, true);
+    // In production, enforce explicit whitelist if configured
+    const isProd = NODE_ENV === 'production';
+    const productionWhitelist = [
+      ...(process.env.CORS_WHITELIST?.split(',').map(o => o.trim()) || []),
+      ...(process.env.ADDITIONAL_CORS_ORIGINS?.split(',').map(o => o.trim()) || []),
+      FRONTEND_URL,
+      ADMIN_PANEL_URL
+    ]
+      .filter(Boolean)
+      .map(normalize);
+
+    const incoming = normalize(origin);
+
+    if (isProd && productionWhitelist.length > 0) {
+      const allowed = incoming && productionWhitelist.includes(incoming);
+      if (!allowed) {
+        logger.warn('CORS blocked request from origin in production', {
+          origin,
+          allowedOrigins: productionWhitelist
+        });
+        return callback(new Error('Not allowed by CORS policy'));
       }
+      return callback(null, true);
     }
 
     // Allow requests with no origin in development (mobile apps, Postman, etc.)
@@ -56,16 +74,15 @@ const corsOptions: cors.CorsOptions = {
 
     if (NODE_ENV === 'development' && origin) {
       // In development, allow localhost only with specific ports
-      // Allowed ports: 3000 (frontend), 3001 (admin), 5173 (Vite), 4173 (Vite preview)
       const allowedDevPorts = ['3000', '3001', '5173', '4173'];
-      const localhostPattern = new RegExp(`^https?://(localhost|127\\.0\\.0\\.1):(${allowedDevPorts.join('|')})$`);
+      const localhostPattern = new RegExp(`^https?://(localhost|127\\.0\\.0\\.1):(${allowedDevPorts.join('|')})$`, 'i');
 
       if (localhostPattern.test(origin)) {
         return callback(null, true);
       }
 
       // Log rejected localhost origins for debugging
-      if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+      if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) {
         logger.warn('CORS blocked localhost origin with non-allowed port', {
           origin,
           allowedPorts: allowedDevPorts
@@ -73,12 +90,16 @@ const corsOptions: cors.CorsOptions = {
       }
     }
 
-    if (origin && allowedOrigins.includes(origin)) {
+    // General allow list (includes ADDITIONAL_CORS_ORIGINS)
+    if (origin && baseAllowedOrigins.includes(incoming)) {
       return callback(null, true);
     }
 
-    logger.warn('CORS blocked request from origin:', { origin, allowedOrigins, userAgent: callback.toString() });
-    callback(new Error('Not allowed by CORS policy'));
+    logger.warn('CORS blocked request from origin', {
+      origin,
+      allowedOrigins: baseAllowedOrigins
+    });
+    return callback(new Error('Not allowed by CORS policy'));
   },
   credentials: true,
   methods: NODE_ENV === 'production'
