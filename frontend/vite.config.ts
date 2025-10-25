@@ -38,7 +38,7 @@ export default defineConfig({
     allowedHosts: ['localhost', '127.0.0.1', '82.147.84.78'],
     proxy: {
       '/api': {
-        target: 'http://82.147.84.78:3001',
+        target: 'http://localhost:3001',
         changeOrigin: true,
       },
     },

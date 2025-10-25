@@ -183,15 +183,27 @@ export class DatabaseService {
 
     try {
       const startTime = Date.now();
-      const result = await this.prisma.$queryRaw`SELECT
-        version() as version,
-        current_database() as database,
-        current_user as user,
-        inet_server_addr() as server_addr,
-        inet_server_port() as server_port,
-        pg_is_in_recovery() as is_replica,
-        CASE WHEN ssl_is_used() THEN 'SSL' ELSE 'No SSL' END as ssl_status
-      ` as any[];
+      const dbUrl = secretManager.getDatabaseSecrets().url || process.env.DATABASE_URL || '';
+      let result: any[] = [];
+
+      if (dbUrl.startsWith('file:') || dbUrl.includes('sqlite')) {
+        // SQLite-compatible health query
+        result = await this.prisma.$queryRaw`SELECT sqlite_version() as version` as any[];
+      } else if (dbUrl.startsWith('postgres') || dbUrl.includes('postgres')) {
+        // PostgreSQL-specific detailed health query
+        result = await this.prisma.$queryRaw`SELECT
+          version() as version,
+          current_database() as database,
+          current_user as user,
+          inet_server_addr() as server_addr,
+          inet_server_port() as server_port,
+          pg_is_in_recovery() as is_replica,
+          CASE WHEN ssl_is_used() THEN 'SSL' ELSE 'No SSL' END as ssl_status
+        ` as any[];
+      } else {
+        // Generic minimal query (works for MySQL and others)
+        result = await this.prisma.$queryRaw`SELECT version() as version` as any[];
+      }
 
       const latency = Date.now() - startTime;
 
@@ -199,7 +211,7 @@ export class DatabaseService {
         status: 'connected',
         latency,
         tlsEnabled: tlsService.isEnabled(),
-        connectionInfo: result[0]
+        connectionInfo: result?.[0] ?? { version: 'unknown' }
       };
     } catch (error) {
       logger.error('Database health check failed:', error);

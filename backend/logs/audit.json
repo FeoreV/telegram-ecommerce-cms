@@ -6,29 +6,29 @@
     "auditLog": "D:\\projects\\telegram-ecommerce-cms\\backend\\logs\\audit.json",
     "files": [
         {
-            "date": 1761410122208,
+            "date": 1761412780256,
             "name": "D:\\projects\\telegram-ecommerce-cms\\backend\\logs\\error-2025-10-25.log",
-            "hash": "d4c82ee57a3b16865f6845328078bd92ba0aee8313bd9d62bda3ed79f3d6194b"
+            "hash": "76acc22886c4e618e2767967d7aab710d07df322d718c8f02cfe98d66f7c1ae7"
         },
         {
-            "date": 1761410122211,
+            "date": 1761412780259,
             "name": "D:\\projects\\telegram-ecommerce-cms\\backend\\logs\\combined-2025-10-25.log",
-            "hash": "986d23010901b074af6525626abe4d54e46e43eac2eea8594f0732b8c4682e91"
+            "hash": "5872de62b4da86a3135c8338048db9cb8f975daf914e53af835ebe8cfb63bd55"
         },
         {
-            "date": 1761410122212,
+            "date": 1761412780261,
             "name": "D:\\projects\\telegram-ecommerce-cms\\backend\\logs\\http-2025-10-25.log",
-            "hash": "e9a26e93a25d7a5a24d08a968abeb1a2d5797cd8ad23b62418cafb990d0c723f"
+            "hash": "8df95a81178ba2a666a68742fd65aa49bd58289082ad69d352379df576860149"
         },
         {
-            "date": 1761410122215,
+            "date": 1761412780264,
             "name": "D:\\projects\\telegram-ecommerce-cms\\backend\\logs\\security-2025-10-25.log",
-            "hash": "06bf43acc8687261ccbafe74e33441b532be4dc50ba0462b220b4a74f472ee09"
+            "hash": "5bf5e52c42ebaff7153636d490bed8df5799be078f1e8cdf6ae41d0cf613c4eb"
         },
         {
-            "date": 1761410122218,
+            "date": 1761412780266,
             "name": "D:\\projects\\telegram-ecommerce-cms\\backend\\logs\\audit-2025-10-25.log",
-            "hash": "4f6f7a2d8023cee7e88a9d2154a6072ba720842cc32486e24dd2d9a3594e09d7"
+            "hash": "ff88e412bc9217ee430b6f9d4fa6309900b3e4d6c81a567da87b579c1b189708"
         }
     ],
     "hashType": "sha256"
