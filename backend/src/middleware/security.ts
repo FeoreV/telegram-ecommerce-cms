@@ -37,7 +37,8 @@ const corsOptions: cors.CorsOptions = {
       'http://82.147.84.78:3001',
       'http://82.147.84.78:5173', // Vite dev server
       'http://82.147.84.78:4173', // Vite preview
-      'https://82.147.84.78', // HTTPS reverse proxy origin (no port)
+      'https://82.147.84.78',     // HTTPS reverse proxy origin (no port)
+      'https://82.147.84.78:443', // Explicit HTTPS port
       ...(process.env.ADDITIONAL_CORS_ORIGINS?.split(',').map(o => o.trim()) || [])
     ]
       .filter(Boolean)
@@ -74,25 +75,36 @@ const corsOptions: cors.CorsOptions = {
     }
 
     if (NODE_ENV === 'development' && origin) {
-      // Special-case: allow HTTPS reverse proxy origin without port
-      if (origin.toLowerCase() === 'https://82.147.84.78') {
-        logger.info('CORS allowed HTTPS origin without port in development', { origin });
+      const normalizedOrigin = normalize(origin);
+
+      // Allow HTTPS reverse proxy origin and explicit :443
+      const devAllowedOrigins = [
+        'https://82.147.84.78',
+        'https://82.147.84.78:443',
+        'http://82.147.84.78:3000',
+        'http://82.147.84.78:3001',
+        'http://82.147.84.78:5173',
+        'http://82.147.84.78:4173',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:3001'
+      ];
+
+      if (devAllowedOrigins.includes(normalizedOrigin)) {
+        logger.info('CORS allowed development origin', { origin });
         return callback(null, true);
       }
 
-      // In development, allow 82.147.84.78 only with specific ports
-      const allowedDevPorts = ['3000', '3001', '5173', '4173'];
-      const ipPatternForDev = new RegExp(`^https?://(82\\.147\\.84\\.78|127\\.0\\.0\\.1):(${allowedDevPorts.join('|')})$`, 'i');
-
-      if (ipPatternForDev.test(origin)) {
+      // Also allow any 82.147.84.78 or 127.0.0.1 with optional port in development
+      if (/^https?:\/\/(82\.147\.84\.78|127\.0\.0\.1)(:\d+)?$/i.test(origin)) {
+        logger.info('CORS allowed development host with arbitrary port', { origin });
         return callback(null, true);
       }
 
-      // Log rejected 82.147.84.78 origins for debugging
+      // Log rejected development origins for debugging
       if (/^https?:\/\/(82\.147\.84\.78|127\.0\.0\.1)(:\d+)?$/i.test(origin)) {
         logger.warn('CORS blocked 82.147.84.78 origin with non-allowed port', {
           origin,
-          allowedPorts: allowedDevPorts
+          allowedPorts: ['3000', '3001', '5173', '4173', '443']
         });
       }
     }
