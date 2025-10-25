@@ -27,6 +27,27 @@ const REDIS_URL = process.env.REDIS_URL;
 // Enhanced CORS configuration
 const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
+    // Diagnostics snapshot to confirm active config/branch
+    if (origin) {
+      const o = origin.toLowerCase();
+      logger.warn('CORS origin handler snapshot', {
+        nodeEnv: NODE_ENV,
+        origin: o,
+        frontendUrl: FRONTEND_URL,
+        adminPanelUrl: ADMIN_PANEL_URL,
+        additionalOrigins: process.env.ADDITIONAL_CORS_ORIGINS,
+        corsWhitelist: process.env.CORS_WHITELIST
+      });
+      // Explicit allow for HTTPS reverse proxy origin (with or without :443) and any port on 82.147.84.78 in development
+      if (
+        o === 'https://82.147.84.78' ||
+        /^https:\/\/82\.147\.84\.78(?::\d+)?$/.test(o) ||
+        (NODE_ENV === 'development' && /^https?:\/\/82\.147\.84\.78(?::\d+)?$/.test(o))
+      ) {
+        logger.info('CORS allowed explicitly configured HTTPS origin', { origin });
+        return callback(null, true);
+      }
+    }
     const normalize = (url?: string) => (url || '').replace(/\/$/, '').toLowerCase();
 
     // Base allowed origins (used outside strict production whitelist)
