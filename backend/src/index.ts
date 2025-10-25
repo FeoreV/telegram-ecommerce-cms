@@ -63,6 +63,7 @@ import { honeytokenService } from './services/HoneytokenService';
 import EnvValidator from './utils/envValidator';
 import { logger, toLogMetadata } from './utils/loggerEnhanced';
 import { secretManager } from './utils/SecretManager';
+import { corsSecurityService, csrfMiddleware } from './middleware/corsSecurityMiddleware';
 
 // Load environment variables
 dotenv.config();
@@ -291,6 +292,14 @@ const csrfProtection = doubleCsrf({
   ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
 });
 
+// DIAGNOSTICS: Log the shape of the csrf-csrf return to validate API/interop
+logger.debug('doubleCsrf init diagnostics', {
+  doubleCsrfType: typeof doubleCsrf,
+  returnedKeys: Object.keys((csrfProtection as any) || {}),
+  hasGenerateToken: !!(csrfProtection as any)?.generateToken,
+  generateTokenType: typeof (csrfProtection as any)?.generateToken
+});
+
 const { doubleCsrfProtection } = csrfProtection as any;
 // Access generateToken with a safe cast to satisfy TS definitions across versions
 const generateToken = (csrfProtection as any).generateToken as (req: express.Request, res: express.Response) => string;
@@ -330,29 +339,13 @@ app.use('/api/*', (req, res, next) => {
     return next();
   }
 
-  // Apply CSRF protection with detailed logging
-  doubleCsrfProtection(req, res, (err) => {
+  // Apply internal CSRF validation (CorsSecurityService)
+  csrfMiddleware(req, res, (err) => {
     if (err) {
-      logger.error('CSRF validation failed - DETAILED DEBUG', {
-        error: err.message,
-        errorStack: err.stack,
+      logger.error('CSRF validation failed - internal middleware', {
+        error: (err as Error).message,
         path: req.path,
-        method: req.method,
-        allHeaders: req.headers,
-        allCookies: req.cookies,
-        cookiesCsrf: {
-          'csrf-token': req.cookies?.['csrf-token'],
-          '__Host-csrf.token': req.cookies?.['__Host-csrf.token'],
-          '_csrf': req.cookies?.['_csrf']
-        },
-        headersCsrf: {
-          'x-csrf-token': req.get('x-csrf-token'),
-          'X-CSRF-Token': req.get('X-CSRF-Token'),
-          'csrf-token': req.get('csrf-token')
-        },
-        sessionIdentifier: req.cookies?.['csrfSessionId'],
-        ip: req.ip,
-        user: (req as any).user?.id
+        method: req.method
       });
     }
     next(err);
@@ -437,16 +430,34 @@ app.get('/api', (req, res) => {
   });
 });
 
-// CSRF token endpoint - standardized on double-csrf generateToken
+// CSRF token endpoint - using internal generator for compatibility
 app.get('/api/csrf-token', (req, res) => {
  try {
-   const token = generateToken(req, res);
+   const userId = (req as any).user?.id;
+   const sessionId = (req as any).sessionId || req.cookies?.['csrfSessionId'];
+   const ipAddress = req.ip || (req as any).connection?.remoteAddress || 'unknown';
+
+   const token = corsSecurityService.generateCSRFToken(userId, sessionId, ipAddress);
+
+   // Set token in cookie to support client retrieval
+   const ttlSec = parseInt(process.env.CSRF_TOKEN_TTL || '3600');
+   res.cookie('csrf-token', token, {
+     httpOnly: false,
+     secure: isProduction,
+     sameSite: 'strict',
+     path: '/',
+     maxAge: ttlSec * 1000
+   });
+
    res.json({
      csrfToken: token,
-     message: 'CSRF token generated successfully'
+     expiresAt: new Date(Date.now() + ttlSec * 1000).toISOString()
    });
  } catch (error) {
-   logger.error('Failed to generate CSRF token', { error: (error as Error).message });
+   logger.error('Failed to generate CSRF token (internal generator)', {
+     error: (error as Error).message,
+     stack: (error as Error).stack
+   });
    res.status(500).json({ error: 'Failed to generate CSRF token' });
  }
 });
