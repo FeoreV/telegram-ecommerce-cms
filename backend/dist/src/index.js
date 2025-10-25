@@ -9,6 +9,7 @@ const csrf_csrf_1 = require("csrf-csrf");
 const dotenv_1 = __importDefault(require("dotenv"));
 const express_1 = __importDefault(require("express"));
 const http_1 = require("http");
+const crypto_1 = __importDefault(require("crypto"));
 const auth_1 = require("./auth");
 const auth_2 = require("./middleware/auth");
 const jwtSecurity_1 = require("./middleware/jwtSecurity");
@@ -111,11 +112,11 @@ const server = (0, http_1.createServer)(app);
 app.set('trust proxy', 1);
 const allowedOrigins = [
     env_1.env.FRONTEND_URL,
-    'localhost',
-    'http://localhost:3000',
-    'http://localhost:5173',
+    '82.147.84.78',
+    'http://82.147.84.78:3000',
+    'http://82.147.84.78:5173',
 ].filter(Boolean);
-const io = (0, socket_1.initSocket)(server, allowedOrigins.join(','));
+const io = (0, socket_1.initSocket)(server, allowedOrigins);
 app.use(security_1.securityMiddlewareBundle);
 app.use(contentTypeValidation_1.validateContentType);
 app.use(compromiseGuard_1.compromiseGuard);
@@ -190,12 +191,33 @@ app.use('/api/cms/webhooks/medusa', webhookQuarantineGuard_1.webhookQuarantineGu
 app.use(express_1.default.json({ limit: '1mb' }));
 app.use(express_1.default.urlencoded({ limit: '1mb', extended: true }));
 app.use((0, cookie_parser_1.default)());
+app.use((req, res, next) => {
+    try {
+        const name = 'csrfSessionId';
+        if (!req.cookies?.[name]) {
+            const sid = crypto_1.default.randomBytes(24).toString('hex');
+            const prod = process.env.NODE_ENV === 'production';
+            res.cookie(name, sid, {
+                httpOnly: true,
+                secure: prod,
+                sameSite: prod ? 'strict' : 'lax',
+                path: '/',
+                maxAge: 365 * 24 * 60 * 60 * 1000
+            });
+            req.cookies[name] = sid;
+        }
+    }
+    catch (e) {
+        loggerEnhanced_1.logger.warn('Failed to ensure CSRF session id cookie', { error: e.message });
+    }
+    next();
+});
 const isProduction = process.env.NODE_ENV === 'production';
 const csrfProtection = (0, csrf_csrf_1.doubleCsrf)({
     getSecret: () => SecretManager_1.secretManager.getEncryptionSecrets().masterKey,
     getSessionIdentifier: (req) => {
-        const user = req.user;
-        return user?.id || req.ip || 'anonymous';
+        const sid = req.cookies?.['csrfSessionId'];
+        return sid || 'anonymous';
     },
     cookieName: isProduction ? '__Host-csrf.token' : 'csrf-token',
     cookieOptions: {
@@ -207,7 +229,7 @@ const csrfProtection = (0, csrf_csrf_1.doubleCsrf)({
     size: 64,
     ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
 });
-const { doubleCsrfProtection } = csrfProtection;
+const { doubleCsrfProtection, generateToken } = csrfProtection;
 app.use('/api/*', (req, res, next) => {
     const fullPath = req.originalUrl.split('?')[0];
     const skipPaths = [
@@ -251,6 +273,7 @@ app.use('/api/*', (req, res, next) => {
                     'X-CSRF-Token': req.get('X-CSRF-Token'),
                     'csrf-token': req.get('csrf-token')
                 },
+                sessionIdentifier: req.cookies?.['csrfSessionId'],
                 ip: req.ip,
                 user: req.user?.id
             });
@@ -320,12 +343,18 @@ app.get('/api', (req, res) => {
         timestamp: new Date().toISOString()
     });
 });
-const csrfProtection_1 = require("./middleware/csrfProtection");
-app.get('/api/csrf-token', csrfProtection_1.getCsrfTokenHandler, (req, res) => {
-    res.json({
-        csrfToken: res.locals.csrfToken,
-        message: 'CSRF token generated successfully'
-    });
+app.get('/api/csrf-token', (req, res) => {
+    try {
+        const token = generateToken(req, res);
+        res.json({
+            csrfToken: token,
+            message: 'CSRF token generated successfully'
+        });
+    }
+    catch (error) {
+        loggerEnhanced_1.logger.error('Failed to generate CSRF token', { error: error.message });
+        res.status(500).json({ error: 'Failed to generate CSRF token' });
+    }
 });
 backupService_1.BackupService.initialize().catch(error => {
     loggerEnhanced_1.logger.error('Failed to initialize backup service:', { error: error instanceof Error ? error.message : String(error) });
@@ -491,8 +520,8 @@ const initializeServices = async () => {
 const PORT = env_1.env.PORT || 3001;
 server.listen(PORT, async () => {
     loggerEnhanced_1.logger.info(`🚀 Server running on port ${PORT}`);
-    loggerEnhanced_1.logger.info(`📊 Admin panel: http://localhost:3000`);
-    loggerEnhanced_1.logger.info(`🔧 API: http://localhost:${PORT}/api`);
+    loggerEnhanced_1.logger.info(`📊 Admin panel: http://82.147.84.78:3000`);
+    loggerEnhanced_1.logger.info(`🔧 API: http://82.147.84.78:${PORT}/api`);
     try {
         await initializeServices();
         await CompromiseResponseService_1.compromiseResponseService.initialize();

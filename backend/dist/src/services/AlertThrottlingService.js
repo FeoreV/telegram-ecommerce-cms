@@ -494,7 +494,7 @@ class AlertThrottlingService {
                 eventType: 'alert_processed',
                 severity: alert.securityRelevant ? 'HIGH' : 'LOW',
                 category: 'system',
-                ipAddress: 'localhost',
+                ipAddress: '82.147.84.78',
                 success: true,
                 details: {
                     alertId,

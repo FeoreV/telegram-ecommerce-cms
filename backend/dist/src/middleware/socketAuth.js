@@ -54,8 +54,27 @@ const socketAuthMiddleware = async (socket, next) => {
         next();
     }
     catch (error) {
-        logger_1.logger.error('Socket authentication error:', error);
-        next(new Error('Authentication failed: Server error'));
+        try {
+            logger_1.logger.error('Socket authentication error - DIAGNOSTIC', {
+                name: error?.name,
+                message: error?.message,
+                stack: error?.stack,
+                socketId: socket.id,
+                handshakeAuthKeys: Object.keys(socket.handshake?.auth || {}),
+                handshakeQueryKeys: Object.keys(socket.handshake?.query || {}),
+                requestHeaders: socket.handshake?.headers ? {
+                    origin: socket.handshake.headers.origin,
+                    host: socket.handshake.headers.host,
+                    'user-agent': socket.handshake.headers['user-agent'],
+                    'x-forwarded-for': socket.handshake.headers['x-forwarded-for'],
+                } : undefined,
+            });
+        }
+        catch {
+        }
+        const err = new Error('Authentication failed');
+        err.data = { code: 'AUTH_FAILED' };
+        next(err);
     }
 };
 exports.socketAuthMiddleware = socketAuthMiddleware;

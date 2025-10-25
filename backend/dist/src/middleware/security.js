@@ -15,50 +15,68 @@ const logger_1 = require("../utils/logger");
 const securityHeaders_1 = require("./securityHeaders");
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const ENABLE_IP_REPUTATION = process.env.ENABLE_IP_REPUTATION !== 'false';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
-const ADMIN_PANEL_URL = process.env.ADMIN_PANEL_URL || 'http://localhost:3001';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://82.147.84.78:3000';
+const ADMIN_PANEL_URL = process.env.ADMIN_PANEL_URL || 'http://82.147.84.78:3001';
 const REDIS_URL = process.env.REDIS_URL;
 const corsOptions = {
     origin: (origin, callback) => {
-        const allowedOrigins = [
+        const normalize = (url) => (url || '').replace(/\/$/, '').toLowerCase();
+        const baseAllowedOrigins = [
             FRONTEND_URL,
             ADMIN_PANEL_URL,
-            'http://localhost:3000',
-            'http://localhost:3001',
-            'http://localhost:3000',
+            'http://82.147.84.78:3000',
+            'http://82.147.84.78:3001',
+            'http://82.147.84.78:5173',
+            'http://82.147.84.78:4173',
             ...(process.env.ADDITIONAL_CORS_ORIGINS?.split(',').map(o => o.trim()) || [])
-        ].filter(Boolean);
-        if (NODE_ENV === 'production') {
-            const productionOrigins = process.env.CORS_WHITELIST?.split(',').map(o => o.trim()) || [];
-            if (productionOrigins.length > 0) {
-                if (!origin || !productionOrigins.includes(origin)) {
-                    logger_1.logger.warn('CORS blocked request from origin in production:', { origin, allowedOrigins: productionOrigins });
-                    return callback(new Error('Not allowed by CORS policy'));
-                }
-                return callback(null, true);
+        ]
+            .filter(Boolean)
+            .map(normalize);
+        const isProd = NODE_ENV === 'production';
+        const productionWhitelist = [
+            ...(process.env.CORS_WHITELIST?.split(',').map(o => o.trim()) || []),
+            ...(process.env.ADDITIONAL_CORS_ORIGINS?.split(',').map(o => o.trim()) || []),
+            FRONTEND_URL,
+            ADMIN_PANEL_URL
+        ]
+            .filter(Boolean)
+            .map(normalize);
+        const incoming = normalize(origin);
+        if (isProd && productionWhitelist.length > 0) {
+            const allowed = incoming && productionWhitelist.includes(incoming);
+            if (!allowed) {
+                logger_1.logger.warn('CORS blocked request from origin in production', {
+                    origin,
+                    allowedOrigins: productionWhitelist
+                });
+                return callback(new Error('Not allowed by CORS policy'));
             }
+            return callback(null, true);
         }
         if (!origin && NODE_ENV === 'development') {
             return callback(null, true);
         }
         if (NODE_ENV === 'development' && origin) {
             const allowedDevPorts = ['3000', '3001', '5173', '4173'];
-            const localhostPattern = new RegExp(`^https?://(localhost|127\\.0\\.0\\.1):(${allowedDevPorts.join('|')})$`);
-            if (localhostPattern.test(origin)) {
+            const ipPatternForDev = new RegExp(`^https?://(82\\.147\\.84\\.78|127\\.0\\.0\\.1):(${allowedDevPorts.join('|')})$`, 'i');
+            if (ipPatternForDev.test(origin)) {
                 return callback(null, true);
             }
-            if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
-                logger_1.logger.warn('CORS blocked localhost origin with non-allowed port', {
+            if (/^https?:\/\/(82\.147\.84\.78|127\.0\.0\.1)(:\d+)?$/i.test(origin)) {
+                logger_1.logger.warn('CORS blocked 82.147.84.78 origin with non-allowed port', {
                     origin,
                     allowedPorts: allowedDevPorts
                 });
             }
         }
-        if (origin && allowedOrigins.includes(origin)) {
+        if (origin && baseAllowedOrigins.includes(incoming)) {
             return callback(null, true);
         }
-        logger_1.logger.warn('CORS blocked request from origin:', { origin, allowedOrigins, userAgent: callback.toString() });
-        callback(new Error('Not allowed by CORS policy'));
+        logger_1.logger.warn('CORS blocked request from origin', {
+            origin,
+            allowedOrigins: baseAllowedOrigins
+        });
+        return callback(new Error('Not allowed by CORS policy'));
     },
     credentials: true,
     methods: NODE_ENV === 'production'
@@ -552,7 +570,7 @@ const adminIPWhitelist = (req, res, next) => {
     const clientIP = req.ip || req.socket?.remoteAddress || 'unknown';
     let isAllowed = allowedIPs.includes(clientIP);
     if (NODE_ENV === 'development') {
-        const devIPs = ['127.0.0.1', '::1', '::ffff:127.0.0.1', 'localhost'];
+        const devIPs = ['127.0.0.1', '::1', '::ffff:127.0.0.1', '82.147.84.78'];
         isAllowed = isAllowed || devIPs.includes(clientIP);
     }
     if (!isAllowed) {

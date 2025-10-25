@@ -113,8 +113,8 @@ router.get('/config', auth_1.authMiddleware, (0, auth_1.requireRole)([jwt_1.User
             cors: {
                 enabled: true,
                 allowedOrigins: [
-                    process.env.FRONTEND_URL || 'http://localhost:3000',
-                    process.env.ADMIN_PANEL_URL || 'http://localhost:3001'
+                    process.env.FRONTEND_URL || 'http://82.147.84.78:3000',
+                    process.env.ADMIN_PANEL_URL || 'http://82.147.84.78:3001'
                 ].filter(Boolean)
             },
             security: {

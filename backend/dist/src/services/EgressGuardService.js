@@ -50,7 +50,7 @@ class EgressGuardService {
                     }
                     const options = args[0];
                     const protocol = options.protocol || defaultProtocol;
-                    const host = options.hostname || options.host || 'localhost';
+                    const host = options.hostname || options.host || '82.147.84.78';
                     const port = options.port ? `:${options.port}` : '';
                     const path = options.path || '/';
                     return `${protocol}//${host}${port}${path}`;

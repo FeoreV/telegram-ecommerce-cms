@@ -200,6 +200,13 @@ DEMO_DATA_REMOVAL_SUMMARY.md
 !config/tls/*.sh
 
 # ===========================================
+# AI/Meta & Assistant tooling
+# ===========================================
+.cursor/
+.amazonq/
+.giga/
+.kiro/
+# ===========================================
 # Exceptions (files to keep)
 # ===========================================
 !LICENSE.txt
