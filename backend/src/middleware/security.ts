@@ -37,6 +37,7 @@ const corsOptions: cors.CorsOptions = {
       'http://82.147.84.78:3001',
       'http://82.147.84.78:5173', // Vite dev server
       'http://82.147.84.78:4173', // Vite preview
+      'https://82.147.84.78', // HTTPS reverse proxy origin (no port)
       ...(process.env.ADDITIONAL_CORS_ORIGINS?.split(',').map(o => o.trim()) || [])
     ]
       .filter(Boolean)
