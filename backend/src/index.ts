@@ -289,7 +289,9 @@ const csrfProtection = doubleCsrf({
   ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
 });
 
-const { doubleCsrfProtection, generateToken } = csrfProtection;
+const { doubleCsrfProtection } = csrfProtection as any;
+// Access generateToken with a safe cast to satisfy TS definitions across versions
+const generateToken = (csrfProtection as any).generateToken as (req: express.Request, res: express.Response) => string;
 
 // (Removed legacy CSRF token endpoint using double-csrf generateToken)
 

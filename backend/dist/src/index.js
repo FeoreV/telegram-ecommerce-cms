@@ -229,7 +229,8 @@ const csrfProtection = (0, csrf_csrf_1.doubleCsrf)({
     size: 64,
     ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
 });
-const { doubleCsrfProtection, generateToken } = csrfProtection;
+const { doubleCsrfProtection } = csrfProtection;
+const generateToken = csrfProtection.generateToken;
 app.use('/api/*', (req, res, next) => {
     const fullPath = req.originalUrl.split('?')[0];
     const skipPaths = [
