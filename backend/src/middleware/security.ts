@@ -74,6 +74,12 @@ const corsOptions: cors.CorsOptions = {
     }
 
     if (NODE_ENV === 'development' && origin) {
+      // Special-case: allow HTTPS reverse proxy origin without port
+      if (origin.toLowerCase() === 'https://82.147.84.78') {
+        logger.info('CORS allowed HTTPS origin without port in development', { origin });
+        return callback(null, true);
+      }
+
       // In development, allow 82.147.84.78 only with specific ports
       const allowedDevPorts = ['3000', '3001', '5173', '4173'];
       const ipPatternForDev = new RegExp(`^https?://(82\\.147\\.84\\.78|127\\.0\\.0\\.1):(${allowedDevPorts.join('|')})$`, 'i');
