@@ -1,2 +1,11 @@
 {"isProduction":false,"level":"info","message":"Initializing Telegram Bot","port":"3003","service":"telegram-bot","timestamp":"2025-10-25T16:38:54.921Z","useWebhook":false,"webhookBaseUrl":""}
 {"level":"warn","message":"Redis unavailable for bot sessions (using in-memory mode). To enable Redis, start Docker: docker-compose up -d redis","service":"telegram-bot","timestamp":"2025-10-25T16:38:55.737Z"}
+{"level":"warn","message":"Redis reconnection failed after 3 attempts, using in-memory fallback","service":"telegram-bot","timestamp":"2025-10-25T16:38:56.387Z"}
+{"level":"warn","message":"Failed to initialize bot Redis session store, using in-memory fallback","service":"telegram-bot","timestamp":"2025-10-25T16:38:56.387Z"}
+{"code":"ECONNREFUSED","level":"warn","message":"Redis session store initialization failed, using in-memory fallback:","service":"telegram-bot","stack":"AggregateError\n    at internalConnectMultiple (node:net:1134:18)\n    at afterConnectMultiple (node:net:1715:7)","timestamp":"2025-10-25T16:38:56.388Z"}
+{"level":"info","message":"Bot will continue without Redis (development mode)","service":"telegram-bot","timestamp":"2025-10-25T16:38:56.388Z"}
+{"level":"info","message":"CMS initialized at http://localhost:9000","service":"telegram-bot","timestamp":"2025-10-25T16:38:56.388Z"}
+{"level":"info","message":"✅ Bot handlers configured","service":"telegram-bot","timestamp":"2025-10-25T16:38:56.389Z"}
+{"level":"info","message":"🤖 Bot running in polling mode with enhanced security","service":"telegram-bot","timestamp":"2025-10-25T16:38:56.400Z"}
+{"level":"info","message":"🚀 Telegram bot started successfully with enhanced security","service":"telegram-bot","timestamp":"2025-10-25T16:38:56.401Z"}
+{"level":"info","message":"🤖 Bot API server running on port 3003 (polling mode with security)","service":"telegram-bot","timestamp":"2025-10-25T16:38:56.401Z"}
