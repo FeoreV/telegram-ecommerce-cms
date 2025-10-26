@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { apiClient } from '../services/apiClient'
 
 import styles from './PublicHealthPage.module.css'
 
@@ -102,12 +103,7 @@ const checkLabel: Record<string, string> = {
 
 const getReadableCheckName = (technicalName: string) => checkLabel[technicalName] ?? technicalName
 
-const getHealthEndpoint = () => {
-  const rawApiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? '82.147.84.78/api'
-  const normalizedBase = rawApiBase.replace(/\/$/, '')
-  const rootApi = normalizedBase.endsWith('/api') ? normalizedBase.slice(0, -4) : normalizedBase
-  return `${rootApi}/health/diagnostics/public`
-}
+const PUBLIC_HEALTH_PATH = '/health/diagnostics/public'
 
 const PublicHealthPage = () => {
   const [data, setData] = useState<PublicHealthResponse | null>(null)
@@ -119,16 +115,10 @@ const PublicHealthPage = () => {
     setError(null)
 
     try {
-      const response = await fetch(getHealthEndpoint(), {
-        credentials: 'omit',
+      const response = await apiClient.get(PUBLIC_HEALTH_PATH, {
         headers: { Accept: 'application/json' },
       })
-
-      if (!response.ok) {
-        throw new Error(`Не удалось загрузить диагностику (${response.status})`)
-      }
-
-      const body = (await response.json()) as PublicHealthResponse
+      const body = response.data as PublicHealthResponse
       setData(body)
     } catch (fetchError) {
       setError(

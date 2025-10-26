@@ -17,6 +17,7 @@ import {
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { useAuth } from '../../contexts/AuthContext'
+import { apiClient } from '../../services/apiClient'
 
 type Status = 'idle' | 'success' | 'error' | 'warning'
 
@@ -81,9 +82,8 @@ const PageDebugger: React.FC<PageDebuggerProps> = ({ pageName, children }) => {
   const [forceDebug, setForceDebug] = useState(false)
 
   const healthCheckUrl = useMemo(() => {
-    const rawBase = (import.meta as ImportMeta).env?.VITE_API_URL ?? '82.147.84.78/api'
-    const normalized = String(rawBase).replace(/\/$/, '')
-    return `${normalized}/health`
+    const base = String(apiClient.defaults.baseURL ?? '').replace(/\/$/, '')
+    return `${base}/health`
   }, [])
 
   const runDiagnostics = useCallback(async () => {
@@ -112,16 +112,12 @@ const PageDebugger: React.FC<PageDebuggerProps> = ({ pageName, children }) => {
       try {
         const controller = new AbortController()
         const timeoutId = window.setTimeout(() => controller.abort(), 5000)
-        const response = await fetch(healthCheckUrl, { signal: controller.signal })
+        const response = await apiClient.get('/health', { signal: controller.signal })
         window.clearTimeout(timeoutId)
 
-        if (response.ok) {
-          result.api = {
-            status: 'success',
-            message: 'API подключение работает',
-          }
-        } else {
-          throw new Error(`HTTP ${response.status}`)
+        result.api = {
+          status: 'success',
+          message: 'API подключение работает',
         }
       } catch (error: unknown) {
         const message = (error as Error)?.message ?? 'Неизвестная ошибка'

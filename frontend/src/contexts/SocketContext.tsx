@@ -76,7 +76,17 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     const raw = (import.meta as any).env?.VITE_SOCKET_URL
     const fallback = (import.meta as any).env?.VITE_API_URL ?? '82.147.84.78'
     const normalized = String(raw ?? fallback).replace(/\/$/, '')
-    return normalized.endsWith('/api') ? normalized.slice(0, -4) : normalized
+    const base = normalized.endsWith('/api') ? normalized.slice(0, -4) : normalized
+
+    // Prevent mixed content: if page is HTTPS but socket base is HTTP, use same-origin
+    const isHttpsPage = typeof window !== 'undefined' && window.location?.protocol === 'https:'
+    if (isHttpsPage && base.startsWith('http://')) {
+      const origin = typeof window !== 'undefined' ? window.location.origin : ''
+      console.warn('[SocketContext] Mixed content prevented: overriding socketUrl', { original: base, safe: origin })
+      return origin
+    }
+
+    return base
   }, [])
 
   useEffect(() => {
